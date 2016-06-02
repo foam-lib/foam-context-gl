@@ -611,7 +611,8 @@ function ContextGL(canvas,options){
 
     this.TEXTURE_BINDING_BIT = TEXTURE_BINDING_BIT;
     this._textures = {};
-    this._textureActive = null;
+    this._textureActive = {};
+    this._textureUnitActive = 0;
     this._textureStack = [];
 
     this.NEAREST = this._gl.NEAREST;
@@ -3844,7 +3845,7 @@ ContextGL.prototype._createVertexArrayShim = function(attributes,indexBuffer){
     } else if(!Array.isArray(attributes)){
         throw new ProgramError('Attribute argument type passed is not of type Array.')
     }
-   
+
     const id = this._uid++;
     const vertexArray = this._vertexArrays[id] = {
         //attributes sorted by vertex buffer
@@ -4132,6 +4133,27 @@ ContextGL.prototype.vertexArrayHasDivisor = function(){
 // TEXTURE
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+export class TextureError extends Error{
+    constructor(msg){
+        super(msg);
+        this.name = 'TextureError';
+    }
+}
+
+function strTextureErrorInvalidId(id){
+    return `Invalid texture id ${id}.`;
+}
+
+function strTextureNotActive(id,textureUnit){
+    return `Texture with id ${id} not active a texture unit ${textureUnit}`;
+}
+
+function strTextureInvalidSize(width,height){
+    return `Invalid texture size: ${width}, ${height}.`;
+}
+
+const STR_TEXTURE_ERROR_NOTHING_BOUND = 'No texture active.s';
+
 /**
  * Saves the current texture binding.
  */
@@ -4146,21 +4168,174 @@ ContextGL.prototype.popTextureBinding = function(){
     console.warn('Not implemented yet');
 };
 
-ContextGL.prototype.createTexture2d = function(data,width,height,options){};
+ContextGL.prototype.createTexture2d = function(data,width,height,options){
+    options.level = options.level || 0;
+
+    options = {
+        repeat: null, //shorthand for gl_REPEAT wrap s/t
+        wrap : null,
+        wrapS : null,
+        wrapT : null,
+        format: null,
+        internalFormat: null,
+        mipmap : false
+    };
+
+    const format = this._gl.RGBA;
+
+    const id = this._uid++;
+    const texture2d = this._textures[id] = {
+        handle: this._gl.createTexture(),
+        target : this._gl.TEXTURE_2D,
+        width : null,
+        height: null,
+        //ignoring
+        border: false,
+        borderWidth: 0,
+        //A GLint specifying the color components in the texture
+        internalFormat: format,
+        //A GLenum specifying the format of the texel data. In WebGL 1,
+        //this must be the same as internalformat.
+        format: format,
+        //A GLenum specifying the data type of the texel data
+        type: this._gl.TEXTURE_2D,
+        //The level of detail. Level 0 is the base image level and level n
+        //is the nth mipmap reduction level
+        level : options.level,
+        //wrap parameter for s
+        wrapS : this._gl.REPEAT,
+        //wrap parameter for t
+        wrapT : this._gl.REPEAT,
+        //filter applied when tex smaller then orig
+        minFilter : this._gl.NEAREST_MIPMAP_LINEAR,
+        //filter applied when tex larger then orig
+        magFilter : this._gl.LINEAR
+    };
+
+    this.pushTextureBinding();
+        this.setTexture2d(texture2d);
+
+        //create texture with image, imagedata, video, canvas
+        if(data && (data instanceof Image || data instanceof ImageData ||
+                    data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement)){
+            this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.format, options.dataType, data);
+        //create texture with size, empty or with data
+        } else {
+            this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.width, options.height,
+                                0, options.format, options.dataType, data || null);
+        }
+
+        //set wrapS/wrapT
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, options.wrapS);
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, options.wrapT);
+        //set min/mag filter
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, options.minFilter);
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, options.magFilter);
+
+        if(options.mipmap){
+            this._gl.generateMipmap(this._gl.TEXTURE_2D);
+        }
+    this.popTextureBinding();
+};
+
+ContextGL.prototype.setTexture2d = function(id,textureUnit){
+    textureUnit = textureUnit || 0;
+    if(id === this._textureActive[textureUnit]){
+        return;
+    }
+    const texture2d = this._textures[id];
+    if(!texture2d){
+        throw new TextureError(strTextureErrorInvalidId(id));
+    }
+    this._gl.activeTexture(this._gl.TEXTURE0 + textureUnit);
+    this._textureActive[textureUnit] = id;
+    this._textureUnitActive = textureUnit;
+};
+
+ContextGL.prototype.setTexture2dWrap = function(wrapS_or_wrapS_and_wrapT,wrapT){
+    const id = this._textureActive[this._textureUnitActive];
+    if(!id){
+        throw new TextureError(strTextureNotActive(id,this._textureActive));
+    }
+    const texture2d = this._textures[id];
+    if(!texture2d){
+        throw new TextureError(strTextureErrorInvalidId(id))
+    }
+    wrapT = wrapT === undefined ? wrapS_or_wrapS_and_wrapT : wrapT;
+    if(texture2d.wrapS !== wrapS_or_wrapS_and_wrapT){
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, wrapS_or_wrapS_and_wrapT);
+        texture2de.wrapS = wrapS_or_wrapS_and_wrapT;
+    }
+    if(texture2d.wrapT !== wrapT){
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, wrapT);
+        texture2d.wrapT = wrapT;
+    }
+};
+
+ContextGL.prototype.setTexture2dFilter = function(minFilter_or_minFilter_and_magFilter,magFilter){
+    const id = this._textureActive[this._textureUnitActive];
+    if(!id){
+        throw new TextureError(strTextureNotActive(id,this._textureActive));
+    }
+    const texture2d = this._textures[id];
+    if(!texture2d){
+        throw new TextureError(strTextureErrorInvalidId(id))
+    }
+    magFilter = minFilter_or_minFilter_and_magFilter;
+    if(this._textureActive.minFilter !== minFilter_or_minFilter_and_magFilter){
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, minFilter_or_minFilter_and_magFilter);
+        this._textureActive.minFilter = minFilter_or_minFilter_and_magFilter;
+    }
+    if(this._textureActive.magFilter !== magFilter){
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, magFilter);
+        this._textureActive.magFilter = magFilter;
+    }
+};
+
+ContextGL.prototype.setTexture2dData = function(data,width_or_size,height){
+    const id = this._textureActive[this._textureUnitActive];
+    if(!id){
+        throw new TextureError(strTextureNotActive(id,this._textureActive));
+    }
+    const texture2d = this._textures[id];
+    if(!texture2d){
+        throw new TextureError(strTextureErrorInvalidId(id))
+    }
+    width_or_size = width_or_size === undefined ? -1 : width_or_size;
+    height = width_or_size === -1 ? -1 : height === undefined ? width_or_size : height;
+
+    //data from Image, ImageData, Video, Canvas
+    if(data && (data instanceof Image || data instanceof ImageData ||
+                data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement)){
+
+        //get size
+        const dataWidth  = width_or_size !== -1 ? (data.width  || data.videoWidth || 0) : width_or_size;
+        const dataHeight = height !== -1 ? (data.height || data.videoHeight || 0) : height;
+
+        //validate size
+        if(dataWidth === 0 || dataHeight === 0){
+            throw new Error(strTextureInvalidSize(dataWidth,dataHeight));
+        }
+        //update
+        this._gl.texImage2D(this._gl.TEXTURE_2D, texture2d.level,
+                            texture2d.internalFormat, texture2d.format,
+                            texture2d.dataType, data);
+        texture2d.width = dataWidth;
+        texture2d.height = dataHeight;
+    //create texture with size, empty or with data
+    } else {
+        this._gl.texImage2D(this._gl.TEXTURE_2D, texture2d.level,
+                            texture2d.internalFormat, texture2d.width, texture2d.height,
+                            0, texture2d.format, texture2d.dataType, data || null);
+    }
+
+};
 
 ContextGL.prototype.deleteTexture2d = function(id){};
 
 ContextGL.prototype.hasTexture2d = function(id){};
 
-ContextGL.prototype.setActiveTexture2d = function(id){};
-
 ContextGL.prototype.getActiveTexture2d = function(){};
-
-ContextGL.prototype.getTexture2dSize = function(id,out){};
-
-ContextGL.prototype.getTexture2dWidth = function(id){};
-
-ContextGL.prototype.getTexture2dHeight = function(id){};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // FRAMEBUFFER
