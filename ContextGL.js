@@ -47,10 +47,10 @@ export const DefaultConfig = Object.freeze({
     warn : true,
     alpha : true,
     depth : true,
-    stencil : true,
+    stencil : false,
     antialias : true,
     premultipliedAlpha : true,
-    preserveDrawingBuffer : true,
+    preserveDrawingBuffer : false,
     failIfMajorPerformanceCaveat : false
 });
 
