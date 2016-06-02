@@ -3839,6 +3839,12 @@ ContextGL.prototype._vertexArrayAddBuffers = function(vertexArray,attributes,ind
  * @private
  */
 ContextGL.prototype._createVertexArrayShim = function(attributes,indexBuffer){
+    if(!attributes){
+        throw new ProgramError('No attributes passed.');
+    } else if(!Array.isArray(attributes)){
+        throw new ProgramError('Attribute argument type passed is not of type Array.')
+    }
+   
     const id = this._uid++;
     const vertexArray = this._vertexArrays[id] = {
         //attributes sorted by vertex buffer
@@ -3909,6 +3915,12 @@ ContextGL.prototype._invalidateVertexArrayShim = function(){};
  * @private
  */
 ContextGL.prototype._createVertexArrayNative = function(attributes,indexBuffer){
+    if(!attributes){
+        throw new ProgramError('No attributes passed.');
+    } else if(!Array.isArray(attributes)){
+        throw new ProgramError('Attribute argument type passed is not of type Array.')
+    }
+
     const id = this._uid++;
     const vertexArray = this._vertexArrays[id] = {
         //webgl handle
