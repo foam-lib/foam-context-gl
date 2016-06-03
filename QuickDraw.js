@@ -520,7 +520,7 @@ QuickDraw.prototype._updateGrid = function(subdivs){
     this._gridNumElements = positions.length / 3;
 };
 
-QuickDraw.prototype._drawGridInternal = function(size, subdivs, mode){
+QuickDraw.prototype._gridInternal = function(size, subdivs, mode){
     size    = (size === undefined || (size[0] < 0 || size[1] < 0)) ? VEC2_ONE : size;
     subdivs = (subdivs === undefined || subdivs < 0) ? 1 : subdivs;
 
@@ -556,7 +556,7 @@ QuickDraw.prototype._updateCircleGeom = function(positions, texCoords, numSegmen
     }
 };
 
-QuickDraw.prototype._drawCircleInternal = function(radius, drawMode){
+QuickDraw.prototype._circleInternal = function(radius, drawMode){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -593,7 +593,7 @@ QuickDraw.prototype._drawCircleInternal = function(radius, drawMode){
     this._ctx.popModelMatrix();
 };
 
-QuickDraw.prototype._drawEllipseInternal = function(radiusX, radiusY, drawMode){
+QuickDraw.prototype._ellipseInternal = function(radiusX, radiusY, drawMode){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -630,7 +630,7 @@ QuickDraw.prototype._drawEllipseInternal = function(radiusX, radiusY, drawMode){
     this._ctx.popModelMatrix();
 };
 
-QuickDraw.prototype._drawTriangleInternal9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2,drawMode){
+QuickDraw.prototype._triangleInternal9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2,drawMode){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -723,11 +723,11 @@ QuickDraw.prototype.popDrawState = function(){
         throw new Error('Invalid stack pop. Stack has length 0.');
     }
     const state = this._drawStateStack.pop();
-    this.setDrawColor(state.color);
+    this.setColor(state.color);
     this._ctx.setLineWidth(state.lineWidth);
-    this.setDrawPointSize(state.pointSize);
-    this.setDrawEllipseSegmentsNum(state.numSegmentsEllipse);
-    this.setDrawCircleSegmentsNum(state.numSegmentsCircle);
+    this.setPointSize(state.pointSize);
+    this.setEllipseSegmentsNum(state.numSegmentsEllipse);
+    this.setCircleSegmentsNum(state.numSegmentsCircle);
 };
 
 /**
@@ -743,19 +743,19 @@ QuickDraw.prototype.popDrawState = function(){
  */
 QuickDraw.prototype.setDrawState = function(state){
     if(state.color !== undefined){
-        this.setDrawColor(state.color);
+        this.setColor(state.color);
     }
     if(state.lineWidth !== undefined){
         this._ctx.setLineWidth(state.lineWidth);
     }
     if(state.pointSize !== undefined){
-        this.setDrawPointSize(state.pointSize);
+        this.setPointSize(state.pointSize);
     }
     if(state.numSegmentsEllipse !== undefined){
-        this.setDrawEllipseSegmentsNum(state.numSegmentsEllipse);
+        this.setEllipseSegmentsNum(state.numSegmentsEllipse);
     }
     if(state.numSegmentsCircle !== undefined){
-        this.setDrawEllipseSegmentsNum(state.numSegmentsCircle);
+        this.setEllipseSegmentsNum(state.numSegmentsCircle);
     }
 };
 
@@ -771,8 +771,8 @@ QuickDraw.prototype.getDrawState = function(){
  * Sets the draw color.
  * @param color
  */
-QuickDraw.prototype.setDrawColor = function(color){
-    this.setDrawColor4(color[0],color[1],color[2],color[3]);
+QuickDraw.prototype.setColor = function(color){
+    this.setColor4(color[0],color[1],color[2],color[3]);
 };
 
 /**
@@ -782,7 +782,7 @@ QuickDraw.prototype.setDrawColor = function(color){
  * @param b
  * @param a
  */
-QuickDraw.prototype.setDrawColor4 = function(r,g,b,a){
+QuickDraw.prototype.setColor4 = function(r,g,b,a){
     Vec4.set4(this._drawState.color,r,g,b,a);
 };
 
@@ -792,8 +792,8 @@ QuickDraw.prototype.setDrawColor4 = function(r,g,b,a){
  * @param g
  * @param b
  */
-QuickDraw.prototype.setDrawColor3 = function(r,g,b){
-    this.setDrawColor4(r,g,b,1.0);
+QuickDraw.prototype.setColor3 = function(r,g,b){
+    this.setColor4(r,g,b,1.0);
 };
 
 /**
@@ -801,16 +801,16 @@ QuickDraw.prototype.setDrawColor3 = function(r,g,b){
  * @param k
  * @param a
  */
-QuickDraw.prototype.setDrawColor2 = function(k,a){
-    this.setDrawColor4(k,k,k,a);
+QuickDraw.prototype.setColor2 = function(k,a){
+    this.setColor4(k,k,k,a);
 };
 
 /**
  * Sets the draw color.
  * @param k
  */
-QuickDraw.prototype.setDrawColor1 = function(k){
-    this.setDrawColor4(k,k,k,1.0);
+QuickDraw.prototype.setColor1 = function(k){
+    this.setColor4(k,k,k,1.0);
 };
 
 /**
@@ -818,7 +818,7 @@ QuickDraw.prototype.setDrawColor1 = function(k){
  * @param out
  * @returns {*}
  */
-QuickDraw.prototype.getDrawColor = function(out){
+QuickDraw.prototype.getColor = function(out){
     return Vec4.set(out || Vec4.create(), this._color);
 };
 
@@ -826,7 +826,7 @@ QuickDraw.prototype.getDrawColor = function(out){
  * Sets the draw point size.
  * @param pointSize
  */
-QuickDraw.prototype.setDrawPointSize = function(pointSize){
+QuickDraw.prototype.setPointSize = function(pointSize){
     if(pointSize === this._drawState.pointSize){
         return;
     }
@@ -840,7 +840,7 @@ QuickDraw.prototype.setDrawPointSize = function(pointSize){
  * Returns the current draw point size.
  * @returns {Number}
  */
-QuickDraw.prototype.getDrawPointSize = function(){
+QuickDraw.prototype.getPointSize = function(){
     return this._drawState.pointSize;
 };
 
@@ -848,7 +848,7 @@ QuickDraw.prototype.getDrawPointSize = function(){
  * Sets the number of draw ellipse segments.
  * @param num
  */
-QuickDraw.prototype.setDrawEllipseSegmentsNum = function(num){
+QuickDraw.prototype.setEllipseSegmentsNum = function(num){
     this._drawState.numSegmentsEllipse = num;
 };
 
@@ -856,7 +856,7 @@ QuickDraw.prototype.setDrawEllipseSegmentsNum = function(num){
  * Returns the current number of draw ellipse segments.
  * @returns {Number}
  */
-QuickDraw.prototype.getDrawEllipseSegmentsNum = function(){
+QuickDraw.prototype.getEllipseSegmentsNum = function(){
     return this._drawState.numSegmentsEllipse;
 };
 
@@ -864,7 +864,7 @@ QuickDraw.prototype.getDrawEllipseSegmentsNum = function(){
  * Sets the number of draw circle segments.
  * @param num
  */
-QuickDraw.prototype.setDrawCircleSegmentsNum = function(num){
+QuickDraw.prototype.setCircleSegmentsNum = function(num){
     this._drawState.numSegmentsCircle = num;
 };
 
@@ -872,7 +872,7 @@ QuickDraw.prototype.setDrawCircleSegmentsNum = function(num){
  * Returns the current number of draw circle segments.
  * @returns {Number}
  */
-QuickDraw.prototype.getDrawCircleSegmentsNum = function(){
+QuickDraw.prototype.getCircleSegmentsNum = function(){
     return this._drawState.numSegmentsCircle;
 };
 
@@ -880,8 +880,8 @@ QuickDraw.prototype.getDrawCircleSegmentsNum = function(){
  * Draws a single point.
  * @param point
  */
-QuickDraw.prototype.drawPoint = function(point){
-    this.drawPoint3(point[0],point[1],point[2]);
+QuickDraw.prototype.point = function(point){
+    this.point3(point[0],point[1],point[2]);
 };
 
 /**
@@ -890,7 +890,7 @@ QuickDraw.prototype.drawPoint = function(point){
  * @param y
  * @param z
  */
-QuickDraw.prototype.drawPoint3 = function(x,y,z){
+QuickDraw.prototype.point3 = function(x,y,z){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -900,15 +900,15 @@ QuickDraw.prototype.drawPoint3 = function(x,y,z){
  * Draws a series of points.
  * @param points
  */
-QuickDraw.prototype.drawPoints = function(points){
-    this.drawPointsFlat(ArrayUtil.unpack3(points,this._tempArrPoints));
+QuickDraw.prototype.points = function(points){
+    this.pointsFlat(ArrayUtil.unpack3(points,this._tempArrPoints));
 };
 
 /**
  * Draws a series of points.
  * @param points
  */
-QuickDraw.prototype.drawPointsFlat = function(points){
+QuickDraw.prototype.pointsFlat = function(points){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -919,16 +919,16 @@ QuickDraw.prototype.drawPointsFlat = function(points){
  * @param from
  * @param to
  */
-QuickDraw.prototype.drawLine = function(from,to){
-    this.drawLine6(from[0],from[1],from[2],to[0],to[1],to[2]);
+QuickDraw.prototype.line = function(from,to){
+    this.line6(from[0],from[1],from[2],to[0],to[1],to[2]);
 };
 
 /**
  * Draws a single line.
  * @param fromTo - Points [x0,y0,z0,x1,y1,z0]
  */
-QuickDraw.prototype.drawLineFlat = function(fromTo){
-    this.drawLine6(fromTo[0],fromTo[1],fromTo[2],fromTo[3],fromTo[4],fromTo[5]);
+QuickDraw.prototype.lineFlat = function(fromTo){
+    this.line6(fromTo[0],fromTo[1],fromTo[2],fromTo[3],fromTo[4],fromTo[5]);
 };
 
 /**
@@ -940,7 +940,7 @@ QuickDraw.prototype.drawLineFlat = function(fromTo){
  * @param y1
  * @param z1
  */
-QuickDraw.prototype.drawLine6 = function(x0,y0,z0,x1,y1,z1){
+QuickDraw.prototype.line6 = function(x0,y0,z0,x1,y1,z1){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -981,8 +981,8 @@ QuickDraw.prototype.drawLine6 = function(x0,y0,z0,x1,y1,z1){
  * @param points - Points [[x,y,z],[x,y,z],[x,y,z],...]
  * @param loop
  */
-QuickDraw.prototype.drawLineStrip = function(points,loop){
-    this.drawLineStripFlat(ArrayUtil.unpack3(points,this._tempArrLineStrip),loop);
+QuickDraw.prototype.lineStrip = function(points,loop){
+    this.lineStripFlat(ArrayUtil.unpack3(points,this._tempArrLineStrip),loop);
 };
 
 /**
@@ -990,7 +990,7 @@ QuickDraw.prototype.drawLineStrip = function(points,loop){
  * @param points - Points [x0,y0,z0,x1,y1,z1,...]
  * @param [loop]
  */
-QuickDraw.prototype.drawLineStripFlat = function(points,loop){
+QuickDraw.prototype.lineStripFlat = function(points,loop){
     if(!this._ctx._programHasAttribPosition || points.length === 0){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1035,15 +1035,15 @@ QuickDraw.prototype.drawLineStripFlat = function(points,loop){
 /**
  * Draws a series of lines.
  */
-QuickDraw.prototype.drawLines = function(lines){
-    this.drawLineFlat(ArrayUtil.unpack3(lines,this._tempArrLines));
+QuickDraw.prototype.lines = function(lines){
+    this.lineFlat(ArrayUtil.unpack3(lines,this._tempArrLines));
 };
 
 /**
  * Draws a series of lines.
  * @param lines
  */
-QuickDraw.prototype.drawLinesFlat = function(lines){
+QuickDraw.prototype.linesFlat = function(lines){
     if(!this._ctx._programHasAttribPosition || lines.length === 0){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1086,8 +1086,8 @@ QuickDraw.prototype.drawLinesFlat = function(lines){
  * Draws a solid rectangle.
  * @param size
  */
-QuickDraw.prototype.drawRect = function(size){
-    this.drawRect2(size[0],size[1]);
+QuickDraw.prototype.rect = function(size){
+    this.rect2(size[0],size[1]);
 };
 
 /**
@@ -1095,7 +1095,7 @@ QuickDraw.prototype.drawRect = function(size){
  * @param width
  * @param height
  */
-QuickDraw.prototype.drawRect2 = function(width,height){
+QuickDraw.prototype.rect2 = function(width,height){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1127,8 +1127,8 @@ QuickDraw.prototype.drawRect2 = function(width,height){
  * Draws rectangle points.
  * @param size
  */
-QuickDraw.prototype.drawRectPoints = function(size){
-    this.drawRectPoints2(size[0],size[1]);
+QuickDraw.prototype.rectPoints = function(size){
+    this.rectPoints2(size[0],size[1]);
 };
 
 /**
@@ -1136,7 +1136,7 @@ QuickDraw.prototype.drawRectPoints = function(size){
  * @param width
  * @param height
  */
-QuickDraw.prototype.drawRectPoints2 = function(width,height){
+QuickDraw.prototype.rectPoints2 = function(width,height){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1168,8 +1168,8 @@ QuickDraw.prototype.drawRectPoints2 = function(width,height){
  * Draws a stroked rectangle.
  * @param size
  */
-QuickDraw.prototype.drawRectStroked = function(size){
-    this.drawRectStroked2(size[0],size[1]);
+QuickDraw.prototype.rectStroked = function(size){
+    this.rectStroked2(size[0],size[1]);
 };
 
 /**
@@ -1177,7 +1177,7 @@ QuickDraw.prototype.drawRectStroked = function(size){
  * @param width
  * @param height
  */
-QuickDraw.prototype.drawRectStroked2 = function(width,height){
+QuickDraw.prototype.rectStroked2 = function(width,height){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1209,31 +1209,31 @@ QuickDraw.prototype.drawRectStroked2 = function(width,height){
  * Draws a circle.
  * @param radius
  */
-QuickDraw.prototype.drawCircle = function(radius){
+QuickDraw.prototype.circle = function(radius){
     radius = radius === undefined ? 0.5 : radius;
-    this._drawCircleInternal(radius, this._ctx.TRIANGLE_FAN);
+    this._circleInternal(radius, this._ctx.TRIANGLE_FAN);
 };
 
 /**
  * Draws a stroked circle.
  * @param radius
  */
-QuickDraw.prototype.drawCircleStroked = function(radius){
+QuickDraw.prototype.circleStroked = function(radius){
     radius = radius === undefined ? 0.5 : radius;
-    this._drawCircleInternal(radius,this._ctx.LINE_LOOP);
+    this._circleInternal(radius,this._ctx.LINE_LOOP);
 };
 
 
-QuickDraw.prototype.drawCircles = function(){};
+QuickDraw.prototype.circles = function(){};
 
-QuickDraw.prototype.drawCirclesStroked = function(){};
+QuickDraw.prototype.circlesStroked = function(){};
 
 /**
  * Draws an ellipse.
  * @param radii
  */
-QuickDraw.prototype.drawEllipse = function(radii){
-    this.drawEllipse2(radii[0],radii[1]);
+QuickDraw.prototype.ellipse = function(radii){
+    this.ellipse2(radii[0],radii[1]);
 };
 
 /**
@@ -1241,18 +1241,18 @@ QuickDraw.prototype.drawEllipse = function(radii){
  * @param radiusX
  * @param radiusY
  */
-QuickDraw.prototype.drawEllipse2 = function(radiusX,radiusY){
+QuickDraw.prototype.ellipse2 = function(radiusX,radiusY){
     radiusX = radiusX === undefined ? 0.5 : radiusX;
     radiusY = radiusY === undefined ? radiusX : radiusY;
-    this._drawEllipseInternal(radiusX,radiusY,this._ctx.TRIANGLE_FAN);
+    this._ellipseInternal(radiusX,radiusY,this._ctx.TRIANGLE_FAN);
 };
 
 /**
  * Draws a stroked ellipse.
  * @param radii
  */
-QuickDraw.prototype.drawEllipseStroked = function(radii){
-    this.drawEllipseStroked2(radii[0],radii[1]);
+QuickDraw.prototype.ellipseStroked = function(radii){
+    this.ellipseStroked2(radii[0],radii[1]);
 };
 
 /**
@@ -1260,15 +1260,15 @@ QuickDraw.prototype.drawEllipseStroked = function(radii){
  * @param radiusX
  * @param radiusY
  */
-QuickDraw.prototype.drawEllipseStroked2 = function(radiusX,radiusY){
+QuickDraw.prototype.ellipseStroked2 = function(radiusX,radiusY){
     radiusX = radiusX === undefined ? 0.5 : radiusX;
     radiusY = radiusY === undefined ? radiusX : radiusY;
-    this._drawEllipseInternal(radiusX,radiusY,this._ctx.LINE_LOOP);
+    this._ellipseInternal(radiusX,radiusY,this._ctx.LINE_LOOP);
 };
 
-QuickDraw.prototype.drawEllipses = function(){};
+QuickDraw.prototype.ellipses = function(){};
 
-QuickDraw.prototype.drawEllipsesStroked = function(){};
+QuickDraw.prototype.ellipsesStroked = function(){};
 
 /**
  * Draws a single triangle.
@@ -1276,8 +1276,8 @@ QuickDraw.prototype.drawEllipsesStroked = function(){};
  * @param p1
  * @param p2
  */
-QuickDraw.prototype.drawTriangle = function(p0,p1,p2){
-    this.drawTriangle9(
+QuickDraw.prototype.triangle = function(p0,p1,p2){
+    this.triangle9(
         p0[0],p0[1],p0[2],
         p1[0],p1[1],p1[2],
         p2[0],p2[1],p2[2]
@@ -1288,8 +1288,8 @@ QuickDraw.prototype.drawTriangle = function(p0,p1,p2){
  * Draws a single triangle.
  * @param points
  */
-QuickDraw.prototype.drawTriangleFlat = function(points){
-    this.drawTriangle9(
+QuickDraw.prototype.triangleFlat = function(points){
+    this.triangle9(
         points[0],points[1],points[2],
         points[3],points[4],points[5],
         points[6],points[7],points[8]
@@ -1308,8 +1308,8 @@ QuickDraw.prototype.drawTriangleFlat = function(points){
  * @param y2
  * @param z2
  */
-QuickDraw.prototype.drawTriangle9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
-    this._drawTriangleInternal9(
+QuickDraw.prototype.triangle9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
+    this._triangleInternal9(
         x0,y0,z0,
         x1,y1,z1,
         x2,y2,z2,
@@ -1323,8 +1323,8 @@ QuickDraw.prototype.drawTriangle9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
  * @param p1
  * @param p2
  */
-QuickDraw.prototype.drawTriangleStroked = function(p0,p1,p2){
-    this.drawTriangleStroked9(
+QuickDraw.prototype.triangleStroked = function(p0,p1,p2){
+    this.triangleStroked9(
         p0[0],p0[1],p0[2],
         p1[0],p1[1],p1[2],
         p2[0],p2[1],p2[2]
@@ -1335,8 +1335,8 @@ QuickDraw.prototype.drawTriangleStroked = function(p0,p1,p2){
  * Draws a single stroked triangle.
  * @param points
  */
-QuickDraw.prototype.drawTriangleStrokedFlat = function(points){
-    this.drawTriangleStroked9(
+QuickDraw.prototype.triangleStrokedFlat = function(points){
+    this.triangleStroked9(
         points[0],points[1],points[2],
         points[3],points[4],points[5],
         points[6],points[7],points[8]
@@ -1355,8 +1355,8 @@ QuickDraw.prototype.drawTriangleStrokedFlat = function(points){
  * @param y2
  * @param z2
  */
-QuickDraw.prototype.drawTriangleStroked9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
-    this._drawTriangleInternal9(
+QuickDraw.prototype.triangleStroked9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
+    this._triangleInternal9(
         x0,y0,z0,
         x1,y1,z1,
         x2,y2,z2,
@@ -1370,8 +1370,8 @@ QuickDraw.prototype.drawTriangleStroked9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
  * @param p1
  * @param p2
  */
-QuickDraw.prototype.drawTrianglePoints = function(p0,p1,p2){
-    this.drawTrianglePoints9(
+QuickDraw.prototype.trianglePoints = function(p0,p1,p2){
+    this.trianglePoints9(
         p0[0],p0[1],p0[2],
         p1[0],p1[1],p1[2],
         p2[0],p2[1],p2[2]
@@ -1382,8 +1382,8 @@ QuickDraw.prototype.drawTrianglePoints = function(p0,p1,p2){
  * Draws triangle points.
  * @param points
  */
-QuickDraw.prototype.drawTrianglePointsFlat = function(points){
-    this.drawTrianglePoints9(
+QuickDraw.prototype.trianglePointsFlat = function(points){
+    this.trianglePoints9(
         points[0],points[1],points[2],
         points[3],points[4],points[5],
         points[6],points[7],points[8]
@@ -1402,8 +1402,8 @@ QuickDraw.prototype.drawTrianglePointsFlat = function(points){
  * @param y2
  * @param z2
  */
-QuickDraw.prototype.drawTrianglePoints9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
-    this._drawTriangleInternal9(
+QuickDraw.prototype.trianglePoints9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
+    this._triangleInternal9(
         x0,y0,z0,
         x1,y1,z1,
         x2,y2,z2,
@@ -1414,7 +1414,7 @@ QuickDraw.prototype.drawTrianglePoints9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
 /**
  * Draws a cube.
  */
-QuickDraw.prototype.drawCube = function(scale){
+QuickDraw.prototype.cube = function(scale){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1442,7 +1442,7 @@ QuickDraw.prototype.drawCube = function(scale){
 /**
  * Draws a colored cube.
  */
-QuickDraw.prototype.drawCubeColored = function(scale){
+QuickDraw.prototype.cubeColored = function(scale){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1462,7 +1462,7 @@ QuickDraw.prototype.drawCubeColored = function(scale){
  * Draws cube corner points.
  * @param scale
  */
-QuickDraw.prototype.drawCubePoints = function(scale){
+QuickDraw.prototype.cubePoints = function(scale){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1491,7 +1491,7 @@ QuickDraw.prototype.drawCubePoints = function(scale){
  * Draws a stroked cube.
  * @param scale
  */
-QuickDraw.prototype.drawCubeStroked = function(scale){
+QuickDraw.prototype.cubeStroked = function(scale){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1516,24 +1516,24 @@ QuickDraw.prototype.drawCubeStroked = function(scale){
     }
 };
 
-QuickDraw.prototype.drawSphere = function(){};
+QuickDraw.prototype.sphere = function(){};
 
-QuickDraw.prototype.drawSpherePoints = function(){};
+QuickDraw.prototype.spherePoints = function(){};
 
-QuickDraw.prototype.drawSphereStroked = function(){};
+QuickDraw.prototype.sphereStroked = function(){};
 
-QuickDraw.prototype.drawCylinder = function(){};
+QuickDraw.prototype.cylinder = function(){};
 
 /**
  * Draws a fullscreen rectangle.
  * @param size
  */
-QuickDraw.prototype.drawFullscreenRect = function(size){
+QuickDraw.prototype.fullscreenRect = function(size){
     if(size === undefined){
-        this.drawFullscreenRect2(size[0],size[1]);
+        this.fullscreenRect2(size[0],size[1]);
         return;
     }
-    this.drawFullscreenRect2(size[0],size[1]);
+    this.fullscreenRect2(size[0],size[1]);
 };
 
 /**
@@ -1541,10 +1541,10 @@ QuickDraw.prototype.drawFullscreenRect = function(size){
  * @param width
  * @param height
  */
-QuickDraw.prototype.drawFullscreenRect2 = function(width,height){
+QuickDraw.prototype.fullscreenRect2 = function(width,height){
     width = width === undefined ? 1.0 : width;
     height = height === undefined ? 1.0 : height;
-    this.drawScreenAlignedRect6(0,0,width,height,width,height);
+    this.screenAlignedRect6(0,0,width,height,width,height);
 };
 
 /**
@@ -1554,8 +1554,8 @@ QuickDraw.prototype.drawFullscreenRect2 = function(width,height){
  * @param windowSize
  * @param topleft
  */
-QuickDraw.prototype.drawScreenAlignedRect = function(pos,size,windowSize,topleft){
-    this.drawScreenAlignedRect6(
+QuickDraw.prototype.screenAlignedRect = function(pos,size,windowSize,topleft){
+    this.screenAlignedRect6(
         pos[0],pos[1],
         size[0],size[1],
         windowSize[0],windowSize[1],
@@ -1573,7 +1573,7 @@ QuickDraw.prototype.drawScreenAlignedRect = function(pos,size,windowSize,topleft
  * @param windowHeight
  * @param topleft
  */
-QuickDraw.prototype.drawScreenAlignedRect6 = function(x,y,width,height,windowWidth,windowHeight,topleft){
+QuickDraw.prototype.screenAlignedRect6 = function(x,y,width,height,windowWidth,windowHeight,topleft){
     if(!this._ctx._programHasAttribPosition){
         throw QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1581,11 +1581,11 @@ QuickDraw.prototype.drawScreenAlignedRect6 = function(x,y,width,height,windowWid
     this._ctx.pushMatrices();
     this._ctx.setWindowMatrices2(windowWidth,windowHeight,topleft);
     this._ctx.translate3(x,y,0);
-    this.drawRect2(width,height);
+    this.rect2(width,height);
     this._ctx.popMatrices();
 };
 
-QuickDraw.prototype.drawPivotAxes = function(axesLength,headLength){
+QuickDraw.prototype.pivotAxes = function(axesLength,headLength){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1594,12 +1594,12 @@ QuickDraw.prototype.drawPivotAxes = function(axesLength,headLength){
 
     this._colorPrev = Vec4.set(this._colorPrev,this._drawState.color);
 
-    this.setDrawColor3(1,0,0);
-    this.drawLine6(0,0,0,axesLength,0,0);
-    this.setDrawColor3(0,1,0);
-    this.drawLine6(0,0,0,0,axesLength,0);
-    this.setDrawColor3(0,0,1);
-    this.drawLine6(0,0,0,0,0,axesLength);
+    this.setColor3(1,0,0);
+    this.line6(0,0,0,axesLength,0,0);
+    this.setColor3(0,1,0);
+    this.line6(0,0,0,0,axesLength,0);
+    this.setColor3(0,0,1);
+    this.line6(0,0,0,0,0,axesLength);
 
     const headSize = headLength * 0.35;
     const tubeSize = 0.025;
@@ -1653,20 +1653,20 @@ QuickDraw.prototype.drawPivotAxes = function(axesLength,headLength){
  * Draws axes and axes grids.
  * @param scale
  */
-QuickDraw.prototype.drawCoordinateFrame = function(scale){};
+QuickDraw.prototype.coordinateFrame = function(scale){};
 
-QuickDraw.prototype.drawGizmoTranslation = function(){};
+QuickDraw.prototype.gizmoTranslation = function(){};
 
-QuickDraw.prototype.drawGizmoRotation = function(){};
+QuickDraw.prototype.gizmoRotation = function(){};
 
-QuickDraw.prototype.drawQuat = function(){};
+QuickDraw.prototype.quat = function(){};
 
 /**
  * Draws a vector.
  * @param vector
  */
-QuickDraw.prototype.drawVector = function(vector){
-    this.drawVector3(vector[0],vector[1],vector[2]);
+QuickDraw.prototype.vector = function(vector){
+    this.vector3(vector[0],vector[1],vector[2]);
 };
 
 /**
@@ -1675,7 +1675,7 @@ QuickDraw.prototype.drawVector = function(vector){
  * @param y
  * @param z
  */
-QuickDraw.prototype.drawVector3 = function(x,y,z){
+QuickDraw.prototype.vector3 = function(x,y,z){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
@@ -1689,8 +1689,8 @@ QuickDraw.prototype.drawVector3 = function(x,y,z){
  * @param from
  * @param to
  */
-QuickDraw.prototype.drawVectorFromTo = function(from,to){
-    this.drawVectorFromTo6(
+QuickDraw.prototype.vectorFromTo = function(from,to){
+    this.vectorFromTo6(
         from[0],from[1],from[2],
         to[0],to[1],to[2]
     );
@@ -1700,8 +1700,8 @@ QuickDraw.prototype.drawVectorFromTo = function(from,to){
  * Draws a vector.
  * @param fromTo
  */
-QuickDraw.prototype.drawVectorFromToFlat = function(fromTo){
-    this.drawVectorFromTo6(
+QuickDraw.prototype.vectorFromToFlat = function(fromTo){
+    this.vectorFromTo6(
         fromTo[0],fromTo[1],fromTo[2],
         fromTo[3],fromTo[4],fromTo[5]
     );
@@ -1716,7 +1716,7 @@ QuickDraw.prototype.drawVectorFromToFlat = function(fromTo){
  * @param y1
  * @param z1
  */
-QuickDraw.prototype.drawVectorFromTo6 = function(x0,y0,z0,x1,y1,z1){
+QuickDraw.prototype.vectorFromTo6 = function(x0,y0,z0,x1,y1,z1){
     let x = x1 - x0;
     let y = y1 - y0;
     let z = z1 - z0;
@@ -1726,7 +1726,7 @@ QuickDraw.prototype.drawVectorFromTo6 = function(x0,y0,z0,x1,y1,z1){
     z *= d;
     this._ctx.pushModelMatrix();
     this._ctx.translate3(x0,y0,z0);
-    this.drawVector3(x,y,z);
+    this.vector3(x,y,z);
     this._ctx.popModelMatrix();
 };
 
@@ -1735,8 +1735,8 @@ QuickDraw.prototype.drawVectorFromTo6 = function(x0,y0,z0,x1,y1,z1){
  * @param size
  * @param subdivs
  */
-QuickDraw.prototype.drawGrid = function(size, subdivs){
-    this._drawGridInternal(size,subdivs,this._ctx.LINES);
+QuickDraw.prototype.grid = function(size, subdivs){
+    this._gridInternal(size,subdivs,this._ctx.LINES);
 };
 
 /**
@@ -1744,29 +1744,29 @@ QuickDraw.prototype.drawGrid = function(size, subdivs){
  * @param size
  * @param subdivs
  */
-QuickDraw.prototype.drawGridPoints = function(size, subdivs){
-    this._drawGridInternal(size,subdivs,this._ctx.POINTS);
+QuickDraw.prototype.gridPoints = function(size, subdivs){
+    this._gridInternal(size,subdivs,this._ctx.POINTS);
 };
 
-QuickDraw.prototype.drawDebugFrustum = function(){};
+QuickDraw.prototype.debugFrustum = function(){};
 
-QuickDraw.prototype.drawDebugOnB = function(){};
+QuickDraw.prototype.debugOnB = function(){};
 
-QuickDraw.prototype.drawDebugRect = function(){};
+QuickDraw.prototype.debugRect = function(){};
 
-QuickDraw.prototype.drawDebugAABB = function(){};
+QuickDraw.prototype.debugAABB = function(){};
 
-QuickDraw.prototype.drawDebugAABR = function(){};
+QuickDraw.prototype.debugAABR = function(){};
 
-QuickDraw.prototype.drawDebugRay = function(){};
+QuickDraw.prototype.debugRay = function(){};
 
-QuickDraw.prototype.drawDebugPlane = function(){};
+QuickDraw.prototype.debugPlane = function(){};
 
-QuickDraw.prototype.drawDebugNormals = function(position,normals){
+QuickDraw.prototype.debugNormals = function(position,normals){
 
 };
 
-QuickDraw.prototype.drawDebugNormalsFlat = function(positions,normals){
+QuickDraw.prototype.debugNormalsFlat = function(positions,normals){
 
 };
 
