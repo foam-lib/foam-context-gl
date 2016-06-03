@@ -31,7 +31,6 @@ const VEC2_ZERO = [0,0];
 const VEC2_ONE = [1,1];
 const AXIS_Y = [0,1,0];
 
-
 const GLEnumStringMap = {};
 for(let key in WebGLRenderingContext){
     GLEnumStringMap[WebGLRenderingContext[key]] = key;
@@ -127,11 +126,6 @@ const TEXTURE_BINDING_BIT = 1 << 12;
  */
 const FRAMEBUFFER_BINDING_BIT = 1 << 13;
 /**
- * State bit for quickdraw color.
- * @type {number}
- */
-const DRAW_COLOR_BIT = 1 << 14;
-/**
  * State bit for projection matrix.
  * @type {number}
  */
@@ -176,7 +170,7 @@ ProgramUniformByMatrixTypeMap[ProgramUniform.MODEL_MATRIX] = MATRIX_MODEL;
 ProgramUniformByMatrixTypeMap[ProgramUniform.NORMAL_MATRIX] = MATRIX_NORMAL;
 ProgramUniformByMatrixTypeMap[ProgramUniform.INVERSE_VIEW_MATRIX] = MATRIX_INVERSE_VIEW;
 
-const UNIFORM_NAME_POINT_SIZE = 'uPointSize';
+export const UNIFORM_NAME_POINT_SIZE = 'uPointSize';
 
 // attributes
 
@@ -189,6 +183,13 @@ const ATTRIB_NAME_POSITION = 'aPosition';
 const ATTRIB_NAME_COLOR = 'aColor';
 const ATTRIB_NAME_TEX_COORD = 'aTexCoord';
 const ATTRIB_NAME_NORMAL = 'aNormal;';
+
+const ProgramDefaultAttribLocationBinding = [
+    {name:ATTRIB_NAME_POSITION, location:ATTRIB_LOCATION_POSITION},
+    {name:ATTRIB_NAME_COLOR, location:ATTRIB_LOCATION_COLOR},
+    {name:ATTRIB_NAME_TEX_COORD, location:ATTRIB_LOCATION_TEX_COORD},
+    {name:ATTRIB_NAME_NORMAL, location:ATTRIB_LOCATION_NORMAL}
+];
 
 export const ProgramDefaultAttributeByLocationMap = {};
 ProgramDefaultAttributeByLocationMap[ATTRIB_LOCATION_POSITION] = ATTRIB_NAME_POSITION;
@@ -343,7 +344,6 @@ function ContextGL(canvas,options){
     //anisotropy
 
     glCapabilities.ELEMENT_INDEX_UINT = !!this._gl.getExtension('OES_element_index_uint');
-
     this._glCapabilites = Object.freeze(glCapabilities);
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -559,7 +559,6 @@ function ContextGL(canvas,options){
     this.MAX_VERTEX_TEXTURE_IMAGE_UNITS = this._gl.getParameter(this._gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
     this.MAX_VARYING_VECTORS = this._gl.getParameter(this._gl.MAX_VARYING_VECTORS);
     this.MAX_FRAGMENT_UNIFORM_VECTORS = this._gl.getParameter(this._gl.MAX_FRAGMENT_UNIFORM_VECTORS);
-    this.MAX_TEXTURE_IMAGE_UNITS = this._gl.getParameter(this._gl.MAX_TEXTURE_IMAGE_UNITS);
     console.assert(this.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -610,8 +609,10 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.TEXTURE_BINDING_BIT = TEXTURE_BINDING_BIT;
+    this.MAX_TEXTURE_IMAGE_UNITS = this._gl.getParameter(this._gl.MAX_TEXTURE_IMAGE_UNITS);
+
     this._textures = {};
-    this._textureActive = {};
+    this._textureActive = new Array(this.MAX_TEXTURE_IMAGE_UNITS);
     this._textureUnitActive = 0;
     this._textureStack = [];
 
@@ -743,445 +744,7 @@ function ContextGL(canvas,options){
     this._programHasAttribTexCoord = false;
     this._programHasUniformPointSize = false;
 
-    this._numSegmentsCircleMin  = 3;
-    this._numSegmentsCircleMax  = 128;
-    this._numSegmentsCirclePrev = -1;
-    this._numSegmentsEllipseMin = this._numSegmentsCircleMin;
-    this._numSegmentsEllipseMax = this._numSegmentsCircleMax;
-    this._numSegmentsEllipsePrev = -1;
 
-    this._colorPrev = [0,0,0,0];
-
-    this._drawState = new DrawState(
-        [1,1,1,1], //color
-        this._lineWidthState.lineWidth, //lineWidth
-        1, //pointSize
-        16, //numSegmentsCircle
-        16 //numSegmentsEllipse
-    );
-    this._drawStateStack = [];
-
-
-    // Point
-
-    this._bufferPointPosition = this.createVertexBuffer(
-        new Float32Array(3), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferPointColor = this.createVertexBuffer(
-        new Float32Array(4), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoPoint = this.createVertexArray([
-        {location: ATTRIB_LOCATION_POSITION, buffer: this._bufferPointPosition, size: 3},
-        {location: ATTRIB_LOCATION_COLOR, buffer: this._bufferPointColor, size: 4}
-    ]);
-    console.assert(this.getGLError());
-
-    // Points
-
-    this._bufferPointsPosition = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferPointsColor = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoPoints = this.createVertexArray([
-        {location: ATTRIB_LOCATION_POSITION, buffer: this._bufferPointsPosition, size: 3},
-        {location: ATTRIB_LOCATION_COLOR, buffer: this._bufferPointsColor, size: 4}
-    ]);
-    console.assert(this.getGLError());
-
-    this._tempArrPoints = [];
-
-    // Line
-
-    this._bufferLinePosition = this.createVertexBuffer(
-        new Float32Array(6), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferLineColor = this.createVertexBuffer(
-        new Float32Array(8), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoLine = this.createVertexArray([
-        {location: this.ATTRIB_LOCATION_POSITION, buffer: this._bufferLinePosition, size: 3},
-        {location: this.ATTRIB_LOCATION_COLOR, buffer: this._bufferLineColor, size: 4}
-    ]);
-    console.assert(this.getGLError());
-
-    // Line strip
-
-    this._bufferLineStripPosition = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferLineStripColor = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoLineStrip = this.createVertexArray([
-        {location: this.ATTRIB_LOCATION_POSITION, buffer: this._bufferLineStripPosition, size: 3},
-        {location: this.ATTRIB_LOCATION_COLOR, buffer: this._bufferLineStripColor, size: 4}
-    ]);
-    console.assert(this.getGLError());
-
-    this._tempArrLineStrip = [];
-
-    // Lines
-
-    this._bufferLinesPosition = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferLinesColor = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoLines = this.createVertexArray([
-        {location: this.ATTRIB_LOCATION_POSITION, buffer: this._bufferLinesPosition, size: 3},
-        {location: this.ATTRIB_LOCATION_COLOR, buffer: this._bufferLinesColor, size: 4}
-    ]);
-    console.assert(this.getGLError());
-
-    this._tempArrLines = [];
-
-    // Rect points
-
-    this._bufferRectPosition = this.createVertexBuffer(
-        new Float32Array([0,0, 1,0, 1,1, 0,1]),this._gl.STATIC_DRAW
-    );
-    this._bufferRectTexcoord = this.createVertexBuffer(
-        new Float32Array([0,0, 1,0, 1,1, 0,1]),this._gl.STATIC_DRAW
-    );
-    this._bufferRectPointsColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(4,1,1,1,1)), this._gl.DYNAMIC_DRAW,true
-    );
-    this._vaoRectPoints = this.createVertexArray([
-        {location: ATTRIB_LOCATION_POSITION, buffer: this._bufferRectPosition, size: 2},
-        {location: ATTRIB_LOCATION_COLOR, buffer: this._bufferRectPointsColor, size: 4},
-        {location: ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferRectTexcoord, size: 2}
-    ]);
-    console.assert(this.getGLError());
-
-    // Rect stroked
-
-    this._bufferRectStrokedColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(4,1,1,1,1)), this._gl.DYNAMIC_DRAW,true
-    );
-    this._vaoRectStroked = this.createVertexArray([
-        {location: ATTRIB_LOCATION_POSITION, buffer: this._bufferRectPosition, size: 2},
-        {location: ATTRIB_LOCATION_COLOR, buffer: this._bufferRectStrokedColor, size: 4},
-        {location: ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferRectTexcoord, size: 2}
-    ]);
-    console.assert(this.getGLError());
-
-    // Rect
-
-    this._bufferRectColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(4,1,1,1,1)), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferRectIndex = this.createIndexBuffer(
-        new Uint16Array([0,1,2, 2,3,0]),this._gl.STATIC_DRAW
-    );
-    this._vaoRect = this.createVertexArray([
-        { location : this.ATTRIB_LOCATION_POSITION, buffer : this._bufferRectPosition, size : 2},
-        { location : this.ATTRIB_LOCATION_COLOR, buffer : this._bufferRectColor, size : 4},
-        { location : this.ATTRIB_LOCATION_TEX_COORD, buffer : this._bufferRectTexcoord, size : 2}
-    ], this._bufferRectIndex);
-    console.assert(this.getGLError());
-
-    // Circle
-
-    this._bufferCirclePosition = this.createVertexBuffer(
-        new Float32Array(this._numSegmentsCircleMax * 3), this._gl.STATIC_DRAW,true
-    );
-    this._bufferCircleColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(this._numSegmentsCircleMax,1,1,1,1)), this._gl.DYNAMIC_DRAW,true
-    );
-    this._bufferCircleTexcoord = this.createVertexBuffer(
-        new Float32Array(this._numSegmentsCircleMax * 2), this._gl.DYNAMIC_DRAW,true
-    );
-    this._bufferCircleNormal = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(this._drawState.numSegmentsCircle,1,0,0)), this._gl.STATIC_DRAW, true
-    );
-    this._vaoCircle = this.createVertexArray([
-        {buffer : this._bufferCirclePosition, location : ATTRIB_LOCATION_POSITION, size : 2, offset : 0},
-        {buffer : this._bufferCircleColor, location : ATTRIB_LOCATION_COLOR, size : 4, offset : 0},
-        {buffer : this._bufferCircleTexcoord, location : ATTRIB_LOCATION_TEX_COORD, size : 2, offset : 0},
-        {buffer : this._bufferCircleNormal, location : ATTRIB_LOCATION_NORMAL, size : 3, offset : 0}
-    ]);
-    console.assert(this.getGLError());
-
-    //Ellipse
-
-    this._bufferEllipsePosition = this.createVertexBuffer(
-        new Float32Array(this._numSegmentsEllipseMax * 3), this._gl.STATIC_DRAW,true
-    );
-    this._bufferEllipseColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(this._numSegmentsEllipseMax,1,1,1,1)), this._gl.DYNAMIC_DRAW,true
-    );
-    this._bufferEllipseTexcoord = this.createVertexBuffer(
-        new Float32Array(this._numSegmentsEllipseMax * 2), this._gl.DYNAMIC_DRAW,true
-    );
-    this._bufferEllipseNormal = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(this._drawState.numSegmentsEllipse,1,0,0)), this._gl.STATIC_DRAW, true
-    );
-    this._vaoEllipse = this.createVertexArray([
-        {buffer : this._bufferEllipsePosition, location : ATTRIB_LOCATION_POSITION, size : 2, offset : 0},
-        {buffer : this._bufferEllipseColor, location : ATTRIB_LOCATION_COLOR, size : 4, offset : 0},
-        {buffer : this._bufferEllipseTexcoord, location : ATTRIB_LOCATION_TEX_COORD, size : 2, offset : 0},
-        {buffer : this._bufferEllipseNormal, location : ATTRIB_LOCATION_NORMAL, size : 3, offset : 0}
-    ]);
-    console.assert(this.getGLError());
-
-    this._bufferTrianglePosition = this.createVertexBuffer(
-        new Float32Array(9), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferTriangleNormal = this.createVertexBuffer(
-        new Float32Array(9), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferTriangleColor = this.createVertexBuffer(
-        new Float32Array(12), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoTriangle = this.createVertexArray([
-        {buffer: this._bufferTrianglePosition, location: ATTRIB_LOCATION_POSITION, size: 3},
-        {buffer: this._bufferTriangleNormal, location: ATTRIB_LOCATION_NORMAL, size: 3},
-        {buffer: this._bufferTriangleColor, location: ATTRIB_LOCATION_COLOR, size: 4}
-    ]);
-
-    // Cube stroked / points
-
-    this._bufferCubeCornerPosition = this.createVertexBuffer(
-        new Float32Array([
-            -0.5,-0.5,-0.5,
-            0.5,-0.5,-0.5,
-            0.5,-0.5, 0.5,
-            -0.5,-0.5, 0.5,
-            -0.5, 0.5,-0.5,
-            0.5, 0.5,-0.5,
-            0.5, 0.5, 0.5,
-            -0.5, 0.5, 0.5
-        ]),this._gl.STATIC_DRAW
-    );
-    this._bufferCubeStrokedColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(8,1,1,1,1)), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferCubeStrokedIndex = this.createIndexBuffer(
-        new Uint16Array([
-            0, 1, 1, 2, 2, 3, 3, 0,
-            4, 5, 5, 6, 6, 7, 7, 4,
-            0, 4,
-            1, 5,
-            2, 6,
-            3, 7
-        ]),
-        this._gl.STATIC_DRAW
-    );
-    this._bufferCubePointsColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(8,1,1,1,1)), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoCubeStroked = this.createVertexArray([
-        {buffer : this._bufferCubeCornerPosition, location : this.ATTRIB_LOCATION_POSITION, size : 3},
-        {buffer : this._bufferCubeStrokedColor, location : this.ATTRIB_LOCATION_COLOR, size : 4}
-    ], this._bufferCubeStrokedIndex);
-    this._vaoCubePoints = this.createVertexArray([
-        {buffer : this._bufferCubeCornerPosition, location : this.ATTRIB_LOCATION_POSITION, size : 3},
-        {buffer : this._bufferCubePointsColor, location : this.ATTRIB_LOCATION_COLOR, size : 4}
-    ]);
-    console.assert(this.getGLError());
-
-    // Cube colored
-
-    this._bufferCubeColored = this.createVertexBuffer(
-        new Float32Array([
-            //front face
-            -0.5, -0.5,  0.5,   1.0,  1.0,  1.0,
-             0.5, -0.5,  0.5,   1.0,  1.0,  1.0,
-             0.5,  0.5,  0.5,   1.0,  1.0,  1.0,
-            -0.5,  0.5,  0.5,   1.0,  1.0,  1.0,
-            //back face
-            -0.5, -0.5, -0.5,   1.0,  0.0,  0.0,
-            -0.5,  0.5, -0.5,   1.0,  0.0,  0.0,
-             0.5,  0.5, -0.5,   1.0,  0.0,  0.0,
-             0.5, -0.5, -0.5,   1.0,  0.0,  0.0,
-            //top face
-            -0.5,  0.5, -0.5,   0.0,  1.0,  0.0,
-            -0.5,  0.5,  0.5,   0.0,  1.0,  0.0,
-             0.5,  0.5,  0.5,   0.0,  1.0,  0.0,
-             0.5,  0.5, -0.5,   0.0,  1.0,  0.0,
-            //bottom face
-            -0.5, -0.5, -0.5,   0.0,  0.0,  1.0,
-             0.5, -0.5, -0.5,   0.0,  0.0,  1.0,
-             0.5, -0.5,  0.5,   0.0,  0.0,  1.0,
-            -0.5, -0.5,  0.5,   0.0,  0.0,  1.0,
-            //right face
-             0.5, -0.5, -0.5,   1.0,  1.0,  0.0,
-             0.5,  0.5, -0.5,   1.0,  1.0,  0.0,
-             0.5,  0.5,  0.5,   1.0,  1.0,  0.0,
-             0.5, -0.5,  0.5,   1.0,  1.0,  0.0,
-            //left face
-            -0.5, -0.5, -0.5,   1.0,  0.0,  1.0,
-            -0.5, -0.5,  0.5,   1.0,  0.0,  1.0,
-            -0.5,  0.5,  0.5,   1.0,  0.0,  1.0,
-            -0.5,  0.5, -0.5,   1.0,  0.0,  1.0
-        ]),
-        this._gl.STATIC_DRAW
-    );
-
-    this._bufferCubeTexCoord = this.createVertexBuffer(
-        new Float32Array([]),
-        this._gl.STATIC_DRAW
-    );
-
-    this._bufferCubeIndex = this.createIndexBuffer(
-        new Uint8Array([
-            0,  1,  2,  0,  2,  3,  // front
-            4,  5,  6,  4,  6,  7,  // back
-            8,  9,  10, 8,  10, 11, // top
-            12, 13, 14, 12, 14, 15, // bottom
-            16, 17, 18, 16, 18, 19, // right
-            20, 21, 22, 20, 22, 23  // left
-        ]),
-        this._gl.STATIC_DRAW
-    );
-
-    this._vaoCubeColored = this.createVertexArray([
-        {buffer : this._bufferCubeColored, location : this.ATTRIB_LOCATION_POSITION, size : 3, stride : 6 * 4, offset : 0    },
-        {buffer : this._bufferCubeColored, location : this.ATTRIB_LOCATION_COLOR,    size : 3, stride : 6 * 4, offset : 3 * 4}
-    ], this._bufferCubeIndex);
-    console.assert(this.getGLError());
-
-    //// Cube
-
-    this._bufferCube = this.createVertexBuffer(
-        new Float32Array([
-            //front face
-            -0.5, -0.5,  0.5,  -1.0,  0.0,  0.0,
-             0.5, -0.5,  0.5,  -1.0,  0.0,  0.0,
-             0.5,  0.5,  0.5,  -1.0,  0.0,  0.0,
-            -0.5,  0.5,  0.5,  -1.0,  0.0,  0.0,
-            //back face
-            -0.5, -0.5, -0.5,   1.0,  0.0,  0.0,
-            -0.5,  0.5, -0.5,   1.0,  0.0,  0.0,
-             0.5,  0.5, -0.5,   1.0,  0.0,  0.0,
-             0.5, -0.5, -0.5,   1.0,  0.0,  0.0,
-            //top face
-            -0.5,  0.5, -0.5,   0.0,  1.0,  0.0,
-            -0.5,  0.5,  0.5,   0.0,  1.0,  0.0,
-             0.5,  0.5,  0.5,   0.0,  1.0,  0.0,
-             0.5,  0.5, -0.5,   0.0,  1.0,  0.0,
-            //bottom face
-            -0.5, -0.5, -0.5,   0.0, -1.0,  0.0,
-             0.5, -0.5, -0.5,   0.0, -1.0,  0.0,
-             0.5, -0.5,  0.5,   0.0, -1.0,  0.0,
-            -0.5, -0.5,  0.5,   0.0, -1.0,  0.0,
-            //right face
-             0.5, -0.5, -0.5,   0.0,  0.0,  1.0,
-             0.5,  0.5, -0.5,   0.0,  0.0,  1.0,
-             0.5,  0.5,  0.5,   0.0,  0.0,  1.0,
-             0.5, -0.5,  0.5,   0.0,  0.0,  1.0,
-            //left face
-            -0.5, -0.5, -0.5,   0.0,  0.0, -1.0,
-            -0.5, -0.5,  0.5,   0.0,  0.0, -1.0,
-            -0.5,  0.5,  0.5,   0.0,  0.0, -1.0,
-            -0.5,  0.5, -0.5,   0.0,  0.0, -1.0
-        ]),
-        this._gl.STATIC_DRAW
-    );
-    this._bufferCubeColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(24,1,1,1,1)), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoCube = this.createVertexArray([
-        { buffer : this._bufferCube, location : this.ATTRIB_LOCATION_POSITION, size : 3, stride : 6 * 4, offset : 0     },
-        { buffer : this._bufferCube, location : this.ATTRIB_LOCATION_NORMAL, size : 3, stride : 6 * 4, offset : 3 * 4 },
-        { buffer : this._bufferCubeColor,    location : this.ATTRIB_LOCATION_COLOR, size : 4    }
-    ], this._bufferCubeIndex);
-    console.assert(this.getGLError());
-
-    //head
-    this._numHeadPoints = 20;
-    const positionsHead = new Float32Array(this._numHeadPoints * 3);
-
-    positionsHead[0] = 0.0;
-    positionsHead[1] = 1.0;
-    positionsHead[2] = 0.0;
-
-    let angle = Math.PI * 2 / ( this._numHeadPoints - 2);
-    for(let i = 1; i < this._numHeadPoints; ++i){
-        let angle_ = angle * (i - 1);
-        positionsHead[i*3  ] = Math.cos(angle_);
-        positionsHead[i*3+1] = 0;
-        positionsHead[i*3+2] = Math.sin(angle_);
-    }
-
-    this._bufferHeadPosition = this.createVertexBuffer(
-        positionsHead,this._gl.STATIC_DRAW
-    );
-    this._bufferHeadColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(this._numHeadPoints,1,1,1,1)), this._gl.DYNAMIC_DRAW, true
-    );
-    this._vaoHead = this.createVertexArray([
-        { buffer : this._bufferHeadPosition, location : ATTRIB_LOCATION_POSITION, size : 3 },
-        { buffer : this._bufferHeadColor,    location : ATTRIB_LOCATION_COLOR,    size : 4 }
-    ]);
-    console.assert(this.getGLError());
-
-    //tube
-    this._numTubePoints   = 20 * 2;
-    const numTubePoints_2 = this._numTubePoints / 2;
-
-    const positionsTube = new Float32Array(this._numTubePoints * 3);
-    const normalsTube   = new Float32Array(this._numTubePoints * 3);
-
-    angle = Math.PI * 2 / (numTubePoints_2 - 1);
-    for(let i = 0; i < this._numTubePoints; ++i){
-        let angle_ = angle * (i / 2);
-        let x = Math.cos(angle_);
-        let z = Math.sin(angle_);
-
-        let a = i * 3;
-        let b = i * 3 + 1;
-        let c = i * 3 + 2;
-
-        positionsTube[a] = x;
-        positionsTube[b] = (i%2==0) ? 0.0 : 1.0;
-        positionsTube[c] = z;
-
-        normalsTube[a] = x;
-        normalsTube[b] = 0;
-        normalsTube[c] = z;
-    }
-
-    this._bufferTubePosition = this.createVertexBuffer(
-        positionsTube, this._gl.STATIC_DRAW
-    );
-    this._bufferTubeNormal = this.createVertexBuffer(
-        normalsTube, this._gl.STATIC_DRAW
-    );
-    this._bufferTubeColor = this.createVertexBuffer(
-        new Float32Array(ArrayUtil.createWithValuesArgs(this._numTubePoints,1,1,1,1)),this._gl.DYNAMIC_DRAW,true
-    );
-    this._vaoTube = this.createVertexArray([
-        {buffer: this._bufferTubePosition, location: ATTRIB_LOCATION_POSITION, size: 3},
-        {buffer: this._bufferTubeNormal, location: ATTRIB_LOCATION_NORMAL, size: 3},
-        {buffer: this._bufferTubeColor, location: ATTRIB_LOCATION_COLOR, size: 4}
-    ]);
-    console.assert(this.getGLError());
-
-    //Grid
-
-    this._bufferGridPosition = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferGridColor = this.createVertexBuffer(
-        new Float32Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-    this._bufferGridIndex = this.createIndexBuffer(
-        new Uint16Array(0), this._gl.DYNAMIC_DRAW, true
-    );
-
-    this._gridSubdivs = null;
-    this._gridNumIndices = 0;
-    this._gridNumElements = 0;
-
-    this._vaoGrid = this.createVertexArray([
-        { buffer : this._bufferGridPosition, location : ATTRIB_LOCATION_POSITION, size : 3 },
-        { buffer : this._bufferGridColor,    location : ATTRIB_LOCATION_COLOR,    size : 4 }
-    ], this._bufferGridIndex);
-    console.assert(this.getGLError());
 }
 
 /**
@@ -2697,7 +2260,7 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     let attribLocationBinding_;
 
     //vert and frag src in same string
-    if(fragSrc_or_attribLocationBinding === 'undefined' ||
+    if(fragSrc_or_attribLocationBinding === undefined ||
        typeof fragSrc_or_attribLocationBinding === 'object'){
         vertSrcPrefix = '#define VERTEX_SHADER\n';
         fragSrcPrefix = '#define FRAGMENT_SHADER\n';
@@ -2717,6 +2280,8 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
 
     this._gl.attachShader(program.handle,vertShader);
     this._gl.attachShader(program.handle,fragShader);
+
+    //TODO: Add default bindings
 
     let attribLocationBindingNames = [];
     if(attribLocationBinding_){
@@ -2783,7 +2348,6 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     }
 
     //validate attribLocationBinding map
-
     for(let i = 0; i < attribLocationBinding_.length; ++i){
         const binding = attribLocationBinding_[i];
         if(program.attributes[binding.name] === undefined){
@@ -3221,10 +2785,12 @@ ContextGL.prototype._createBuffer = function(target,size_or_data,usage,preserveD
         handle : this._gl.createBuffer(),
         target : target,
         usage  : usage,
+        usageName : null,
         length : 0,
         byteLength : 0,
         data : null,
         dataType : null,
+        dataTypeName : null,
         preserveData : preserveData
     };
 
@@ -3328,6 +2894,9 @@ ContextGL.prototype._setBufferData = function(target, id, size_or_data){
                         break;
                 }
             }
+            buffer.targetName   = GLEnumStringMap[buffer.target];
+            buffer.usageName    = GLEnumStringMap[buffer.usage];
+            buffer.dataTypeName = GLEnumStringMap[buffer.dataType];
 
             //update with new preserved data
             if(buffer.preserveData && size_or_data){
@@ -3473,13 +3042,20 @@ ContextGL.prototype.setVertexBufferSubData = function(offset, data){
 
 /**
  * Returns the data send to the vertex buffer. (Returns null if preserveData is set to false on creation)
+ * @param {Number} [id] - Optional specific buffer
  * @returns {null|Uint8Array|Uint16Array|Uint32Array|Float32Array}
  */
-ContextGL.prototype.getVertexBufferData = function(){
+ContextGL.prototype.getVertexBufferData = function(id){
     const target = this._gl.ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
+    if(id === undefined){
+        id = this._bufferActive[target];
+        if(id === INVALID_ID){
+            throw new BufferError(strBufferErrorNothingBound(target));
+        }
+    } else {
+        if(!this._buffers[target][id]){
+            throw new BufferError(strBufferErrorInvalidId(id));
+        }
     }
     return this._buffers[target][id].data;
 };
@@ -3605,13 +3181,20 @@ ContextGL.prototype.setIndexBufferSubData = function(offset,data){
 
 /**
  * Returns the data send to the index buffer. (Returns null if preserveData is set to false on creation)
+ * @param {Number} [id] - Optional specific buffer
  * @returns {null|Uint8Array|Uint16Array|Uint32Array}
  */
-ContextGL.prototype.getIndexBufferData = function(){
+ContextGL.prototype.getIndexBufferData = function(id){
     const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
+    if(id === undefined){
+        id = this._bufferActive[target];
+        if(id === INVALID_ID){
+            throw new BufferError(strBufferErrorNothingBound(target));
+        }
+    } else {
+        if(!this._buffers[target][id]){
+            throw new BufferError(strBufferErrorInvalidId(id));
+        }
     }
     return this._buffers[target][id].data;
 };
@@ -4154,88 +3737,172 @@ function strTextureInvalidSize(width,height){
 
 const STR_TEXTURE_ERROR_NOTHING_BOUND = 'No texture active.s';
 
+const DefaultConfigTexture2d = Object.freeze({
+    //The level of detail. Level 0 is the base image level and level n
+    //is the nth mipmap reduction level
+    level : 0,
+    //data width/height
+    width: null,
+    height: null,
+    //ignored
+    border: false,
+    borderWidth: 0,
+    //shared wrap t/s
+    wrap :  WebGLRenderingContext.REPEAT,
+    //wrap parameter for s
+    wrapS : null,
+    //wrap parameter for t
+    wrapT : null,
+    //A GLint specifying the color components in the texture
+    format: WebGLRenderingContext.RGBA,
+    internalFormat: null,
+    //shared min mag filter
+    minMagFilter : null,
+    //filter applied when tex smaller then orig
+    minFilter : WebGLRenderingContext.NEAREST_MIPMAP_LINEAR,
+    //filter applied when tex larger then orig
+    magFilter : WebGLRenderingContext.LINEAR,
+    //if true mipmap is generated
+    mipmap : false
+});
+
+ContextGL.prototype._setTextureState = function(state){
+    const textureUnitActive = this._textureUnitActive;
+    for(let i = 0; i < this.MAX_TEXTURE_IMAGE_UNITS; ++i){
+        const id = state[i];
+        if(!id){
+            continue;
+        }
+        this.setTexture2d(state[i],i);
+    }
+    this._textureUnitActive = textureUnitActive;
+};
+
 /**
  * Saves the current texture binding.
  */
-ContextGL.prototype.pushTextureBinding = function(){
-    console.warn('Not implemented yet');
+ContextGL.prototype.pushTextureBinding = function(newState){
+    this._textureStack.push(this._textureActive.slice(0));
+    if(newState === undefined){
+        return;
+    }
+    this._setTextureState(newState);
 };
 
 /**
  * Restores the previous texture binding.
  */
 ContextGL.prototype.popTextureBinding = function(){
-    console.warn('Not implemented yet');
+    if(this._textureStack.length === 0){
+        throw new Error(STR_ERROR_INVALID_STACK_POP);
+    }
+    this._setTextureState(this._textureStack.pop());
 };
 
-ContextGL.prototype.createTexture2d = function(data,width,height,options){
-    options.level = options.level || 0;
+ContextGL.prototype.createTexture2d = function(data,config){
+    config = validateOption(config,DefaultConfigTexture2d);
 
-    options = {
-        repeat: null, //shorthand for gl_REPEAT wrap s/t
-        wrap : null,
-        wrapS : null,
-        wrapT : null,
-        format: null,
-        internalFormat: null,
-        mipmap : false
-    };
+    config.internalFormat = !config.internalFormat ? config.format : config.internalFormat;
+    config.wrapS = !config.wrapS ? config.wrap : config.wrapS;
+    config.wrapT = !config.wrapT ? config.wrap : config.wrapT;
 
-    const format = this._gl.RGBA;
+    if(config.internalFormat !== config.format){
+        //TODO: Add proper warning webgl1
+        console.warn('format !== internalFormat');
+    }
 
     const id = this._uid++;
-    const texture2d = this._textures[id] = {
-        handle: this._gl.createTexture(),
-        target : this._gl.TEXTURE_2D,
+    this._textures[id] = {
+        handle : this._gl.createTexture(),
         width : null,
         height: null,
-        //ignoring
+        level: 0,
         border: false,
         borderWidth: 0,
-        //A GLint specifying the color components in the texture
-        internalFormat: format,
-        //A GLenum specifying the format of the texel data. In WebGL 1,
-        //this must be the same as internalformat.
-        format: format,
-        //A GLenum specifying the data type of the texel data
-        type: this._gl.TEXTURE_2D,
-        //The level of detail. Level 0 is the base image level and level n
-        //is the nth mipmap reduction level
-        level : options.level,
-        //wrap parameter for s
-        wrapS : this._gl.REPEAT,
-        //wrap parameter for t
-        wrapT : this._gl.REPEAT,
-        //filter applied when tex smaller then orig
-        minFilter : this._gl.NEAREST_MIPMAP_LINEAR,
-        //filter applied when tex larger then orig
-        magFilter : this._gl.LINEAR
+        internalFormat: null,
+        format: null,
+        wrapS: null,
+        wrapT: null,
+        minFilter: null,
+        magFilter: null
     };
 
     this.pushTextureBinding();
-        this.setTexture2d(texture2d);
-
-        //create texture with image, imagedata, video, canvas
-        if(data && (data instanceof Image || data instanceof ImageData ||
-                    data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement)){
-            this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.format, options.dataType, data);
-        //create texture with size, empty or with data
-        } else {
-            this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.width, options.height,
-                                0, options.format, options.dataType, data || null);
-        }
-
-        //set wrapS/wrapT
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, options.wrapS);
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, options.wrapT);
-        //set min/mag filter
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, options.minFilter);
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, options.magFilter);
-
-        if(options.mipmap){
-            this._gl.generateMipmap(this._gl.TEXTURE_2D);
-        }
+        this.setTexture2d(id);
+        this.setTexture2dWrap(config.wrapS,config.wrapT);
+        this.setTexture2dFilter(config.minFilter,config.magFilter);
+        this.setTexture2dData(data,config.width,config.height);
+        ////TODO: compressed texture
+        ////TODO: mipmap
     this.popTextureBinding();
+
+    //options.level = options.level || 0;
+    //
+    //options = {
+    //    repeat: null, //shorthand for gl_REPEAT wrap s/t
+    //    wrap : null,
+    //    wrapS : null,
+    //    wrapT : null,
+    //    format: null,
+    //    internalFormat: null,
+    //    mipmap : false
+    //};
+    //
+    //const format = this._gl.RGBA;
+    //
+    //const id = this._uid++;
+    //const texture2d = this._textures[id] = {
+    //    handle: this._gl.createTexture(),
+    //    target : this._gl.TEXTURE_2D,
+    //    width : null,
+    //    height: null,
+    //    //ignoring
+    //    border: false,
+    //    borderWidth: 0,
+    //    //A GLint specifying the color components in the texture
+    //    internalFormat: format,
+    //    //A GLenum specifying the format of the texel data. In WebGL 1,
+    //    //this must be the same as internalformat.
+    //    format: format,
+    //    //A GLenum specifying the data type of the texel data
+    //    type: this._gl.TEXTURE_2D,
+    //    //The level of detail. Level 0 is the base image level and level n
+    //    //is the nth mipmap reduction level
+    //    level : options.level,
+    //    //wrap parameter for s
+    //    wrapS : this._gl.REPEAT,
+    //    //wrap parameter for t
+    //    wrapT : this._gl.REPEAT,
+    //    //filter applied when tex smaller then orig
+    //    minFilter : this._gl.NEAREST_MIPMAP_LINEAR,
+    //    //filter applied when tex larger then orig
+    //    magFilter : this._gl.LINEAR
+    //};
+
+    //this.pushTextureBinding();
+    //    this.setTexture2d(texture2d);
+    //
+    //    //create texture with image, imagedata, video, canvas
+    //    if(data && (data instanceof Image || data instanceof ImageData ||
+    //                data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement)){
+    //        this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.format, options.dataType, data);
+    //    //create texture with size, empty or with data
+    //    } else {
+    //        this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.width, options.height,
+    //                            0, options.format, options.dataType, data || null);
+    //    }
+    //
+    //    //set wrapS/wrapT
+    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, options.wrapS);
+    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, options.wrapT);
+    //    //set min/mag filter
+    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, options.minFilter);
+    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, options.magFilter);
+    //
+    //    if(options.mipmap){
+    //        this._gl.generateMipmap(this._gl.TEXTURE_2D);
+    //    }
+    //this.popTextureBinding();
 };
 
 ContextGL.prototype.setTexture2d = function(id,textureUnit){
@@ -4264,7 +3931,7 @@ ContextGL.prototype.setTexture2dWrap = function(wrapS_or_wrapS_and_wrapT,wrapT){
     wrapT = wrapT === undefined ? wrapS_or_wrapS_and_wrapT : wrapT;
     if(texture2d.wrapS !== wrapS_or_wrapS_and_wrapT){
         this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, wrapS_or_wrapS_and_wrapT);
-        texture2de.wrapS = wrapS_or_wrapS_and_wrapT;
+        texture2d.wrapS = wrapS_or_wrapS_and_wrapT;
     }
     if(texture2d.wrapT !== wrapT){
         this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, wrapT);
@@ -4301,8 +3968,8 @@ ContextGL.prototype.setTexture2dData = function(data,width_or_size,height){
     if(!texture2d){
         throw new TextureError(strTextureErrorInvalidId(id))
     }
-    width_or_size = width_or_size === undefined ? -1 : width_or_size;
-    height = width_or_size === -1 ? -1 : height === undefined ? width_or_size : height;
+    width_or_size = (width_or_size === undefined || width_or_size === null) ? -1 : width_or_size;
+    height = width_or_size === -1 ? -1 : (height === undefined || height === null) ? width_or_size : height;
 
     //data from Image, ImageData, Video, Canvas
     if(data && (data instanceof Image || data instanceof ImageData ||
@@ -4328,14 +3995,40 @@ ContextGL.prototype.setTexture2dData = function(data,width_or_size,height){
                             texture2d.internalFormat, texture2d.width, texture2d.height,
                             0, texture2d.format, texture2d.dataType, data || null);
     }
-
 };
 
-ContextGL.prototype.deleteTexture2d = function(id){};
+ContextGL.prototype.deleteTexture2d = function(id){
+    const texture = this._textures[id];
+    if(!texture){
+        throw new TextureError(strTextureErrorInvalidId(id));
+    }
 
-ContextGL.prototype.hasTexture2d = function(id){};
+    for(const unit in this._textureActive){
+        if(this._textureActive[unit] === id){
+            this._textureActive[unit] = null;
+            this._gl.activeTexture(this._gl.TEXTURE0 + unit);
+            this._gl.bindTexture(this._gl.TEXTURE_2D, texture.handle);
+        }
+    }
 
-ContextGL.prototype.getActiveTexture2d = function(){};
+    this._gl.deleteTexture(texture.handle);
+    delete this._textures[id];
+
+    this._gl.activeTexture(this._gl.TEXTURE0 + this._textureUnitActive);
+};
+
+ContextGL.prototype.hasTexture2d = function(id){
+    return !!this._textures[id];
+};
+
+ContextGL.prototype.getTexture2d = function(textureUnit){
+    textureUnit = textureUnit === undefined ? this._textureUnitActive : textureUnit;
+    return this._textureActive[textureUnit] || null;
+};
+
+ContextGL.prototype.getTextureUnitActive = function(){
+    return this._textureUnitActive;
+};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // FRAMEBUFFER
@@ -4884,7 +4577,7 @@ ContextGL.prototype.pushState = function(mask){
     }
     //texture
     if((mask & TEXTURE_BINDING_BIT) == TEXTURE_BINDING_BIT){
-        console.warn('Warning texture binding bit state not implemented yet.');
+        this.pushTextureBinding();
     }
     //framebuffer
     if((mask & FRAMEBUFFER_BINDING_BIT) == FRAMEBUFFER_BINDING_BIT){
@@ -4960,7 +4653,7 @@ ContextGL.prototype.popState = function(mask){
     }
     //texture
     if((mask & TEXTURE_BINDING_BIT) == TEXTURE_BINDING_BIT){
-        console.warn('Warning texture binding bit state not implemented yet.');
+        this.popTextureBinding();
     }
     //framebuffer
     if((mask & FRAMEBUFFER_BINDING_BIT) == FRAMEBUFFER_BINDING_BIT){
@@ -5148,1325 +4841,6 @@ ContextGL.prototype.setState = function(state){
 /*--------------------------------------------------------------------------------------------------------------------*/
 // QUICK DRAW
 /*--------------------------------------------------------------------------------------------------------------------*/
-
-export class QuickDrawError extends Error{
-    constructor(msg){
-        super(msg);
-        this.name = 'QuickDrawError';
-    }
-}
-
-const STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION = "Program has no default attrib 'aPosition'.";
-
-//INTERNAL
-
-ContextGL.prototype._updateGrid = function(subdivs){
-    this.setVertexBuffer(this._bufferGridColor);
-    let colors = this.getVertexBufferData();
-
-    if(subdivs == this._gridSubdivs){
-        if(!Vec4.equals(colors, this._color)){
-            ArrayUtil.fillv4(colors, this._color);
-            this.updateVertexBufferData();
-        }
-        return;
-    }
-
-    const subdivs1 = subdivs + 1;
-    const num = subdivs1 * subdivs1;
-
-    const positions = new Float32Array(num * 3);
-    colors = new Float32Array(ArrayUtil.createWithValuesv(num, this._color));
-
-    const step = 1.0 / subdivs;
-
-    for(let i = 0, j, index; i < subdivs1; ++i){
-        for(j = 0; j < subdivs1; ++j){
-            index = (i * subdivs1 + j) * 3;
-            positions[index] = -0.5 + step * j;
-            positions[index + 1] = 0;
-            positions[index + 2] = -0.5 + step * i;
-        }
-    }
-
-    const indices = [];
-
-    for(let i = 0, j, k; i < subdivs1; ++i){
-        for(j = 0; j < subdivs1; ++j){
-            if(j < subdivs){
-                k = i * subdivs1 + j;
-                indices.push(k, k + 1);
-            }
-            if(i < subdivs){
-                k = i * subdivs1 + j;
-                indices.push(k, k + subdivs1);
-            }
-        }
-    }
-
-    this.setVertexBuffer(this._bufferGridPosition);
-    this.setVertexBufferData(positions);
-
-    this.setVertexBuffer(this._bufferGridColor);
-    this.setVertexBufferData(colors);
-
-    this.setIndexBuffer(this._bufferGridIndex);
-    this.setIndexBufferData(new Uint16Array(indices));
-
-    this._gridSubdivs = subdivs;
-    this._gridNumIndices = indices.length;
-    this._gridNumElements = positions.length / 3;
-};
-
-ContextGL.prototype._drawGridInternal = function(size, subdivs, mode){
-    size    = (size === undefined || (size[0] < 0 || size[1] < 0)) ? VEC2_ONE : size;
-    subdivs = (subdivs === undefined || subdivs < 0) ? 1 : subdivs;
-
-    if(!this._programHasAttribPosition){
-        return;
-    }
-
-    this._updateGrid(subdivs);
-
-    this.setVertexArray(this._vaoGrid);
-    this.pushModelMatrix();
-        this.scale3(size[0],1.0,size[1]);
-        if(mode === this._gl.LINES){
-            this.drawElements(this._gl.LINES, this._gridNumIndices);
-        } else {
-            this.drawArrays(this._gl.POINTS, 0, this._gridNumElements);
-        }
-    this.popModelMatrix();
-};
-
-ContextGL.prototype._updateCircleGeom = function(positions, texCoords, numSegments, offsetPositions, offsetTexcoords){
-    offsetPositions = offsetPositions === undefined ? 0 : offsetPositions;
-    offsetTexcoords = offsetTexcoords === undefined ? 0 : offsetTexcoords;
-    var step = Math.PI * 2 / numSegments;
-    for(var i = 0, j, k; i < numSegments; ++i){
-        j = offsetPositions + i * 2;
-        positions[j  ] = Math.cos(step * i);
-        positions[j+1] = Math.sin(step * i);
-
-        k = offsetTexcoords + i * 2;
-        texCoords[k  ] = 0.5 + positions[j ];
-        texCoords[k+1] = 0.5 + positions[j+1]
-    }
-};
-
-ContextGL.prototype._drawCircleInternal = function(radius, drawMode){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoCircle);
-    const numSegmentsCircle = this._drawState.numSegmentsCircle;
-
-    if(numSegmentsCircle != this._numSegmentsCirclePrev){
-        this.setVertexBuffer(this._bufferCirclePosition);
-        const positions = this.getVertexBufferData();
-        this.setVertexBuffer(this._bufferCircleTexcoord);
-        const texcoords = this.getVertexBufferData();
-
-        this._updateCircleGeom(positions,texcoords,numSegmentsCircle);
-
-        this.setVertexBuffer(this._bufferCirclePosition);
-        this.updateVertexBufferData();
-        this.setVertexBuffer(this._bufferCircleTexcoord);
-        this.updateVertexBufferData();
-
-        this._numSegmentsCirclePrev = numSegmentsCircle;
-    }
-
-    this.setVertexBuffer(this._bufferCircleColor);
-    const colors = this.getVertexBufferData();
-
-    if(!Vec4.equals(colors,this._drawState.color)){
-        ArrayUtil.fillv4(colors,this._drawState.color);
-        this.updateVertexBufferData();
-    }
-
-    this.pushModelMatrix();
-        this.scale3(radius,radius,1);
-        this.drawArrays(drawMode,0,numSegmentsCircle);
-    this.popModelMatrix();
-};
-
-ContextGL.prototype._drawEllipseInternal = function(radiusX, radiusY, drawMode){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoEllipse);
-    const numSegmentsEllipse = this._drawState.numSegmentsEllipse;
-
-    if(numSegmentsEllipse != this._numSegmentsEllipsePrev){
-        this.setVertexBuffer(this._bufferEllipsePosition);
-        const positions = this.getVertexBufferData();
-        this.setVertexBuffer(this._bufferEllipseTexcoord);
-        const texcoords = this.getVertexBufferData();
-
-        this._updateCircleGeom(positions,texcoords,numSegmentsEllipse);
-
-        this.setVertexBuffer(this._bufferEllipsePosition);
-        this.updateVertexBufferData();
-        this.setVertexBuffer(this._bufferEllipseTexcoord);
-        this.updateVertexBufferData();
-
-        this._numSegmentsEllipsePrev = numSegmentsEllipse;
-    }
-
-    this.setVertexBuffer(this._bufferEllipseColor);
-    const colors = this.getVertexBufferData();
-
-    if(!Vec4.equals(colors,this._drawState.color)){
-        ArrayUtil.fillv4(colors,this._drawState.color);
-        this.updateVertexBufferData();
-    }
-
-    this.pushModelMatrix();
-        this.scale3(radiusX,radiusY,1);
-        this.drawArrays(drawMode,0,numSegmentsEllipse);
-    this.popModelMatrix();
-};
-
-ContextGL.prototype._drawTriangleInternal9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2,drawMode){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoTriangle);
-
-    this.setVertexBuffer(this._bufferTrianglePosition);
-    const position = this.getVertexBufferData();
-    if(x0 !== position[0] ||
-        y0 !== position[1] ||
-        z0 !== position[2] ||
-        x1 !== position[3] ||
-        y1 !== position[4] ||
-        z1 !== position[5] ||
-        x2 !== position[6] ||
-        y2 !== position[7] ||
-        z2 !== position[8]){
-        position[0] = x0;
-        position[1] = y0;
-        position[2] = z0;
-        position[3] = x1;
-        position[4] = y1;
-        position[5] = z1;
-        position[6] = x2;
-        position[7] = y2;
-        position[8] = z2;
-        this.updateVertexBufferData();
-    }
-
-    //TODO: Add normals here
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferTriangleColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors,this._drawState.color)){
-            ArrayUtil.fillv4(colors,this._drawState.color);
-        }
-        this.updateVertexBufferData();
-    }
-
-    this.drawArrays(drawMode,0,3);
-};
-
-ContextGL.prototype._drawHead = function(r,g,b,a){
-    this.setVertexArray(this._vaoHead);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferHeadColor);
-        const color = this.getVertexBufferData();
-        if(!Vec4.equals4(color,r,g,b,a)){
-            ArrayUtil.fill4(color,r,g,b,a);
-        }
-        this.updateVertexBufferData();
-    }
-
-    this.drawArrays(this._gl.TRIANGLE_FAN,0,this._numHeadPoints)
-};
-
-ContextGL.prototype._drawTube = function(r,g,b,a){
-    this.setVertexArray(this._vaoTube);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferTubeColor);
-        const color = this.getVertexBufferData();
-        if(!Vec4.equals4(color,r,g,b,a)){
-            ArrayUtil.fill4(color,r,g,b,a);
-        }
-        this.updateVertexBufferData();
-    }
-
-    this.drawArrays(this._gl.TRIANGLE_STRIP,0,this._numTubePoints);
-};
-
-/**
- * Saves the current quickdraw state.
- * @param [newState]
- */
-ContextGL.prototype.pushDrawState = function(newState){
-    this._drawStateStack.push(this._drawState.copy());
-    if(newState === undefined){
-        return;
-    }
-    this.setDrawState(newState);
-};
-
-/**
- * Restores the previously saved quickdraw staet.
- */
-ContextGL.prototype.popDrawState = function(){
-    if(this._drawStateStack.length === 0){
-        throw new Error(STR_ERROR_INVALID_STACK_POP);
-    }
-    const state = this._drawStateStack.pop();
-    this.setDrawColor(state.color);
-    this.setLineWidth(state.lineWidth);
-    this.setDrawPointSize(state.pointSize);
-    this.setDrawEllipseSegmentsNum(state.numSegmentsEllipse);
-    this.setDrawCircleSegmentsNum(state.numSegmentsCircle);
-};
-
-/**
- * Sets the current draw state.
- * @param state
- * @example
- * ctx.setDrawState(newState);
- *
- * ctx.setDrawState({
- *     color : [1,1,1,1],
- *     pointSize : 2
- * });
- */
-ContextGL.prototype.setDrawState = function(state){
-    if(state.color !== undefined){
-        this.setDrawColor(state.color);
-    }
-    if(state.lineWidth !== undefined){
-        this.setLineWidth(state.lineWidth);
-    }
-    if(state.pointSize !== undefined){
-        this.setDrawPointSize(state.pointSize);
-    }
-    if(state.numSegmentsEllipse !== undefined){
-        this.setDrawEllipseSegmentsNum(state.numSegmentsEllipse);
-    }
-    if(state.numSegmentsCircle !== undefined){
-        this.setDrawEllipseSegmentsNum(state.numSegmentsCircle);
-    }
-};
-
-/**
- * Returns a copy of the current draw state.
- * @returns {DrawState}
- */
-ContextGL.prototype.getDrawState = function(){
-    return this._drawState.copy();
-};
-
-/**
- * Sets the draw color.
- * @param color
- */
-ContextGL.prototype.setDrawColor = function(color){
-    this.setDrawColor4(color[0],color[1],color[2],color[3]);
-};
-
-/**
- * Sets the draw color.
- * @param r
- * @param g
- * @param b
- * @param a
- */
-ContextGL.prototype.setDrawColor4 = function(r,g,b,a){
-    Vec4.set4(this._drawState.color,r,g,b,a);
-};
-
-/**
- * Sets the draw color.
- * @param r
- * @param g
- * @param b
- */
-ContextGL.prototype.setDrawColor3 = function(r,g,b){
-    this.setDrawColor4(r,g,b,1.0);
-};
-
-/**
- * Sets the draw color.
- * @param k
- * @param a
- */
-ContextGL.prototype.setDrawColor2 = function(k,a){
-    this.setDrawColor4(k,k,k,a);
-};
-
-/**
- * Sets the draw color.
- * @param k
- */
-ContextGL.prototype.setDrawColor1 = function(k){
-    this.setDrawColor4(k,k,k,1.0);
-};
-
-/**
- * Returns a copy of the current draw color.
- * @param out
- * @returns {*}
- */
-ContextGL.prototype.getDrawColor = function(out){
-    return Vec4.set(out || Vec4.create(), this._color);
-};
-
-/**
- * Sets the draw point size.
- * @param pointSize
- */
-ContextGL.prototype.setDrawPointSize = function(pointSize){
-    if(pointSize === this._drawState.pointSize){
-        return;
-    }
-    if(this._programHasUniformPointSize){
-        this.setProgramUniform(UNIFORM_NAME_POINT_SIZE,pointSize);
-    }
-    this._drawState.pointSize = pointSize;
-};
-
-/**
- * Returns the current draw point size.
- * @returns {Number}
- */
-ContextGL.prototype.getDrawPointSize = function(){
-    return this._drawState.pointSize;
-};
-
-/**
- * Sets the number of draw ellipse segments.
- * @param num
- */
-ContextGL.prototype.setDrawEllipseSegmentsNum = function(num){
-    this._drawState.numSegmentsEllipse = num;
-};
-
-/**
- * Returns the current number of draw ellipse segments.
- * @returns {Number}
- */
-ContextGL.prototype.getDrawEllipseSegmentsNum = function(){
-    return this._drawState.numSegmentsEllipse;
-};
-
-/**
- * Sets the number of draw circle segments.
- * @param num
- */
-ContextGL.prototype.setDrawCircleSegmentsNum = function(num){
-    this._drawState.numSegmentsCircle = num;
-};
-
-/**
- * Returns the current number of draw circle segments.
- * @returns {Number}
- */
-ContextGL.prototype.getDrawCircleSegmentsNum = function(){
-    return this._drawState.numSegmentsCircle;
-};
-
-/**
- * Draws a single point.
- * @param point
- */
-ContextGL.prototype.drawPoint = function(point){
-    this.drawPoint3(point[0],point[1],point[2]);
-};
-
-/**
- * Draws a single point.
- * @param x
- * @param y
- * @param z
- */
-ContextGL.prototype.drawPoint3 = function(x,y,z){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-};
-
-/**
- * Draws a series of points.
- * @param points
- */
-ContextGL.prototype.drawPoints = function(points){
-    this.drawPointsFlat(ArrayUtil.unpack3(points,this._tempArrPoints));
-};
-
-/**
- * Draws a series of points.
- * @param points
- */
-ContextGL.prototype.drawPointsFlat = function(points){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-};
-
-/**
- * Draws a single line.
- * @param from
- * @param to
- */
-ContextGL.prototype.drawLine = function(from,to){
-    this.drawLine6(from[0],from[1],from[2],to[0],to[1],to[2]);
-};
-
-/**
- * Draws a single line.
- * @param fromTo - Points [x0,y0,z0,x1,y1,z0]
- */
-ContextGL.prototype.drawLineFlat = function(fromTo){
-    this.drawLine6(fromTo[0],fromTo[1],fromTo[2],fromTo[3],fromTo[4],fromTo[5]);
-};
-
-/**
- * Draws a single line.
- * @param x0
- * @param y0
- * @param z0
- * @param x1
- * @param y1
- * @param z1
- */
-ContextGL.prototype.drawLine6 = function(x0,y0,z0,x1,y1,z1){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoLine);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferLineColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors,this._drawState.color)){
-            ArrayUtil.fillv4(colors,this._drawState.color);
-            this.updateVertexBufferData();
-        }
-    }
-
-    this.setVertexBuffer(this._bufferLinePosition);
-    const positions = this.getVertexBufferData();
-
-    if(positions[0] != x0 ||
-        positions[1] != y0 ||
-        positions[2] != z0 ||
-        positions[3] != x1 ||
-        positions[4] != y1 ||
-        positions[5] != z1){
-        positions[0] = x0;
-        positions[1] = y0;
-        positions[2] = z0;
-        positions[3] = x1;
-        positions[4] = y1;
-        positions[5] = z1;
-        this.updateVertexBufferData();
-    }
-
-    this.drawArrays(this._gl.LINES,0,2);
-};
-
-/**
- * Draws a line strip.
- * @param points - Points [[x,y,z],[x,y,z],[x,y,z],...]
- * @param loop
- */
-ContextGL.prototype.drawLineStrip = function(points,loop){
-    this.drawLineStripFlat(ArrayUtil.unpack3(points,this._tempArrLineStrip),loop);
-};
-
-/**
- * Draws a line strip.
- * @param points - Points [x0,y0,z0,x1,y1,z1,...]
- * @param [loop]
- */
-ContextGL.prototype.drawLineStripFlat = function(points,loop){
-    if(!this._programHasAttribPosition || points.length === 0){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    loop = loop || false;
-
-    this.setVertexArray(this._vaoLineStrip);
-
-    const srcLen = points.length;
-    const numElements = srcLen / 3;
-
-    this.setVertexBuffer(this._bufferLineStripPosition);
-    let positions = this.getVertexBufferData();
-    let exceedsDstLen = srcLen > positions.length;
-
-    if(!exceedsDstLen){
-        positions.set(points);
-        this.updateVertexBufferData();
-    } else {
-        positions = new Float32Array(points);
-        this.setVertexBufferData(positions);
-    }
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferLineStripColor);
-        let colors = this.getVertexBufferData();
-        exceedsDstLen = (numElements * 4) > colors.length;
-
-        if(exceedsDstLen){
-            colors = new Float32Array(ArrayUtil.createWithValuesv(numElements,this._drawState.color));
-            this.setVertexBufferData(colors);
-        } else {
-            if(!Vec4.equals(colors,this._drawState.color)){
-                ArrayUtil.fillv4(colors,this._drawState.color);
-                this.updateVertexBufferData();
-            }
-        }
-    }
-
-    this.drawArrays(loop ? this._gl.LINE_LOOP : this._gl.LINE_STRIP,0,numElements)
-};
-
-/**
- * Draws a series of lines.
- */
-ContextGL.prototype.drawLines = function(lines){
-    this.drawLineFlat(ArrayUtil.unpack3(lines,this._tempArrLines));
-};
-
-/**
- * Draws a series of lines.
- * @param lines
- */
-ContextGL.prototype.drawLinesFlat = function(lines){
-    if(!this._programHasAttribPosition || lines.length === 0){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoLines);
-
-    const srcLen = lines.length;
-    const numElements = srcLen / 3;
-
-    this.setVertexBuffer(this._bufferLinesPosition);
-    let positions = this.getVertexBufferData();
-    let exceedsDstLen = srcLen > positions.length;
-
-    if(!exceedsDstLen){
-        positions.set(lines);
-    } else {
-        positions = new Float32Array(lines);
-    }
-    this.setVertexBufferData(positions);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferLinesColor);
-        let colors = this.getVertexBufferData();
-        exceedsDstLen = (numElements * 4) > colors.length;
-
-        if(exceedsDstLen){
-            colors = new Float32Array(ArrayUtil.createWithValuesv(numElements,this._drawState.color));
-            this.setVertexBufferData(colors);
-        } else {
-            if(!Vec4.equals(colors,this._drawState.color)){
-                ArrayUtil.fillv4(colors,this._drawState.color);
-                this.updateVertexBufferData();
-            }
-        }
-    }
-
-    this.drawArrays(this._gl.LINES,0,numElements);
-};
-
-/**
- * Draws a solid rectangle.
- * @param size
- */
-ContextGL.prototype.drawRect = function(size){
-    this.drawRect2(size[0],size[1]);
-};
-
-/**
- * Draws a solid rectangle.
- * @param width
- * @param height
- */
-ContextGL.prototype.drawRect2 = function(width,height){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    width = width === undefined ? 1 : width;
-    height = height === undefined ? width : height;
-
-    this.setVertexArray(this._vaoRect);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferRectColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors,this._drawState.color)){
-            ArrayUtil.fillv4(colors,this._drawState.color);
-            this.updateVertexBufferData();
-        }
-    }
-
-    if(width !== 1 || height !==1){
-        this.pushModelMatrix();
-            this.scale3(width,height,0);
-            this.drawElements(this._gl.TRIANGLES,6);
-        this.popModelMatrix();
-    } else {
-        this.drawElements(this._gl.TRIANGLES,6);
-    }
-};
-
-/**
- * Draws rectangle points.
- * @param size
- */
-ContextGL.prototype.drawRectPoints = function(size){
-    this.drawRectPoints2(size[0],size[1]);
-};
-
-/**
- * Draws rectangle points.
- * @param width
- * @param height
- */
-ContextGL.prototype.drawRectPoints2 = function(width,height){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    width = width === undefined ? 1 : width;
-    height = height === undefined ? width : height;
-
-    this.setVertexArray(this._vaoRectPoints);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferRectPointsColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors,this._drawState.color)){
-            ArrayUtil.fillv4(colors,this._drawState.color);
-            this.updateVertexBufferData();
-        }
-    }
-
-    if(width !== 1 || height !==1){
-        this.pushModelMatrix();
-            this.scale3(width,height,0);
-            this.drawArrays(this._gl.POINTS,0,4);
-        this.popModelMatrix();
-    } else {
-        this.drawArrays(this._gl.POINTS,0,4);
-    }
-};
-
-/**
- * Draws a stroked rectangle.
- * @param size
- */
-ContextGL.prototype.drawRectStroked = function(size){
-    this.drawRectStroked2(size[0],size[1]);
-};
-
-/**
- * Draws a stroked rectangle.
- * @param width
- * @param height
- */
-ContextGL.prototype.drawRectStroked2 = function(width,height){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    width = width === undefined ? 1 : width;
-    height = height === undefined ? width : height;
-
-    this.setVertexArray(this._vaoRectStroked);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferRectStrokedColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors,this._drawState.color)){
-            ArrayUtil.fillv4(colors,this._drawState.color);
-            this.updateVertexBufferData();
-        }
-    }
-
-    if(width !== 1 || height !==1){
-        this.pushModelMatrix();
-            this.scale3(width,height,0);
-            this.drawArrays(this._gl.LINE_LOOP,0,4);
-        this.popModelMatrix();
-    } else {
-        this.drawElements(this._gl.LINE_LOOP,0,4);
-    }
-};
-
-/**
- * Draws a circle.
- * @param radius
- */
-ContextGL.prototype.drawCircle = function(radius){
-    radius = radius === undefined ? 0.5 : radius;
-    this._drawCircleInternal(radius, this._gl.TRIANGLE_FAN);
-};
-
-/**
- * Draws a stroked circle.
- * @param radius
- */
-ContextGL.prototype.drawCircleStroked = function(radius){
-    radius = radius === undefined ? 0.5 : radius;
-    this._drawCircleInternal(radius,this._gl.LINE_LOOP);
-};
-
-
-ContextGL.prototype.drawCircles = function(){};
-
-ContextGL.prototype.drawCirclesStroked = function(){};
-
-/**
- * Draws an ellipse.
- * @param radii
- */
-ContextGL.prototype.drawEllipse = function(radii){
-    this.drawEllipse2(radii[0],radii[1]);
-};
-
-/**
- * Draws an ellipse.
- * @param radiusX
- * @param radiusY
- */
-ContextGL.prototype.drawEllipse2 = function(radiusX,radiusY){
-    radiusX = radiusX === undefined ? 0.5 : radiusX;
-    radiusY = radiusY === undefined ? radiusX : radiusY;
-    this._drawEllipseInternal(radiusX,radiusY,this._gl.TRIANGLE_FAN);
-};
-
-/**
- * Draws a stroked ellipse.
- * @param radii
- */
-ContextGL.prototype.drawEllipseStroked = function(radii){
-    this.drawEllipseStroked2(radii[0],radii[1]);
-};
-
-/**
- * Draws a stroked ellipse.
- * @param radiusX
- * @param radiusY
- */
-ContextGL.prototype.drawEllipseStroked2 = function(radiusX,radiusY){
-    radiusX = radiusX === undefined ? 0.5 : radiusX;
-    radiusY = radiusY === undefined ? radiusX : radiusY;
-    this._drawEllipseInternal(radiusX,radiusY,this._gl.LINE_LOOP);
-};
-
-ContextGL.prototype.drawEllipses = function(){};
-
-ContextGL.prototype.drawEllipsesStroked = function(){};
-
-/**
- * Draws a single triangle.
- * @param p0
- * @param p1
- * @param p2
- */
-ContextGL.prototype.drawTriangle = function(p0,p1,p2){
-    this.drawTriangle9(
-        p0[0],p0[1],p0[2],
-        p1[0],p1[1],p1[2],
-        p2[0],p2[1],p2[2]
-    );
-};
-
-/**
- * Draws a single triangle.
- * @param points
- */
-ContextGL.prototype.drawTriangleFlat = function(points){
-    this.drawTriangle9(
-        points[0],points[1],points[2],
-        points[3],points[4],points[5],
-        points[6],points[7],points[8]
-    );
-};
-
-/**
- * Draws a single triangle.
- * @param x0
- * @param y0
- * @param z0
- * @param x1
- * @param y1
- * @param z1
- * @param x2
- * @param y2
- * @param z2
- */
-ContextGL.prototype.drawTriangle9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
-    this._drawTriangleInternal9(
-        x0,y0,z0,
-        x1,y1,z1,
-        x2,y2,z2,
-        this._gl.TRIANGLES
-    );
-};
-
-/**
- * Draws a single stroked triangle.
- * @param p0
- * @param p1
- * @param p2
- */
-ContextGL.prototype.drawTriangleStroked = function(p0,p1,p2){
-    this.drawTriangleStroked9(
-        p0[0],p0[1],p0[2],
-        p1[0],p1[1],p1[2],
-        p2[0],p2[1],p2[2]
-    );
-};
-
-/**
- * Draws a single stroked triangle.
- * @param points
- */
-ContextGL.prototype.drawTriangleStrokedFlat = function(points){
-    this.drawTriangleStroked9(
-        points[0],points[1],points[2],
-        points[3],points[4],points[5],
-        points[6],points[7],points[8]
-    );
-};
-
-/**
- * Draws a single stroked triangle.
- * @param x0
- * @param y0
- * @param z0
- * @param x1
- * @param y1
- * @param z1
- * @param x2
- * @param y2
- * @param z2
- */
-ContextGL.prototype.drawTriangleStroked9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
-    this._drawTriangleInternal9(
-        x0,y0,z0,
-        x1,y1,z1,
-        x2,y2,z2,
-        this._gl.LINE_LOOP
-    );
-};
-
-/**
- * Draws triangle points.
- * @param p0
- * @param p1
- * @param p2
- */
-ContextGL.prototype.drawTrianglePoints = function(p0,p1,p2){
-    this.drawTrianglePoints9(
-        p0[0],p0[1],p0[2],
-        p1[0],p1[1],p1[2],
-        p2[0],p2[1],p2[2]
-    );
-};
-
-/**
- * Draws triangle points.
- * @param points
- */
-ContextGL.prototype.drawTrianglePointsFlat = function(points){
-    this.drawTrianglePoints9(
-        points[0],points[1],points[2],
-        points[3],points[4],points[5],
-        points[6],points[7],points[8]
-    );
-};
-
-/**
- * Draws triangle points.
- * @param x0
- * @param y0
- * @param z0
- * @param x1
- * @param y1
- * @param z1
- * @param x2
- * @param y2
- * @param z2
- */
-ContextGL.prototype.drawTrianglePoints9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
-    this._drawTriangleInternal9(
-        x0,y0,z0,
-        x1,y1,z1,
-        x2,y2,z2,
-        this._gl.POINTS
-    );
-};
-
-/**
- * Draws a cube.
- */
-ContextGL.prototype.drawCube = function(scale){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoCube);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferCubeColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors, this._drawState.color)){
-            ArrayUtil.fillv4(colors, this._drawState.color);
-        }
-        this.updateVertexBufferData();
-    }
-
-    if(scale !== undefined){
-        this.pushModelMatrix();
-            this.scale1(scale);
-            this.drawElements(this._gl.TRIANGLES,36);
-        this.popModelMatrix();
-    } else {
-        this.drawElements(this._gl.TRIANGLES,36);
-    }
-};
-
-/**
- * Draws a colored cube.
- */
-ContextGL.prototype.drawCubeColored = function(scale){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoCubeColored);
-
-    if(scale !== undefined){
-        this.pushModelMatrix();
-            this.scale(scale);
-            this.drawElements(this._gl.TRIANGLES, 36);
-        this.popModelMatrix();
-    } else {
-        this.drawElements(this._gl.TRIANGLES,36);
-    }
-};
-
-/**
- * Draws cube corner points.
- * @param scale
- */
-ContextGL.prototype.drawCubePoints = function(scale){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoCubePoints);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferCubePointsColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors,this._drawState.color)){
-            ArrayUtil.fillv4(colors,this._drawState.color);
-            this.updateVertexBufferData();
-        }
-    }
-
-    if(scale !== undefined){
-        this.pushModelMatrix();
-            this.scale1(scale);
-            this.drawArrays(this._gl.POINTS,0,8);
-        this.popModelMatrix();
-    } else {
-        this.drawArrays(this._gl.POINTS,0,8);
-    }
-};
-
-/**
- * Draws a stroked cube.
- * @param scale
- */
-ContextGL.prototype.drawCubeStroked = function(scale){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.setVertexArray(this._vaoCubeStroked);
-
-    if(this._programHasAttribColor){
-        this.setVertexBuffer(this._bufferCubeStrokedColor);
-        const colors = this.getVertexBufferData();
-        if(!Vec4.equals(colors,this._drawState.color)){
-            ArrayUtil.fillv4(colors,this._drawState.color);
-            this.updateVertexBufferData();
-        }
-    }
-
-    if(scale !== undefined){
-        this.pushModelMatrix();
-            this.scale1(scale);
-            this.drawElements(this._gl.LINES,24);
-        this.popModelMatrix();
-    } else {
-        this.drawElements(this._gl.LINES,24);
-    }
-};
-
-ContextGL.prototype.drawSphere = function(){};
-
-ContextGL.prototype.drawSpherePoints = function(){};
-
-ContextGL.prototype.drawSphereStroked = function(){};
-
-ContextGL.prototype.drawCylinder = function(){};
-
-/**
- * Draws a fullscreen rectangle.
- * @param size
- */
-ContextGL.prototype.drawFullscreenRect = function(size){
-    if(size === undefined){
-        this.drawFullscreenRect2(size[0],size[1]);
-        return;
-    }
-    this.drawFullscreenRect2(size[0],size[1]);
-};
-
-/**
- * Draws a fullscreen rectangle.
- * @param width
- * @param height
- */
-ContextGL.prototype.drawFullscreenRect2 = function(width,height){
-    width = width === undefined ? 1.0 : width;
-    height = height === undefined ? 1.0 : height;
-    this.drawScreenAlignedRect6(0,0,width,height,width,height);
-};
-
-/**
- * Draws a screen aligned rectangle.
- * @param pos
- * @param size
- * @param windowSize
- * @param topleft
- */
-ContextGL.prototype.drawScreenAlignedRect = function(pos,size,windowSize,topleft){
-    this.drawScreenAlignedRect6(
-        pos[0],pos[1],
-        size[0],size[1],
-        windowSize[0],windowSize[1],
-        topleft
-    );
-};
-
-/**
- * Draws a screen aligned rectangle.
- * @param x
- * @param y
- * @param width
- * @param height
- * @param windowWidth
- * @param windowHeight
- * @param topleft
- */
-ContextGL.prototype.drawScreenAlignedRect6 = function(x,y,width,height,windowWidth,windowHeight,topleft){
-    if(!this._programHasAttribPosition){
-        throw QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    topleft = topleft === undefined ? true : topleft;
-    this.pushMatrices();
-        this.setWindowMatrices2(windowWidth,windowHeight,topleft);
-        this.translate3(x,y,0);
-        this.drawRect2(width,height);
-    this.popMatrices();
-};
-
-ContextGL.prototype.drawPivotAxes = function(axesLength,headLength){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    axesLength = axesLength === undefined ? 1.0 : axesLength;
-    headLength = headLength === undefined ? 0.25 : headLength;
-
-    this._colorPrev = Vec4.set(this._colorPrev,this._drawState.color);
-
-    this.setDrawColor3(1,0,0);
-    this.drawLine6(0,0,0,axesLength,0,0);
-    this.setDrawColor3(0,1,0);
-    this.drawLine6(0,0,0,0,axesLength,0);
-    this.setDrawColor3(0,0,1);
-    this.drawLine6(0,0,0,0,0,axesLength);
-
-    const headSize = headLength * 0.35;
-    const tubeSize = 0.025;
-    const offset = axesLength - headLength;
-
-    //tubes
-
-    this.pushModelMatrix();
-        this.rotateXYZ3(0,0,-Math.PI * 0.5);
-        this.scale3(tubeSize,offset,tubeSize);
-        this._drawTube(1,0,0,1);
-    this.popModelMatrix();
-
-    this.pushModelMatrix();
-        this.scale3(tubeSize,offset,tubeSize);
-        this._drawTube(0,1,0,1);
-    this.popModelMatrix();
-
-    this.pushModelMatrix();
-        this.rotateXYZ3(Math.PI * 0.5,0,0);
-        this.scale3(tubeSize,offset,tubeSize);
-        this._drawTube(0,0,1,1);
-    this.popModelMatrix();
-
-    //heads
-
-    this.pushModelMatrix();
-        this.translate3(0,offset,0);
-        this.scale3(headSize,headLength,headSize);
-        this._drawHead(0,1,0,1);
-    this.popModelMatrix();
-
-    this.pushModelMatrix();
-        this.translate3(offset,0,0);
-        this.rotateXYZ3(0,0,-Math.PI*0.5);
-        this.scale3(headSize,headLength,headSize);
-        this._drawHead(1,0,0,1);
-    this.popModelMatrix();
-
-    this.pushModelMatrix();
-        this.translate3(0,0,offset);
-        this.rotateXYZ3(Math.PI*0.5,0,0);
-        this.scale3(headSize,headLength,headSize);
-        this._drawHead(0,0,1,1);
-    this.popModelMatrix();
-
-    this._drawState.color = Vec4.set(this._drawState.color,this._colorPrev);
-};
-
-/**
- * Draws axes and axes grids.
- * @param scale
- */
-ContextGL.prototype.drawCoordinateFrame = function(scale){};
-
-ContextGL.prototype.drawGizmoTranslation = function(){};
-
-ContextGL.prototype.drawGizmoRotation = function(){};
-
-ContextGL.prototype.drawQuat = function(){};
-
-/**
- * Draws a vector.
- * @param vector
- */
-ContextGL.prototype.drawVector = function(vector){
-    this.drawVector3(vector[0],vector[1],vector[2]);
-};
-
-/**
- * Draws a vector.
- * @param x
- * @param y
- * @param z
- */
-ContextGL.prototype.drawVector3 = function(x,y,z){
-    if(!this._programHasAttribPosition){
-        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    this.pushModelMatrix();
-        //this.rotateQuat(Quat.create)
-    this.popModelMatrix();
-};
-
-/**
- * Draws a vector.
- * @param from
- * @param to
- */
-ContextGL.prototype.drawVectorFromTo = function(from,to){
-    this.drawVectorFromTo6(
-        from[0],from[1],from[2],
-        to[0],to[1],to[2]
-    );
-};
-
-/**
- * Draws a vector.
- * @param fromTo
- */
-ContextGL.prototype.drawVectorFromToFlat = function(fromTo){
-    this.drawVectorFromTo6(
-        fromTo[0],fromTo[1],fromTo[2],
-        fromTo[3],fromTo[4],fromTo[5]
-    );
-};
-
-/**
- * Draws a vector.
- * @param x0
- * @param y0
- * @param z0
- * @param x1
- * @param y1
- * @param z1
- */
-ContextGL.prototype.drawVectorFromTo6 = function(x0,y0,z0,x1,y1,z1){
-    let x = x1 - x0;
-    let y = y1 - y0;
-    let z = z1 - z0;
-    const d = 1.0 / (Math.sqrt(x * x + y * y + z * z) || 1.0);
-    x *= d;
-    y *= d;
-    z *= d;
-    this.pushModelMatrix();
-        this.translate3(x0,y0,z0);
-        this.drawVector3(x,y,z);
-    this.popModelMatrix();
-};
-
-/**
- * Draws a grid.
- * @param size
- * @param subdivs
- */
-ContextGL.prototype.drawGrid = function(size, subdivs){
-    this._drawGridInternal(size,subdivs,this._gl.LINES);
-};
-
-/**
- * Draws points of grid.
- * @param size
- * @param subdivs
- */
-ContextGL.prototype.drawGridPoints = function(size, subdivs){
-    this._drawGridInternal(size,subdivs,this._gl.POINTS);
-};
-
-ContextGL.prototype.drawDebugFrustum = function(){};
-
-ContextGL.prototype.drawDebugOnB = function(){};
-
-ContextGL.prototype.drawDebugRect = function(){};
-
-ContextGL.prototype.drawDebugAABB = function(){};
-
-ContextGL.prototype.drawDebugAABR = function(){};
-
-ContextGL.prototype.drawDebugRay = function(){};
-
-ContextGL.prototype.drawDebugPlane = function(){};
-
-ContextGL.prototype.drawDebugNormals = function(position,normals){
-
-};
-
-ContextGL.prototype.drawDebugNormalsFlat = function(positions,normals){
-
-};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // OPTIONAL SHARED CONTEXT
