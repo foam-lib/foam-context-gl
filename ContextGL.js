@@ -3112,22 +3112,25 @@ ContextGL.prototype.setVertexBufferSubData = function(offset, data){
  * @returns {null|Uint8Array|Uint16Array|Uint32Array|Float32Array}
  */
 ContextGL.prototype.getVertexBufferData = function(id){
-    const target = this._gl.ARRAY_BUFFER;
-    let buffer;
-    //active vertex buffer
-    if(id === undefined){
-        buffer = this._buffers[target][this._bufferActive[target]];
-        if(!buffer){
-            throw new BufferError(strBufferErrorNothingBound(target));
-        }
-    //specific vertex buffer
-    } else {
-        buffer = this._buffers[target][id];
-        if(!buffer){
-            throw new BufferError(strBufferErrorInvalidId(id));
-        }
-    }
-    return buffer.data;
+    return this.getVertexBufferInfo(id).data;
+};
+
+/**
+ * Returns vertex buffer´s data byte length.
+ * @param {Number} [id] - Optional specific buffer
+ * @returns {number|*|null|byteLength}
+ */
+ContextGL.prototype.getVertexBufferDataByteLength = function(id){
+    return this.getVertexBufferInfo(id).byteLength;
+};
+
+/**
+ * Returns vertex buffer´s data length.
+ * @param {Number} [id] - Optional specific buffer
+ * @returns {number|*|null|byteLength}
+ */
+ContextGL.prototype.getVertexBufferDataLength = function(id){
+    return this.getVertexBufferInfo(id).length;
 };
 
 /**
@@ -3266,22 +3269,7 @@ ContextGL.prototype.setIndexBufferSubData = function(offset,data){
  * @returns {null|Uint8Array|Uint16Array|Uint32Array}
  */
 ContextGL.prototype.getIndexBufferData = function(id){
-    const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    let buffer;
-    //active index buffer
-    if(id === undefined){
-        buffer = this._buffers[target][this._bufferActive[target]];
-        if(!buffer){
-            throw new BufferError(strBufferErrorNothingBound(target));
-        }
-    //specific index buffer
-    } else {
-        buffer = this._buffers[target][id];
-        if(!buffer){
-            throw new BufferError(strBufferErrorInvalidId(id));
-        }
-    }
-    return buffer.data;
+    return this.getIndexBufferInfo(id).data;
 };
 
 /**
@@ -3299,15 +3287,29 @@ ContextGL.prototype.setIndexBufferUsage = function(usage){
 
 /**
  * Returns the usage pattern of the index data store set.
+ * @param {Number} [id] - Optional specific buffer
  * @returns {Number}
  */
-ContextGL.prototype.getIndexBufferUsage = function(){
-    const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
-    }
-    return this._buffers[target][id].usage;
+ContextGL.prototype.getIndexBufferUsage = function(id){
+    return this.getIndexBufferInfo(id).usage;
+};
+
+/**
+ * Returns index buffer´s data byte length.
+ * @param {Number} [id] - Optional specific buffer
+ * @returns {number|*|null|byteLength}
+ */
+ContextGL.prototype.getIndexBufferDataLength = function(id){
+    return this.getIndexBufferInfo(id).byteLength;
+};
+
+/**
+ * Returns index buffer´s data length.
+ * @param {Number} [id] - Optional specific buffer
+ * @returns {number|*|null|byteLength}
+ */
+ContextGL.prototype.getIndexBufferDataByteLength = function(id){
+    return this.getIndexBufferInfo(id).length;
 };
 
 /**
