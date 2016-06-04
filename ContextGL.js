@@ -163,12 +163,21 @@ export const ProgramUniform = {
     INVERSE_VIEW_MATRIX : 'uInverseViewMatrix'
 };
 
+export const ProgramMatrixUniform = {
+    PROJECTION_MATRIX : ProgramUniform.PROJECTION_MATRIX,
+    VIEW_MATRIX : ProgramUniform.VIEW_MATRIX,
+    MODEL_MATRIX : ProgramUniform.MODEL_MATRIX,
+    NORMAL_MATRIX : ProgramUniform.NORMAL_MATRIX,
+    INVERSE_VIEW_MATRIX : ProgramUniform.INVERSE_VIEW_MATRIX
+};
+
+
 export const ProgramUniformByMatrixTypeMap = {};
-ProgramUniformByMatrixTypeMap[ProgramUniform.PROJECTION_MATRIX] = MATRIX_PROJECTION;
-ProgramUniformByMatrixTypeMap[ProgramUniform.VIEW_MATRIX] = MATRIX_VIEW;
-ProgramUniformByMatrixTypeMap[ProgramUniform.MODEL_MATRIX] = MATRIX_MODEL;
-ProgramUniformByMatrixTypeMap[ProgramUniform.NORMAL_MATRIX] = MATRIX_NORMAL;
-ProgramUniformByMatrixTypeMap[ProgramUniform.INVERSE_VIEW_MATRIX] = MATRIX_INVERSE_VIEW;
+ProgramUniformByMatrixTypeMap[ProgramMatrixUniform.PROJECTION_MATRIX] = MATRIX_PROJECTION;
+ProgramUniformByMatrixTypeMap[ProgramMatrixUniform.VIEW_MATRIX] = MATRIX_VIEW;
+ProgramUniformByMatrixTypeMap[ProgramMatrixUniform.MODEL_MATRIX] = MATRIX_MODEL;
+ProgramUniformByMatrixTypeMap[ProgramMatrixUniform.NORMAL_MATRIX] = MATRIX_NORMAL;
+ProgramUniformByMatrixTypeMap[ProgramMatrixUniform.INVERSE_VIEW_MATRIX] = MATRIX_INVERSE_VIEW;
 
 export const UNIFORM_NAME_POINT_SIZE = 'uPointSize';
 
@@ -184,7 +193,7 @@ const ATTRIB_NAME_COLOR = 'aColor';
 const ATTRIB_NAME_TEX_COORD = 'aTexCoord';
 const ATTRIB_NAME_NORMAL = 'aNormal;';
 
-const ProgramDefaultAttribLocationBinding = [
+export const ProgramDefaultAttribLocationBinding = [
     {name:ATTRIB_NAME_POSITION, location:ATTRIB_LOCATION_POSITION},
     {name:ATTRIB_NAME_COLOR, location:ATTRIB_LOCATION_COLOR},
     {name:ATTRIB_NAME_TEX_COORD, location:ATTRIB_LOCATION_TEX_COORD},
@@ -538,11 +547,11 @@ function ContextGL(canvas,options){
     this._programActive = null;
     this._programStack = [];
 
-    this.UNIFORM_PROJECTION_MATRIX = ProgramUniform.PROJECTION_MATRIX;
-    this.UNIFORM_VIEW_MATRIX = ProgramUniform.VIEW_MATRIX;
-    this.UNIFORM_MODEL_MATRIX = ProgramUniform.MODEL_MATRIX;
-    this.UNIFORM_NORMAL_MATRIX = ProgramUniform.NORMAL_MATRIX;
-    this.UNIFORM_INVERSE_VIEW_MATRIX = ProgramUniform.INVERSE_VIEW_MATRIX;
+    this.UNIFORM_PROJECTION_MATRIX = ProgramMatrixUniform.PROJECTION_MATRIX;
+    this.UNIFORM_VIEW_MATRIX = ProgramMatrixUniform.VIEW_MATRIX;
+    this.UNIFORM_MODEL_MATRIX = ProgramMatrixUniform.MODEL_MATRIX;
+    this.UNIFORM_NORMAL_MATRIX = ProgramMatrixUniform.NORMAL_MATRIX;
+    this.UNIFORM_INVERSE_VIEW_MATRIX = ProgramMatrixUniform.INVERSE_VIEW_MATRIX;
 
     this.ATTRIB_LOCATION_POSITION =  ATTRIB_LOCATION_POSITION;
     this.ATTRIB_LOCATION_COLOR = ATTRIB_LOCATION_COLOR;
@@ -689,11 +698,11 @@ function ContextGL(canvas,options){
     this._matrixStack[MATRIX_MODEL_BIT] = [];
 
     this._matrixTypeByUniformNameMap = {};
-    this._matrixTypeByUniformNameMap[ProgramUniform.PROJECTION_MATRIX] = MATRIX_PROJECTION;
-    this._matrixTypeByUniformNameMap[ProgramUniform.VIEW_MATRIX] = MATRIX_VIEW;
-    this._matrixTypeByUniformNameMap[ProgramUniform.MODEL_MATRIX] = MATRIX_MODEL;
-    this._matrixTypeByUniformNameMap[ProgramUniform.NORMAL_MATRIX] = MATRIX_NORMAL;
-    this._matrixTypeByUniformNameMap[ProgramUniform.INVERSE_VIEW_MATRIX] = MATRIX_INVERSE_VIEW;
+    this._matrixTypeByUniformNameMap[ProgramMatrixUniform.PROJECTION_MATRIX] = MATRIX_PROJECTION;
+    this._matrixTypeByUniformNameMap[ProgramMatrixUniform.VIEW_MATRIX] = MATRIX_VIEW;
+    this._matrixTypeByUniformNameMap[ProgramMatrixUniform.MODEL_MATRIX] = MATRIX_MODEL;
+    this._matrixTypeByUniformNameMap[ProgramMatrixUniform.NORMAL_MATRIX] = MATRIX_NORMAL;
+    this._matrixTypeByUniformNameMap[ProgramMatrixUniform.INVERSE_VIEW_MATRIX] = MATRIX_INVERSE_VIEW;
 
     // MATRIX TEMP
 
@@ -743,8 +752,6 @@ function ContextGL(canvas,options){
     this._programHasAttribColor = false;
     this._programHasAttribTexCoord = false;
     this._programHasUniformPointSize = false;
-
-
 }
 
 /**
@@ -2274,42 +2281,122 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
         attribLocationBinding_ = attribLocationBinding;
     }
 
+    //validate user bindings
+    if(attribLocationBinding_){
+        const locations = [];
+        for(let i = 0; i < attribLocationBinding_.length; ++i){
+            const binding = attribLocationBinding_[i];
+            if(binding.location === undefined){
+                throw new ProgramError(`Attribute binding at index ${i} has no location specified.`);
+            }
+            if(binding.name === undefined){
+                throw new ProgramError(`Attribute binding at index ${i} has no name specified.`);
+            }
+            if(locations.indexOf(binding.location) !== -1){
+                throw new ProgramError(`Attribute binding at index ${i} has duplicate location ${binding.location}.`);
+            }
+            locations.push(binding.location);
+        }
+    //use default bindings
+    } else {
+        attribLocationBinding_ = ProgramDefaultAttribLocationBinding;
+    }
+
     //compile and attach shaders
-    let vertShader = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrcPrefix + vertSrc);
-    let fragShader = this._compileShaderSource(this._gl.FRAGMENT_SHADER,fragSrcPrefix + fragSrc);
+    const vertShader = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrcPrefix + vertSrc);
+    const fragShader = this._compileShaderSource(this._gl.FRAGMENT_SHADER,fragSrcPrefix + fragSrc);
 
     this._gl.attachShader(program.handle,vertShader);
     this._gl.attachShader(program.handle,fragShader);
 
-    //TODO: Add default bindings
-
-    let attribLocationBindingNames = [];
-    if(attribLocationBinding_){
-        for(let i = 0; i < attribLocationBinding_.length; ++i){
-            const binding = attribLocationBinding_[i];
-            this._gl.bindAttribLocation(
-                program.handle,
-                binding.location,
-                binding.name
-            );
-            attribLocationBindingNames.push(binding.name);
-        }
+    //track attribs bound by map
+    let boundAttributeNames = [];
+    for(let i = 0; i < attribLocationBinding_.length; ++i){
+        const binding = attribLocationBinding_[i];
+        this._gl.bindAttribLocation(
+            program.handle,
+            binding.location,
+            binding.name
+        );
+        boundAttributeNames.push(binding.name);
     }
 
     //link program
-
     this._gl.linkProgram(program.handle);
-
     if(!this._gl.getProgramParameter(program.handle,this._gl.LINK_STATUS)){
         throw new ProgramError(`Program Error: ${this._gl.getProgramInfoLog(program.handle)}`);
     }
 
+    //mark shader to be deleted
     this._gl.deleteShader(vertShader);
     this._gl.deleteShader(fragShader);
 
-    //update uniforms
+    //get actual active program attribs
+    const numAttributes = this._gl.getProgramParameter(program.handle,this._gl.ACTIVE_ATTRIBUTES);
+    program.attributes = {};
+    program.attributesPerLocation = {};
 
-    let numUniforms = this._gl.getProgramParameter(program.handle,this._gl.ACTIVE_UNIFORMS);
+    for(let i = 0; i < numAttributes; ++i){
+        const info = this._gl.getActiveAttrib(program.handle, i);
+        const name = info.name;
+        const attrib = program.attributes[name] = {
+            //type value
+            type : info.type,
+            //type description
+            typeName : GLEnumStringMap[info.type],
+            //location
+            location : this._gl.getAttribLocation(program.handle,name),
+            //defined with attribLocationBinding
+            bindingDefined : boundAttributeNames.indexOf(name) !== -1
+        };
+        //duplicate location binding, conflict user / default / auto
+        if(!!program.attributesPerLocation[attrib.location]){
+            throw new ProgramError(`Attribute with name ${name} bound to location already bound.`);
+        }
+        program.attributesPerLocation[attrib.location] = attrib;
+    }
+
+    //validate user set attribLocationBinding map
+    if(attribLocationBinding_ !== ProgramDefaultAttribLocationBinding){
+        for(let i = 0; i < attribLocationBinding_.length; ++i){
+            const binding = attribLocationBinding_[i];
+            if(program.attributes[binding.name] === undefined){
+                throw new ProgramError(`Attribute with name '${binding.name}' and location ${binding.location} is not present in program.`);
+            }
+        }
+    //remove non-existent default
+    } else {
+        for(let i = 0; i < attribLocationBinding_.length; ++i){
+            const binding = attribLocationBinding_[i];
+            if(program.attributes[binding.name]){
+                continue;
+            }
+            delete program.attributes[binding.name];
+        }
+    }
+
+    //check for unbound attributes
+    for(const name in program.attributes){
+        if(program.attributes[name].bindingDefined){
+           continue;
+        }
+        //check if default binding available
+        let defaultBinding = null;
+        for(let i = 0; i < ProgramDefaultAttribLocationBinding.length; ++i){
+            const binding = ProgramDefaultAttribLocationBinding[i];
+            if(binding.name === name){
+                defaultBinding = binding;
+                break;
+            }
+        }
+        //no binding defined
+        if(!defaultBinding){
+            throw new ProgramError(`Attribute binding not defined for attribute '${name}'.`);
+        }
+    }
+
+    //get uniforms
+    const numUniforms = this._gl.getProgramParameter(program.handle,this._gl.ACTIVE_UNIFORMS);
     program.uniforms = {};
 
     for(let i = 0; i < numUniforms; ++i){
@@ -2325,40 +2412,8 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
         };
     }
 
-    //update attributes
-
-    let numAttributes = this._gl.getProgramParameter(program.handle,this._gl.ACTIVE_ATTRIBUTES);
-    program.attributes = {};
-    program.attributesPerLocation = {};
-
-    for(let i = 0; i < numAttributes; ++i){
-        const info = this._gl.getActiveAttrib(program.handle, i);
-        const name = info.name;
-        const attrib = program.attributes[name] = {
-            //type value
-            type : info.type,
-            //type description
-            typeName : GLEnumStringMap[info.type],
-            //location
-            location : this._gl.getAttribLocation(program.handle,name),
-            //defined with attribLocationBinding
-            bindingDefined : attribLocationBindingNames.indexOf(name) !== -1
-        };
-        program.attributesPerLocation[attrib.location] = attrib;
-    }
-
-    //validate attribLocationBinding map
-    for(let i = 0; i < attribLocationBinding_.length; ++i){
-        const binding = attribLocationBinding_[i];
-        if(program.attributes[binding.name] === undefined){
-            throw new ProgramError(`Attribute with name '${binding.name}' and location ${binding.location} is not present in program.`);
-        }
-    }
-
-    //create setter map
-
+    //create uniform setter map
     const gl = this._gl;
-
     program.uniformSetterMap = {};
     for(let entry in program.uniforms){
         const type = program.uniforms[entry].type;
@@ -2605,8 +2660,8 @@ ContextGL.prototype.setProgram = function(id){
 
     //extract all matrices in program
     this._matrixTypesByUniformInProgram = {};
-    for(let entry in ProgramUniform){
-        const uniformName = ProgramUniform[entry];
+    for(let entry in ProgramMatrixUniform){
+        const uniformName = ProgramMatrixUniform[entry];
         if(!!program.uniforms[uniformName]){
             this._matrixTypesByUniformInProgram[uniformName] = this._matrixTypeByUniformNameMap[uniformName];
         }
@@ -3989,6 +4044,7 @@ ContextGL.prototype.setTexture2dData = function(data,width_or_size,height){
                             texture2d.dataType, data);
         texture2d.width = dataWidth;
         texture2d.height = dataHeight;
+
     //create texture with size, empty or with data
     } else {
         this._gl.texImage2D(this._gl.TEXTURE_2D, texture2d.level,
@@ -4417,7 +4473,7 @@ ContextGL.prototype.setAutoUploadModelMatrix = function(enable){
 
 ContextGL.prototype._updateMatrixUniforms = function(){
     //update normal matrix from view and model matrix
-    if(this._matrixTypesByUniformInProgramToUpdate[ProgramUniform.NORMAL_MATRIX] !== undefined &&
+    if(this._matrixTypesByUniformInProgramToUpdate[ProgramMatrixUniform.NORMAL_MATRIX] !== undefined &&
        (!this._matrixSend[MATRIX_VIEW] || !this._matrixSend[MATRIX_MODEL])){
 
         const matrix44Temp = Mat44.set(this._matrix44Temp,this._matrix[MATRIX_VIEW]);
@@ -4431,7 +4487,7 @@ ContextGL.prototype._updateMatrixUniforms = function(){
     }
 
     //update inverse view matrix from view matrix
-    if (this._matrixTypesByUniformInProgramToUpdate[ProgramUniform.INVERSE_VIEW_MATRIX] !== undefined &&
+    if (this._matrixTypesByUniformInProgramToUpdate[ProgramMatrixUniform.INVERSE_VIEW_MATRIX] !== undefined &&
         (!this._matrixSend[MATRIX_VIEW])) {
         Mat44.invert(Mat44.set(this._matrix[MATRIX_INVERSE_VIEW], this._matrix[MATRIX_VIEW]));
         //flag to send
