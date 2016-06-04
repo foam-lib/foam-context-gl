@@ -3158,15 +3158,26 @@ ContextGL.prototype.getVertexBufferUsage = function(){
 
 /**
  * Returns the current vertex buffer state.
+ * @params {Number} [id] - Optional specific vertex buffer
  * @returns {*}
  */
-ContextGL.prototype.getVertexBufferInfo = function(){
+ContextGL.prototype.getVertexBufferInfo = function(id){
     const target = this._gl.ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
+    let buffer;
+    //active program
+    if(id === undefined){
+        buffer = this._buffers[target][this._bufferActive[target]];
+        if(!buffer){
+            throw new BufferError(strBufferErrorNothingBound(target));
+        }
+    //specific program
+    } else {
+        buffer = this._buffers[target][id];
+        if(!buffer){
+            throw new BufferError(strBufferErrorInvalidId(id));
+        }
     }
-    return this._buffers[target][id];
+    return buffer;
 };
 
 // INDEX BUFFER
@@ -3301,15 +3312,26 @@ ContextGL.prototype.getIndexBufferUsage = function(){
 
 /**
  * Returns the current vertex buffer state.
+ * @params {Number} [id] - Optional specific index buffer
  * @returns {*}
  */
-ContextGL.prototype.getIndexBufferInfo = function(){
+ContextGL.prototype.getIndexBufferInfo = function(id){
     const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
+    let buffer;
+    //active program
+    if(id === undefined){
+        buffer = this._buffers[target][this._bufferActive[target]];
+        if(!buffer){
+            throw new BufferError(strBufferErrorNothingBound(target));
+        }
+    //specific program
+    } else {
+        buffer = this._buffers[target][id];
+        if(!buffer){
+            throw new BufferError(strBufferErrorInvalidId(id));
+        }
     }
-    return this._buffers[target][id];
+    return buffer;
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
