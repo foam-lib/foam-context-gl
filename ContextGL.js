@@ -3148,15 +3148,11 @@ ContextGL.prototype.setVertexBufferUsage = function(usage){
 
 /**
  * Returns the usage pattern of the vertex data store set.
+ * @params {Number} [id] - Optional specific vertex buffer
  * @returns {Number}
  */
-ContextGL.prototype.getVertexBufferUsage = function(){
-    const target = this._gl.ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
-    }
-    return this._buffers[target][id].usage;
+ContextGL.prototype.getVertexBufferUsage = function(id){
+    return this.getVertexBufferInfo(id).usage;
 };
 
 /**
