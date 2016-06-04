@@ -1087,7 +1087,17 @@ QuickDraw.prototype.linesFlat = function(lines){
  * @param size
  */
 QuickDraw.prototype.rect = function(size){
+    size = size || VEC2_ONE;
     this.rect2(size[0],size[1]);
+};
+
+/**
+ * Draws a solid rectangle.
+ * @param size
+ */
+QuickDraw.prototype.rect1 = function(size){
+    size = size || 1.0;
+    this.rect2(size,size);
 };
 
 /**
