@@ -2711,11 +2711,22 @@ ContextGL.prototype.getProgram = function(){
  * Returns the program state.
  * @returns {*}
  */
-ContextGL.prototype.getProgramInfo = function(){
-    if(this._programActive === INVALID_ID){
-        throw new ProgramError(STR_PROGRAM_ERROR_NOTHING_BOUND)
+ContextGL.prototype.getProgramInfo = function(id){
+    let program;
+    //active program
+    if(id === undefined){
+        if(this._programActive === INVALID_ID){
+            throw new ProgramError(STR_PROGRAM_ERROR_NOTHING_BOUND)
+        }
+        program = this._programs[this._programActive];
+    //specific
+    } else {
+        program = this._programs[id];
+        if(!program){
+            throw new ProgramError(strProgramErrorInvalidId(id));
+        }
     }
-    return this._programs[this._programActive];
+    return program;
 };
 
 /**
