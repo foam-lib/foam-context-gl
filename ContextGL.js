@@ -2719,7 +2719,7 @@ ContextGL.prototype.getProgramInfo = function(id){
             throw new ProgramError(STR_PROGRAM_ERROR_NOTHING_BOUND)
         }
         program = this._programs[this._programActive];
-    //specific
+    //specific program
     } else {
         program = this._programs[id];
         if(!program){
@@ -3113,17 +3113,21 @@ ContextGL.prototype.setVertexBufferSubData = function(offset, data){
  */
 ContextGL.prototype.getVertexBufferData = function(id){
     const target = this._gl.ARRAY_BUFFER;
+    let buffer;
+    //active vertex buffer
     if(id === undefined){
-        id = this._bufferActive[target];
-        if(id === INVALID_ID){
+        buffer = this._buffers[target][this._bufferActive[target]];
+        if(!buffer){
             throw new BufferError(strBufferErrorNothingBound(target));
         }
+    //specific vertex buffer
     } else {
-        if(!this._buffers[target][id]){
+        buffer = this._buffers[target][id];
+        if(!buffer){
             throw new BufferError(strBufferErrorInvalidId(id));
         }
     }
-    return this._buffers[target][id].data;
+    return buffer.data;
 };
 
 /**
@@ -3252,17 +3256,21 @@ ContextGL.prototype.setIndexBufferSubData = function(offset,data){
  */
 ContextGL.prototype.getIndexBufferData = function(id){
     const target = this._gl.ELEMENT_ARRAY_BUFFER;
+    let buffer;
+    //active index buffer
     if(id === undefined){
-        id = this._bufferActive[target];
-        if(id === INVALID_ID){
+        buffer = this._buffers[target][this._bufferActive[target]];
+        if(!buffer){
             throw new BufferError(strBufferErrorNothingBound(target));
         }
+    //specific index buffer
     } else {
-        if(!this._buffers[target][id]){
+        buffer = this._buffers[target][id];
+        if(!buffer){
             throw new BufferError(strBufferErrorInvalidId(id));
         }
     }
-    return this._buffers[target][id].data;
+    return buffer.data;
 };
 
 /**
