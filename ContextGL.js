@@ -3829,7 +3829,7 @@ function strTextureInvalidSize(width,height){
     return `Invalid texture size: ${width}, ${height}.`;
 }
 
-const STR_TEXTURE_ERROR_NOTHING_BOUND = 'No texture active.s';
+const STR_TEXTURE_ERROR_NOTHING_BOUND = 'No texture active.';
 
 const DefaultConfigTexture2d = Object.freeze({
     //The level of detail. Level 0 is the base image level and level n
@@ -3850,14 +3850,33 @@ const DefaultConfigTexture2d = Object.freeze({
     //A GLint specifying the color components in the texture
     format: WebGLRenderingContext.RGBA,
     internalFormat: null,
+    //type of the texel data
+    dataType : WebGLRenderingContext.UNSIGNED_BYTE,
     //shared min mag filter
     minMagFilter : null,
     //filter applied when tex smaller then orig
-    minFilter : WebGLRenderingContext.NEAREST_MIPMAP_LINEAR,
+    minFilter : WebGLRenderingContext.NEAREST,
     //filter applied when tex larger then orig
     magFilter : WebGLRenderingContext.LINEAR,
     //if true mipmap is generated
+    flipY : true,
     mipmap : false
+});
+
+const DefaultConfigTexture2dData = Object.freeze({
+    width: null,
+    height: null,
+    wrap : DefaultConfigTexture2d.wrap,
+    wrapS : null,
+    wrapT : null,
+    format : DefaultConfigTexture2d.format,
+    internalFormat : null,
+    dataType : DefaultConfigTexture2d.dataType,
+    minMagFilter : DefaultConfigTexture2d.minMagFilter,
+    minFilter : null,
+    magFilter : null,
+    flipY : DefaultConfigTexture2d.flipY,
+    mipmap : DefaultConfigTexture2d.mipmap
 });
 
 ContextGL.prototype._setTextureState = function(state){
@@ -3896,106 +3915,43 @@ ContextGL.prototype.popTextureBinding = function(){
 ContextGL.prototype.createTexture2d = function(data,config){
     config = validateOption(config,DefaultConfigTexture2d);
 
-    config.internalFormat = !config.internalFormat ? config.format : config.internalFormat;
-    config.wrapS = !config.wrapS ? config.wrap : config.wrapS;
-    config.wrapT = !config.wrapT ? config.wrap : config.wrapT;
-
-    if(config.internalFormat !== config.format){
-        //TODO: Add proper warning webgl1
-        console.warn('format !== internalFormat');
-    }
-
     const id = this._uid++;
     this._textures[id] = {
         handle : this._gl.createTexture(),
+        unit: -1,
         width : null,
         height: null,
-        level: 0,
+        level: config.level,
         border: false,
         borderWidth: 0,
         internalFormat: null,
         format: null,
+        internalFormatName : '',
+        formatName : '',
+        dataType: null,
+        dataTypeName: '',
         wrapS: null,
         wrapT: null,
+        wrapSName : '',
+        wrapTName : '',
         minFilter: null,
-        magFilter: null
+        magFilter: null,
+        minFilterName : '',
+        magFilterName : '',
+        mipmap : false
     };
 
-    this.pushTextureBinding();
-        this.setTexture2d(id);
-        this.setTexture2dWrap(config.wrapS,config.wrapT);
-        this.setTexture2dFilter(config.minFilter,config.magFilter);
-        this.setTexture2dData(data,config.width,config.height);
-        ////TODO: compressed texture
-        ////TODO: mipmap
-    this.popTextureBinding();
-
-    //options.level = options.level || 0;
-    //
-    //options = {
-    //    repeat: null, //shorthand for gl_REPEAT wrap s/t
-    //    wrap : null,
-    //    wrapS : null,
-    //    wrapT : null,
-    //    format: null,
-    //    internalFormat: null,
-    //    mipmap : false
-    //};
-    //
-    //const format = this._gl.RGBA;
-    //
-    //const id = this._uid++;
-    //const texture2d = this._textures[id] = {
-    //    handle: this._gl.createTexture(),
-    //    target : this._gl.TEXTURE_2D,
-    //    width : null,
-    //    height: null,
-    //    //ignoring
-    //    border: false,
-    //    borderWidth: 0,
-    //    //A GLint specifying the color components in the texture
-    //    internalFormat: format,
-    //    //A GLenum specifying the format of the texel data. In WebGL 1,
-    //    //this must be the same as internalformat.
-    //    format: format,
-    //    //A GLenum specifying the data type of the texel data
-    //    type: this._gl.TEXTURE_2D,
-    //    //The level of detail. Level 0 is the base image level and level n
-    //    //is the nth mipmap reduction level
-    //    level : options.level,
-    //    //wrap parameter for s
-    //    wrapS : this._gl.REPEAT,
-    //    //wrap parameter for t
-    //    wrapT : this._gl.REPEAT,
-    //    //filter applied when tex smaller then orig
-    //    minFilter : this._gl.NEAREST_MIPMAP_LINEAR,
-    //    //filter applied when tex larger then orig
-    //    magFilter : this._gl.LINEAR
-    //};
+    const dataConfig = {};
+    for(const key in DefaultConfigTexture2dData){
+        dataConfig[key] = config[key];
+    }
 
     //this.pushTextureBinding();
-    //    this.setTexture2d(texture2d);
-    //
-    //    //create texture with image, imagedata, video, canvas
-    //    if(data && (data instanceof Image || data instanceof ImageData ||
-    //                data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement)){
-    //        this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.format, options.dataType, data);
-    //    //create texture with size, empty or with data
-    //    } else {
-    //        this._gl.texImage2D(this._gl.TEXTURE_2D, options.level, options.internalFormat, options.width, options.height,
-    //                            0, options.format, options.dataType, data || null);
-    //    }
-    //
-    //    //set wrapS/wrapT
-    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, options.wrapS);
-    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, options.wrapT);
-    //    //set min/mag filter
-    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, options.minFilter);
-    //    this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, options.magFilter);
-    //
-    //    if(options.mipmap){
-    //        this._gl.generateMipmap(this._gl.TEXTURE_2D);
-    //    }
+        this.setTexture2d(id);
+        this.setTexture2dData(data,dataConfig);
+        ////TODO: compressed texture
+        ////TODO: mipmap
+        console.assert(this.getGLError());
     //this.popTextureBinding();
 };
 
@@ -4004,91 +3960,143 @@ ContextGL.prototype.setTexture2d = function(id,textureUnit){
     if(id === this._textureActive[textureUnit]){
         return;
     }
-    const texture2d = this._textures[id];
-    if(!texture2d){
+    const texture = this._textures[id];
+    if(!texture){
         throw new TextureError(strTextureErrorInvalidId(id));
     }
-    this._gl.activeTexture(this._gl.TEXTURE0 + textureUnit);
+    //update active unit
+    if(textureUnit !== this._textureUnitActive){
+        this._gl.activeTexture(this._gl.TEXTURE0 + textureUnit);
+        this._textureUnitActive = textureUnit;
+    }
+    //bind
+    this._gl.bindTexture(this._gl.TEXTURE_2D, texture.handle);
     this._textureActive[textureUnit] = id;
-    this._textureUnitActive = textureUnit;
+    texture.unit = textureUnit;
 };
 
-ContextGL.prototype.setTexture2dWrap = function(wrapS_or_wrapS_and_wrapT,wrapT){
+ContextGL.prototype.setTexture2dData = function(data,config){
     const id = this._textureActive[this._textureUnitActive];
     if(!id){
         throw new TextureError(strTextureNotActive(id,this._textureActive));
     }
-    const texture2d = this._textures[id];
-    if(!texture2d){
+    const texture = this._textures[id];
+    if(!texture){
         throw new TextureError(strTextureErrorInvalidId(id))
     }
-    wrapT = wrapT === undefined ? wrapS_or_wrapS_and_wrapT : wrapT;
-    if(texture2d.wrapS !== wrapS_or_wrapS_and_wrapT){
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, wrapS_or_wrapS_and_wrapT);
-        texture2d.wrapS = wrapS_or_wrapS_and_wrapT;
+    config = validateOption(config,DefaultConfigTexture2dData);
+
+    //wrap
+    const wrap = config.wrap;
+    const wrapT = config.wrapT || wrap;
+    const wrapS = config.wrapS || wrap;
+    if(texture.wrapS !== wrapS){
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, wrapS);
+        texture.wrapS = wrapS;
+        texture.wrapSName = glEnumToString(wrapS);
     }
-    if(texture2d.wrapT !== wrapT){
+    if(texture.wrapT !== wrapT){
         this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, wrapT);
-        texture2d.wrapT = wrapT;
+        texture.wrapT = wrapT;
+        texture.wrapTName = glEnumToString(wrapT);
     }
-};
 
-ContextGL.prototype.setTexture2dFilter = function(minFilter_or_minFilter_and_magFilter,magFilter){
-    const id = this._textureActive[this._textureUnitActive];
-    if(!id){
-        throw new TextureError(strTextureNotActive(id,this._textureActive));
+    //filter
+    const filter = config.filter;
+    const filterMag = config.magFilter || filter;
+    let filterMin = config.minFilter;
+    //validate filter set for mipmap
+    if(config.mipmap){
+        if(filterMin && filterMin !== this._gl.NEAREST_MIPMAP_LINEAR &&
+                        filterMin !== this._gl.NEAREST_MIPMAP_NEAREST &&
+                        filterMin !== this._gl.LINEAR_MIPMAP_LINEAR){
+            throw new TextureError(`Invalid mipmap minFilter '${glEnumToString(filterMin)}'`);
+        } else {
+            filterMin = filterMin || this._gl.NEAREST_MIPMAP_LINEAR;
+        }
+    } else {
+        filterMin = filterMin || filter;
     }
-    const texture2d = this._textures[id];
-    if(!texture2d){
-        throw new TextureError(strTextureErrorInvalidId(id))
-    }
-    magFilter = minFilter_or_minFilter_and_magFilter;
-    if(this._textureActive.minFilter !== minFilter_or_minFilter_and_magFilter){
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, minFilter_or_minFilter_and_magFilter);
-        this._textureActive.minFilter = minFilter_or_minFilter_and_magFilter;
-    }
-    if(this._textureActive.magFilter !== magFilter){
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, magFilter);
-        this._textureActive.magFilter = magFilter;
-    }
-};
+    texture.mipmap = config.mipmap;
 
-ContextGL.prototype.setTexture2dData = function(data,width_or_size,height){
-    const id = this._textureActive[this._textureUnitActive];
-    if(!id){
-        throw new TextureError(strTextureNotActive(id,this._textureActive));
+    if(texture.minFilter !== filterMin){
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, filterMin);
+        texture.minFilter = filterMin;
+        texture.minFilterName = glEnumToString(filterMin);
     }
-    const texture2d = this._textures[id];
-    if(!texture2d){
-        throw new TextureError(strTextureErrorInvalidId(id))
+    if(texture.magFilter !== filterMag){
+        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, filterMag);
+        texture.magFilter = filterMag;
+        texture.magFilterName = glEnumToString(filterMag);
     }
-    width_or_size = (width_or_size === undefined || width_or_size === null) ? -1 : width_or_size;
-    height = width_or_size === -1 ? -1 : (height === undefined || height === null) ? width_or_size : height;
+
+    //format
+    const format = config.format;
+    const formatInternal = config.internalFormat || format;
+    if(this._glVersion === 1 && format !== formatInternal){
+        //TODO: throw
+        console.warn('format !== internalFormat');
+    }
+    if(texture.format !== format){
+        texture.format = format;
+        texture.formatName = glEnumToString(format);
+    }
+    if(texture.internalFormat !== formatInternal){
+        texture.internalFormat = formatInternal;
+        texture.internalFormatName = glEnumToString(format);
+    }
+
+    //flip
+    const flipY = config.flipY;
+    if(flipY && data){
+        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, flipY);
+    }
+    texture.flipY = flipY;
+
+    //dataType
+    const dataType = config.dataType;
+    if(dataType !== texture.dataType){
+        texture.dataType = dataType;
+        texture.dataTypeName = glEnumToString(dataType);
+    }
+
+    //data size
+    let width  = config.width || 0;
+    let height = config.height || 0;
 
     //data from Image, ImageData, Video, Canvas
     if(data && (data instanceof Image || data instanceof ImageData ||
                 data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement)){
+        width  = !width  ? (data.width || data.videoWidth || 0) : width;
+        height = !height ? (data.height || data.videoHeight || 0) : height;
 
-        //get size
-        const dataWidth  = width_or_size !== -1 ? (data.width  || data.videoWidth || 0) : width_or_size;
-        const dataHeight = height !== -1 ? (data.height || data.videoHeight || 0) : height;
-
-        //validate size
-        if(dataWidth === 0 || dataHeight === 0){
-            throw new Error(strTextureInvalidSize(dataWidth,dataHeight));
+        if(!width || !height){
+            throw new TextureError(strTextureInvalidSize(width,height));
         }
-        //update
-        this._gl.texImage2D(this._gl.TEXTURE_2D, texture2d.level,
-                            texture2d.internalFormat, texture2d.format,
-                            texture2d.dataType, data);
-        texture2d.width = dataWidth;
-        texture2d.height = dataHeight;
+        this._gl.texImage2D(
+            this._gl.TEXTURE_2D,
+            texture.level, texture.internalFormat, texture.format,
+            texture.dataType, data
+        );
 
     //create texture with size, empty or with data
     } else {
-        this._gl.texImage2D(this._gl.TEXTURE_2D, texture2d.level,
-                            texture2d.internalFormat, texture2d.width, texture2d.height,
-                            0, texture2d.format, texture2d.dataType, data || null);
+        if(!width || !height){
+            throw new TextureError(strTextureInvalidSize(width,height));
+        }
+        this._gl.texImage2D(
+            this._gl.TEXTURE_2D,
+            texture.level, texture.internalFormat,
+            texture.width, texture.height,
+            0, texture.format, texture.dataType, data || null
+        );
+    }
+
+    texture.width = width;
+    texture.height = height;
+
+    if(texture.mipmap){
+        this._gl.generateMipmap(this._gl.TEXTURE_2D);
     }
 };
 
@@ -4110,6 +4118,24 @@ ContextGL.prototype.deleteTexture2d = function(id){
     delete this._textures[id];
 
     this._gl.activeTexture(this._gl.TEXTURE0 + this._textureUnitActive);
+};
+
+ContextGL.prototype.getTexture2dInfo = function(id){
+    let texture;
+    //active texture
+    if(id === undefined){
+        texture = this._textures[this._textureActive[this._textureUnitActive]];
+        if(!texture){
+            throw new TextureError(STR_TEXTURE_ERROR_NOTHING_BOUND);
+        }
+    //specific texture
+    } else {
+        texture = this._textures[id];
+        if(!texture){
+            throw new TextureError(strTextureErrorInvalidId(id));
+        }
+    }
+    return texture;
 };
 
 ContextGL.prototype.hasTexture2d = function(id){
@@ -4932,10 +4958,6 @@ ContextGL.prototype.setState = function(state){
         this.setModelMatrix(state.matrixModel);
     }
 };
-
-/*--------------------------------------------------------------------------------------------------------------------*/
-// QUICK DRAW
-/*--------------------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // OPTIONAL SHARED CONTEXT
