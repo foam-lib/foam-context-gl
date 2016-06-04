@@ -7,7 +7,7 @@ const VEC2_ZERO = [0,0];
 const VEC2_ONE = [1,1];
 
 function QuickDraw(ctx){
-    ctx = this._ctx = ctx || QuickDraw.sharedContext();
+    ctx = this._ctx = ctx || ContextGL.sharedContext();
 
     this._numSegmentsCircleMin  = 3;
     this._numSegmentsCircleMax  = 128;
