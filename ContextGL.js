@@ -4082,9 +4082,9 @@ ContextGL.prototype.setTexture2dData = function(data,config){
         width  = !width  ? (data.width || data.videoWidth || 0) : width;
         height = !height ? (data.height || data.videoHeight || 0) : height;
 
-        //if(!width || !height){
-        //    throw new TextureError(strTextureInvalidSize(width,height));
-        //}
+        if(!width || !height){
+            throw new TextureError(strTextureInvalidSize(width,height));
+        }
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
             texture.level, texture.internalFormat, texture.format,
