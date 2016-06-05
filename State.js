@@ -292,6 +292,36 @@ BlendState.prototype.getDescription = function(){
 };
 
 /**
+ * Texture binding representation
+ * @param textureActive
+ * @param textureUnitActive
+ * @constructor
+ */
+export function TextureState(textureActive,textureUnitActive){
+    this.textureActive = textureActive.slice(0);
+    this.textureUnitActive = textureUnitActive;
+}
+
+/**
+ * Returns a copy of the state.
+ * @returns {TextureState}
+ */
+TextureState.prototype.copy = function(){
+    return new TextureState(this.textureActive,this.textureUnitActive);
+};
+
+/**
+ * Returns a string description of the state.
+ * @returns {{textureActive, textureUnitActive: *}}
+ */
+TextureState.prototype.getDescription = function(){
+    return {
+        textureActive : arrStr(this.textureActive),
+        textureUnitActive : this.textureUnitActive
+    };
+};
+
+/**
  * Quickdraw state representation
  * @param color
  * @param lineWidth
