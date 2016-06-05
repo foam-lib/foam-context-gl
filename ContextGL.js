@@ -23,6 +23,11 @@ import {
     DrawState
 } from './State';
 
+//Safari does not expose static WebGLRenderingContext constants
+//TODO: remove and get internally needed static constants from instance,
+//this should not be managed manually
+import * as WebGLStaticConstants from  './Constants';
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 // DEFINES
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -32,8 +37,8 @@ const VEC2_ONE = [1,1];
 const AXIS_Y = [0,1,0];
 
 const GLEnumStringMap = {};
-for(let key in WebGLRenderingContext){
-    GLEnumStringMap[WebGLRenderingContext[key]] = key;
+for(let key in WebGLStaticConstants){
+    GLEnumStringMap[WebGLStaticConstants[key]] = key;
 }
 
 const INVALID_ID = null;
@@ -2828,8 +2833,8 @@ function strBufferErrorInvalidId(id){
     return `Invalid buffer with id ${id}`;
 }
 function strBufferErrorNothingBound(target){
-    return `No buffer for target '${target === WebGLRenderingContext.ARRAY_BUFFER ? 'ARRAY_BUFFER' :
-                                    target === WebGLRenderingContext.ELEMENT_ARRAY_BUFFER ? 'ELEMENT_ARRAY_BUFFER' :
+    return `No buffer for target '${target === WebGLStaticConstants.ARRAY_BUFFER ? 'ARRAY_BUFFER' :
+                                    target === WebGLStaticConstants.ELEMENT_ARRAY_BUFFER ? 'ELEMENT_ARRAY_BUFFER' :
                                     'INVALID'}' bound.`
 }
 
@@ -3842,22 +3847,22 @@ const DefaultConfigTexture2d = Object.freeze({
     border: false,
     borderWidth: 0,
     //shared wrap t/s
-    wrap :  WebGLRenderingContext.REPEAT,
+    wrap :  WebGLStaticConstants.REPEAT,
     //wrap parameter for s
     wrapS : null,
     //wrap parameter for t
     wrapT : null,
     //A GLint specifying the color components in the texture
-    format: WebGLRenderingContext.RGBA,
+    format: WebGLStaticConstants.RGBA,
     internalFormat: null,
     //type of the texel data
-    dataType : WebGLRenderingContext.UNSIGNED_BYTE,
+    dataType : WebGLStaticConstants.UNSIGNED_BYTE,
     //shared min mag filter
     minMagFilter : null,
     //filter applied when tex smaller then orig
-    minFilter : WebGLRenderingContext.NEAREST,
+    minFilter : WebGLStaticConstants.NEAREST,
     //filter applied when tex larger then orig
-    magFilter : WebGLRenderingContext.LINEAR,
+    magFilter : WebGLStaticConstants.LINEAR,
     //if true mipmap is generated
     flipY : true,
     mipmap : false
@@ -3953,6 +3958,8 @@ ContextGL.prototype.createTexture2d = function(data,config){
         ////TODO: mipmap
         console.assert(this.getGLError());
     //this.popTextureBinding();
+
+    return id;
 };
 
 ContextGL.prototype.setTexture2d = function(id,textureUnit){
@@ -3975,6 +3982,11 @@ ContextGL.prototype.setTexture2d = function(id,textureUnit){
     texture.unit = textureUnit;
 };
 
+/**
+ * Initializes the current texture2d data setup.
+ * @param data
+ * @param config
+ */
 ContextGL.prototype.setTexture2dData = function(data,config){
     const id = this._textureActive[this._textureUnitActive];
     if(!id){
@@ -4049,7 +4061,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     //flip
     const flipY = config.flipY;
     if(flipY && data){
-        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, flipY);
+        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, true);
     }
     texture.flipY = flipY;
 
@@ -4070,9 +4082,9 @@ ContextGL.prototype.setTexture2dData = function(data,config){
         width  = !width  ? (data.width || data.videoWidth || 0) : width;
         height = !height ? (data.height || data.videoHeight || 0) : height;
 
-        if(!width || !height){
-            throw new TextureError(strTextureInvalidSize(width,height));
-        }
+        //if(!width || !height){
+        //    throw new TextureError(strTextureInvalidSize(width,height));
+        //}
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
             texture.level, texture.internalFormat, texture.format,
@@ -4087,7 +4099,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
             texture.level, texture.internalFormat,
-            texture.width, texture.height,
+            width, height,
             0, texture.format, texture.dataType, data || null
         );
     }
@@ -4100,6 +4112,36 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     }
 };
 
+/**
+ * Updates texture2d data, must be initialized previously.
+ * @param data
+ */
+ContextGL.prototype.updateTexture2dData = function(data){
+    const id = this._textureActive[this._textureUnitActive];
+    if(!id){
+        throw new TextureError(strTextureNotActive(id,this._textureActive));
+    }
+    const texture = this._textures[id];
+    if(!texture){
+        throw new TextureError(strTextureErrorInvalidId(id))
+    }
+    if(data instanceof Image || data instanceof ImageData ||
+       data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement){
+        this._gl.texImage2D(
+            this._gl.TEXTURE_2D,
+            texture.level, texture.internalFormat, texture.format,
+            texture.dataType, data
+        );
+    } else {
+        this._gl.texImage2D(
+            this._gl.TEXTURE_2D,
+            texture.level, texture.internalFormat,
+            texture.width, texture.height,
+            0, texture.format, texture.dataType, data || null
+        );
+    }
+};
+
 ContextGL.prototype.deleteTexture2d = function(id){
     const texture = this._textures[id];
     if(!texture){
@@ -4107,9 +4149,10 @@ ContextGL.prototype.deleteTexture2d = function(id){
     }
 
     for(const unit in this._textureActive){
-        if(this._textureActive[unit] === id){
-            this._textureActive[unit] = null;
-            this._gl.activeTexture(this._gl.TEXTURE0 + unit);
+        const unit_ = +unit;
+        if(this._textureActive[unit_] === id){
+            this._textureActive[unit_] = null;
+            this._gl.activeTexture(this._gl.TEXTURE0 + unit_);
             this._gl.bindTexture(this._gl.TEXTURE_2D, texture.handle);
         }
     }
@@ -4136,6 +4179,15 @@ ContextGL.prototype.getTexture2dInfo = function(id){
         }
     }
     return texture;
+};
+
+ContextGL.prototype.getTexture2dSize = function(id_or_out,out){
+    if(id_or_out === undefined || Array.isArray(id_or_out)){
+        const texture = this.getTexture2dInfo();
+        return Vec2.set2(id_or_out || Vec2.create(),texture.width,texture.height);
+    }
+    const texture = this.getTexture2dInfo(id_or_out);
+    return Vec2.set2(out || Vec2.create(),texture.width,texture.height);
 };
 
 ContextGL.prototype.hasTexture2d = function(id){
