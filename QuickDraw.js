@@ -111,7 +111,7 @@ function QuickDraw(ctx){
         new Float32Array([0,0, 1,0, 1,1, 0,1]),ctx.STATIC_DRAW
     );
     this._bufferRectTexcoord = ctx.createVertexBuffer(
-        new Float32Array([0,0, 1,0, 1,1, 0,1]),ctx.STATIC_DRAW
+        new Float32Array([0,0, 1,0, 1,1, 0,1]),ctx.DYNAMIC_DRAW,true
     );
     this._bufferRectPointsColor = ctx.createVertexBuffer(
         new Float32Array(ArrayUtil.createWithValuesArgs(4,1,1,1,1)), ctx.DYNAMIC_DRAW,true
@@ -1080,6 +1080,52 @@ QuickDraw.prototype.linesFlat = function(lines){
     }
 
     this._ctx.drawArrays(this._ctx.LINES,0,numElements);
+};
+
+/**
+ * Sets the uv coordinates used by rect draw calls.
+ * @param uv0
+ * @param uv1
+ * @param uv2
+ * @param uv3
+ */
+QuickDraw.prototype.setRectTexCoord = function(uv0,uv1,uv2,uv3){
+    this.setRectTexCoord2(uv0[0],uv0[1],uv1[0],uv1[1],uv2[0],uv2[1],uv3[0],uv3[1]);
+};
+
+/**
+ * Sets the uv coordinates used by rect draw calls.
+ * @param u0
+ * @param v0
+ * @param u1
+ * @param v1
+ * @param u2
+ * @param v2
+ * @param u3
+ * @param v3
+ */
+QuickDraw.prototype.setRectTexCoord2 = function(u0,v0,u1,v1,u2,v2,u3,v3){
+    this._ctx.pushBufferBinding();
+        this._ctx.setVertexBuffer(this._bufferRectTexcoord);
+        const data = this._ctx.getVertexBufferData();
+        if(u0 !== data[0] || v0 !== data[1] ||
+           u1 !== data[2] || v1 !== data[3] ||
+           u2 !== data[4] || v2 !== data[5] ||
+           u3 !== data[6] || v3 !== data[7]){
+            data[0] = u0; data[1] = v0;
+            data[2] = u1; data[3] = v1;
+            data[4] = u2; data[5] = v2;
+            data[6] = u3; data[7] = v3;
+            this._ctx.updateVertexBufferData();
+        }
+    this._ctx.popBufferBinding();
+};
+
+/**
+ * Resets the uv coordinates used by rect draw calls.
+ */
+QuickDraw.prototype.resetRectTexCoord = function(){
+    this.setRectTexCoord2(0,0,1,0,1,1,0,1);
 };
 
 /**
