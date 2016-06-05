@@ -20,7 +20,8 @@ import {
     ColorState,
     LineWidthState,
     BlendState,
-    DrawState
+    DrawState,
+    TextureState
 } from './State';
 
 //Safari does not expose static WebGLRenderingContext constants
@@ -626,8 +627,7 @@ function ContextGL(canvas,options){
     this.MAX_TEXTURE_IMAGE_UNITS = this._gl.getParameter(this._gl.MAX_TEXTURE_IMAGE_UNITS);
 
     this._textures = {};
-    this._textureActive = new Array(this.MAX_TEXTURE_IMAGE_UNITS);
-    this._textureUnitActive = 0;
+    this._textureState = new TextureState(new Array(this.MAX_TEXTURE_IMAGE_UNITS),0);
     this._textureStack = [];
 
     this.NEAREST = this._gl.NEAREST;
@@ -3884,27 +3884,27 @@ const DefaultConfigTexture2dData = Object.freeze({
     mipmap : DefaultConfigTexture2d.mipmap
 });
 
-ContextGL.prototype._setTextureState = function(state){
-    const textureUnitActive = this._textureUnitActive;
+ContextGL.prototype._setTextureBindingState = function(state){
+    const textureActive = state.textureActive;
     for(let i = 0; i < this.MAX_TEXTURE_IMAGE_UNITS; ++i){
-        const id = state[i];
+        const id = textureActive[i];
         if(!id){
             continue;
         }
-        this.setTexture2d(state[i],i);
+        this.setTexture2d(state.textureActive[i],i);
     }
-    this._textureUnitActive = textureUnitActive;
+    this._textureState.textureUnitActive = state.textureUnitActive;
 };
 
 /**
  * Saves the current texture binding.
  */
 ContextGL.prototype.pushTextureBinding = function(newState){
-    this._textureStack.push(this._textureActive.slice(0));
+    this._textureStack.push(this._textureState.copy());
     if(newState === undefined){
         return;
     }
-    this._setTextureState(newState);
+    this._setTextureBindingState(newState);
 };
 
 /**
@@ -3914,7 +3914,11 @@ ContextGL.prototype.popTextureBinding = function(){
     if(this._textureStack.length === 0){
         throw new Error(STR_ERROR_INVALID_STACK_POP);
     }
-    this._setTextureState(this._textureStack.pop());
+    this._setTextureBindingState(this._textureStack.pop());
+};
+
+ContextGL.prototype.getTextureBindingState = function(){
+    return this._textureState.copy();
 };
 
 ContextGL.prototype.createTexture2d = function(data,config){
@@ -3951,20 +3955,20 @@ ContextGL.prototype.createTexture2d = function(data,config){
         dataConfig[key] = config[key];
     }
 
-    //this.pushTextureBinding();
+    this.pushTextureBinding();
         this.setTexture2d(id);
         this.setTexture2dData(data,dataConfig);
         ////TODO: compressed texture
         ////TODO: mipmap
         console.assert(this.getGLError());
-    //this.popTextureBinding();
+    this.popTextureBinding();
 
     return id;
 };
 
 ContextGL.prototype.setTexture2d = function(id,textureUnit){
     textureUnit = textureUnit || 0;
-    if(id === this._textureActive[textureUnit]){
+    if(id === this._textureState.textureActive[textureUnit]){
         return;
     }
     const texture = this._textures[id];
@@ -3972,13 +3976,13 @@ ContextGL.prototype.setTexture2d = function(id,textureUnit){
         throw new TextureError(strTextureErrorInvalidId(id));
     }
     //update active unit
-    if(textureUnit !== this._textureUnitActive){
+    if(textureUnit !== this._textureState.textureUnitActive){
         this._gl.activeTexture(this._gl.TEXTURE0 + textureUnit);
-        this._textureUnitActive = textureUnit;
+        this._textureState.textureUnitActive = textureUnit;
     }
     //bind
     this._gl.bindTexture(this._gl.TEXTURE_2D, texture.handle);
-    this._textureActive[textureUnit] = id;
+    this._textureState.textureActive[textureUnit] = id;
     texture.unit = textureUnit;
 };
 
@@ -3988,9 +3992,9 @@ ContextGL.prototype.setTexture2d = function(id,textureUnit){
  * @param config
  */
 ContextGL.prototype.setTexture2dData = function(data,config){
-    const id = this._textureActive[this._textureUnitActive];
+    const id = this._textureState.textureActive[this._textureState.textureUnitActive];
     if(!id){
-        throw new TextureError(strTextureNotActive(id,this._textureActive));
+        throw new TextureError(strTextureNotActive(id,this._textureState.textureUnitActive));
     }
     const texture = this._textures[id];
     if(!texture){
@@ -4117,9 +4121,9 @@ ContextGL.prototype.setTexture2dData = function(data,config){
  * @param data
  */
 ContextGL.prototype.updateTexture2dData = function(data){
-    const id = this._textureActive[this._textureUnitActive];
+    const id = this._textureState.textureActive[this._textureState.textureUnitActive];
     if(!id){
-        throw new TextureError(strTextureNotActive(id,this._textureActive));
+        throw new TextureError(strTextureNotActive(id,this._textureState.textureUnitActive));
     }
     const texture = this._textures[id];
     if(!texture){
@@ -4148,10 +4152,10 @@ ContextGL.prototype.deleteTexture2d = function(id){
         throw new TextureError(strTextureErrorInvalidId(id));
     }
 
-    for(const unit in this._textureActive){
+    for(const unit in this._textureState.textureActive){
         const unit_ = +unit;
-        if(this._textureActive[unit_] === id){
-            this._textureActive[unit_] = null;
+        if(this._textureState.textureActive[unit_] === id){
+            this._textureState.textureActive[unit_] = null;
             this._gl.activeTexture(this._gl.TEXTURE0 + unit_);
             this._gl.bindTexture(this._gl.TEXTURE_2D, texture.handle);
         }
@@ -4160,14 +4164,14 @@ ContextGL.prototype.deleteTexture2d = function(id){
     this._gl.deleteTexture(texture.handle);
     delete this._textures[id];
 
-    this._gl.activeTexture(this._gl.TEXTURE0 + this._textureUnitActive);
+    this._gl.activeTexture(this._gl.TEXTURE0 + this._textureState.textureUnitActive);
 };
 
 ContextGL.prototype.getTexture2dInfo = function(id){
     let texture;
     //active texture
     if(id === undefined){
-        texture = this._textures[this._textureActive[this._textureUnitActive]];
+        texture = this._textures[this._textureState.textureActive[this._textureState.textureUnitActive]];
         if(!texture){
             throw new TextureError(STR_TEXTURE_ERROR_NOTHING_BOUND);
         }
@@ -4195,12 +4199,12 @@ ContextGL.prototype.hasTexture2d = function(id){
 };
 
 ContextGL.prototype.getTexture2d = function(textureUnit){
-    textureUnit = textureUnit === undefined ? this._textureUnitActive : textureUnit;
-    return this._textureActive[textureUnit] || null;
+    textureUnit = textureUnit === undefined ? this._textureState.textureUnitActive : textureUnit;
+    return this._textureState.textureActive[textureUnit] || null;
 };
 
 ContextGL.prototype.getTextureUnitActive = function(){
-    return this._textureUnitActive;
+    return this._textureState.textureUnitActive;
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -4906,8 +4910,7 @@ ContextGL.prototype.getState = function(mask){
     }
     //texture
     if((mask & TEXTURE_BINDING_BIT) == TEXTURE_BINDING_BIT){
-        state.textureBinding = null;
-        console.warn('Warning texture binding bit state not implemented yet.');
+        state.textureBinding = this.getTextureBindingState();
     }
     //framebuffer
     if((mask & FRAMEBUFFER_BINDING_BIT) == FRAMEBUFFER_BINDING_BIT){
@@ -4995,7 +4998,7 @@ ContextGL.prototype.setState = function(state){
         this.setIndexBuffer(state.indexBufferBinding);
     }
     if(state.textureBinding !== undefined){
-        console.warn('Warning texture binding bit state not implemented yet.');
+        this._setTextureBindingState(state.textureBinding);
     }
     if(state.framebufferBinding !== undefined){
         this.setFramebuffer(state.framebufferBinding);
