@@ -282,7 +282,9 @@ function ContextGL(canvas,options){
         glCapabilities = {
             INSTANCED_ARRAYS : false,
             VERTEX_ARRAYS : false,
-            ELEMENT_INDEX_UINT : false
+            ELEMENT_INDEX_UINT : false,
+            DRAW_BUFFERS:  false,
+            DEPTH_TEXTURE : false
         };
     }
 
@@ -356,8 +358,38 @@ function ContextGL(canvas,options){
         glCapabilities.VERTEX_ARRAYS = true;
     }
 
-    //anisotropy
+    //draw buffers, no shim
+    if(!this._gl.drawBuffers){
+        let ext = this._gl.getExtension('WEBGL_draw_buffers');
+        let maxDrawBuffers = 1;
+        let maxColorAttachments = 1;
+        if(ext){
+            maxDrawBuffers = this._gl.getParameter(ext.MAX_DRAW_BUFFERS_WEBGL);
+            maxColorAttachments = this._gl.getParameter(ext.MAX_COLOR_ATTACHMENTS_WEBGL);
+            this._gl.drawBuffers = ext.drawBuffersWEBGL.bind(ext);
+            this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
+        } else {
+            this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersNotSupported;
+            glCapabilities.DRAW_BUFFERS = true;
+        }
+        this.MAX_DRAW_BUFFERS = maxDrawBuffers;
+        this.MAX_COLOR_ATTACHMENTS = maxColorAttachments;
+    } else {
+        this.MAX_DRAW_BUFFERS = this._gl.MAX_DRAW_BUFFERS;
+        this.MAX_COLOR_ATTACHMENTS = this._gl.MAX_COLOR_ATTACHMENTS;
+        this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
+        glCapabilities.DRAW_BUFFERS = true;
+    }
 
+    //depth texture, no shim
+    //TODO: angle?
+    const extDepthTexture = this._gl.getExtension('WEBGL_depth_texture');
+    if(extDepthTexture){
+        this.UNSIGNED_INT_24_8 = extDepthTexture.UNSIGNED_INT_24_8_WEBGL;
+    }
+    glCapabilities.DEPTH_TEXTURE = !!extDepthTexture;
+
+    //anisotropy
     glCapabilities.ELEMENT_INDEX_UINT = !!this._gl.getExtension('OES_element_index_uint');
     this._glCapabilites = Object.freeze(glCapabilities);
 
@@ -663,6 +695,12 @@ function ContextGL(canvas,options){
     console.assert(this.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
+    // Renderbuffers
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    this._renderbuffers = {};
+
+    /*----------------------------------------------------------------------------------------------------------------*/
     // Framebuffers
     /*----------------------------------------------------------------------------------------------------------------*/
 
@@ -681,6 +719,9 @@ function ContextGL(canvas,options){
     this.MAX_RENDERBUFFER_SIZE = this._gl.getParameter(this._gl.MAX_RENDERBUFFER_SIZE);
     this.MAX_VIEWPORT_DIMS = glObjToArray(this._gl.getParameter(this._gl.MAX_VIEWPORT_DIMS));
     console.assert(this.getGLError());
+
+    this.DEPTH_ATTACHMENT = this._gl.DEPTH_ATTACHMENT;
+    this.DEPTH_STENCIL_ATTACHMENT = this._gl.DEPTH_STENCIL_ATTACHMENT;
 
     /*----------------------------------------------------------------------------------------------------------------*/
     // Matrix
@@ -2649,7 +2690,7 @@ ContextGL.prototype.setProgram = function(id){
         this.invalidateProgram();
         return;
     }
-    let program = this._programs[id];
+    const program = this._programs[id];
     if(!program){
         throw new ProgramError(strProgramErrorInvalidId(id));
     }
@@ -3812,7 +3853,7 @@ ContextGL.prototype.vertexArrayHasDivisor = function(){
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-// TEXTURE
+// TEXTURE INTERNAL
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 export class TextureError extends Error{
@@ -3832,6 +3873,14 @@ function strTextureNotActive(id,textureUnit){
 
 function strTextureInvalidSize(width,height){
     return `Invalid texture size: ${width}, ${height}.`;
+}
+
+function isSupportedTextureData(data){
+    if(!data){
+        return false;
+    }
+    return data instanceof Image || data instanceof ImageData ||
+           data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement;
 }
 
 const STR_TEXTURE_ERROR_NOTHING_BOUND = 'No texture active.';
@@ -3884,6 +3933,43 @@ const DefaultConfigTexture2dData = Object.freeze({
     mipmap : DefaultConfigTexture2d.mipmap
 });
 
+//target texture create internal
+ContextGL.prototype._createTexture = function(target){
+    const id = this._uid++;
+    this._textures[id] = {
+        handle : this._gl.createTexture(),
+        target : target,
+        unit: -1,
+        width : null,
+        height: null,
+        level: 0,
+        border: false,
+        borderWidth: 0,
+        internalFormat: null,
+        format: null,
+        internalFormatName : '',
+        formatName : '',
+        dataType: null,
+        dataTypeName: '',
+        wrapS: null,
+        wrapT: null,
+        wrapSName : '',
+        wrapTName : '',
+        minFilter: null,
+        magFilter: null,
+        minFilterName : '',
+        magFilterName : '',
+        mipmap : false
+    };
+    return id;
+};
+
+///texture delete internal
+ContextGL.prototype._deleteTexture = function(id){
+    this._gl.deleteTexture(this._textures[id].handle);
+    delete this._textures[id];
+};
+
 ContextGL.prototype._setTextureBindingState = function(state){
     const textureActive = state.textureActive;
     for(let i = 0; i < this.MAX_TEXTURE_IMAGE_UNITS; ++i){
@@ -3895,6 +3981,10 @@ ContextGL.prototype._setTextureBindingState = function(state){
     }
     this._textureState.textureUnitActive = state.textureUnitActive;
 };
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// TEXTURE PUBLIC
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * Saves the current texture binding.
@@ -3921,34 +4011,24 @@ ContextGL.prototype.getTextureBindingState = function(){
     return this._textureState.copy();
 };
 
-ContextGL.prototype.createTexture2d = function(data,config){
+ContextGL.prototype.createTexture2d = function(data_or_config,config){
+    let data = null;
+    if(config === undefined){
+        //only data passed
+        if(isSupportedTextureData(data_or_config)){
+            data = data_or_config;
+        //assuming only config passed
+        } else {
+            config = data_or_config;
+        }
+    //data and config passed
+    } else {
+        data = data_or_config;
+    }
     config = validateOption(config,DefaultConfigTexture2d);
 
-    const id = this._uid++;
-    this._textures[id] = {
-        handle : this._gl.createTexture(),
-        unit: -1,
-        width : null,
-        height: null,
-        level: config.level,
-        border: false,
-        borderWidth: 0,
-        internalFormat: null,
-        format: null,
-        internalFormatName : '',
-        formatName : '',
-        dataType: null,
-        dataTypeName: '',
-        wrapS: null,
-        wrapT: null,
-        wrapSName : '',
-        wrapTName : '',
-        minFilter: null,
-        magFilter: null,
-        minFilterName : '',
-        magFilterName : '',
-        mipmap : false
-    };
+    const id = this._createTexture(this._gl.TEXTURE_2D);
+    this._textures[id].level = config.level;
 
     const dataConfig = {};
     for(const key in DefaultConfigTexture2dData){
@@ -4081,8 +4161,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     let height = config.height || 0;
 
     //data from Image, ImageData, Video, Canvas
-    if(data && (data instanceof Image || data instanceof ImageData ||
-                data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement)){
+    if(isSupportedTextureData(data)){
         width  = !width  ? (data.width || data.videoWidth || 0) : width;
         height = !height ? (data.height || data.videoHeight || 0) : height;
 
@@ -4161,9 +4240,7 @@ ContextGL.prototype.deleteTexture2d = function(id){
         }
     }
 
-    this._gl.deleteTexture(texture.handle);
-    delete this._textures[id];
-
+    this._deleteTexture(id);
     this._gl.activeTexture(this._gl.TEXTURE0 + this._textureState.textureUnitActive);
 };
 
@@ -4194,6 +4271,15 @@ ContextGL.prototype.getTexture2dSize = function(id_or_out,out){
     return Vec2.set2(out || Vec2.create(),texture.width,texture.height);
 };
 
+ContextGL.prototype.getTexture2dBounds = function(id_or_out,out){
+    if(id_or_out === undefined || Array.isArray(id_or_out)){
+        const texture = this.getTexture2dInfo();
+        return Rect.set4(id_or_out || Rect.create(),0,0,texture.width,texture.height);
+    }
+    const texture = this.getTexture2dInfo(id_or_out);
+    return Rect.set4(out || Rect.create(),0,0,texture.width,texture.height);
+};
+
 ContextGL.prototype.hasTexture2d = function(id){
     return !!this._textures[id];
 };
@@ -4208,8 +4294,107 @@ ContextGL.prototype.getTextureUnitActive = function(){
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-// FRAMEBUFFER
+// RENDERBUFFER
 /*--------------------------------------------------------------------------------------------------------------------*/
+
+ContextGL.prototype._createRenderbufferRAW = function(){
+    const id = this._uid++;
+    this._renderbuffers[id] = this._gl.createRenderbuffer();
+    return id;
+};
+
+ContextGL.prototype._deleteRenderbufferRAW = function(id){
+    this._gl.deleteRenderbuffer(this._renderbuffers[id]);
+    delete this._renderbuffers[id];
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// FRAMEBUFFER INTERNAL
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+export class FramebufferError extends Error{
+    constructor(msg){
+        super(msg);
+        this.name = 'FramebufferError';
+    }
+}
+
+function strFramebufferInvalidId(id){
+    return `Invalid framebuffer id ${id}.`;
+}
+
+const STR_FRAME_BUFFER_ERROR_NOTHING_BOUND = 'No program active.';
+
+
+const DefaultConfigFramebufferColorAttachment = Object.freeze({
+
+});
+
+const DefaultConfigFramebufferDepthAttachment = Object.freeze({
+
+});
+
+const DefaultConfigFramebufferDepthStencilAttachment = Object.freeze({
+
+});
+
+const DefaultConfigFramebuffer = Object.freeze({
+    //optional width - default: drawingBufferWidth
+    width: null,
+    //optional height - default: drawingBufferHeight
+    height: null,
+    //creates a single default color attachment
+    colorAttachments: true,
+    //if default or no specific color texture source used
+    colorAttachmentDataType: null,
+    //number of auto color attachments
+    numColorAttachments: 1,
+    //creates a default depth attachment
+    depthAttachment: false,
+    //data type for depth only attachment, UNSIGNED_SHORT || UNSIGNED_INT
+    depthAttachmentDataType: WebGLStaticConstants.UNSIGNED_INT,
+    //creates a default depth stencil attachment
+    depthStencilAttachment: true
+});
+
+//set on draw buffers extension check or webgl2
+ContextGL.prototype._setFramebufferColorAttachment = null;
+
+//not webgl2 or drawbuffers extension not supported
+ContextGL.prototype._setFramebufferColorAttachmentDrawBuffersNotSupported = function(texture, attachmentPoint, mipmapLevel){
+    attachmentPoint = attachmentPoint || 0;
+    if(attachmentPoint > 0){
+        throw new FramebufferError('Draw buffers extension not supported. Only 1 attachment point available.');
+    }
+    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.COLOR_ATTACHMENT0,
+        texture.target, texture.handle,
+        mipmapLevel || 0
+    );
+};
+
+//webgl2 or drawbuffers extension supported
+ContextGL.prototype._setFramebufferColorAttachmentDrawBuffersSupported = function(texture, attachmentPoint, mipmapLevel){
+    attachmentPoint = attachmentPoint || 0;
+    if((attachmentPoint + 1) > this.MAX_COLOR_ATTACHMENTS){
+        throw new FramebufferError(`Invalid attachment point ${attachmentPoint}. Max attachment points supported: ${this.MAX_COLOR_ATTACHMENTS}.`);
+    }
+    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.COLOR_ATTACHMENT0 + attachmentPoint,
+        texture.target, texture.handle,
+        mipmapLevel || 0
+    );
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// FRAMEBUFFER PUBLIC
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+ContextGL.prototype.invalidateFramebuffer = function(){
+    if(this._framebufferActive === null){
+        return;
+    }
+    this._gl.bindFramebuffer(this._gl.FRAMEBUFFER,null);
+    this._framebufferActive = null;
+};
 
 /**
  * Saves the current framebuffer array binding.
@@ -4219,7 +4404,7 @@ ContextGL.prototype.pushFramebufferBinding = function(newState){
     if(newState === undefined){
         return;
     }
-    this.setFramebuffer(this._framebufferActive);
+    this.setFramebuffer(newState);
 };
 
 /**
@@ -4232,7 +4417,236 @@ ContextGL.prototype.popFramebufferBinding = function(){
     this.setFramebuffer(this._framebufferStack.pop());
 };
 
-ContextGL.prototype.createFramebuffer = function(colorAttachments,depthAttachment){};
+/**
+ * Creates a framebuffer.
+ * @example
+ * //Creates a framebuffer the size of the drawing buffer with one default color and a depth attachment.
+ * const framebuffer = cctx.createFrameBuffer();
+ *
+ * //creates a framebuffer the size of the drawing buffer with 3 color attachments and depth attachment.
+ * const framebuffer = cctx.createFramebuffer({
+ *     colorAttachment: true,
+ *     numColorAttachment: 3.
+ *     depthAttachment: true
+ * });
+ *
+ * //creates a framebuffer with specific size and one default color attachment and depth attachment.
+ * const framebuffer = cctx.createFramebuffer({
+ *     width: 800,
+ *     height:600
+ * });
+ *
+ * //Creates a framebuffer from source color attachment textures, size depends on textures passed.
+ * const framebuffer = cctx.createFramebuffer([
+ *     {type: ctx.COLOR_ATTACHMENT, src: texture0, attachmentPoint: 0},
+ *     {type: ctx.COLOR_ATTACHMENT, src: texture1, attachmentPoint: 1}
+ *     {type: ctx.DEPTH_ATTACHMENT, src, texture2}
+ * ]);
+ *
+ * //Single attachments can also be defined later
+ * const framebuffer = ctx.createFramebuffer({
+ *     width: 800,
+ *     height: 600,
+ *     colorAttachment: true,
+ *     numColorAttachments: 2,
+ *     depthAttachment: false
+ * });
+ *
+ * //set active framebuffer
+ * ctx.setFramebuffer(framebuffer);
+ * //sets a depth attachment
+ * ctx.setFramebufferColorAttachment(ctx.DEPTH_ATTACHMENT,texture0);
+ * //sets a color attachment at attachment point 3
+ * ctx.setFramebufferColorAttachment(ctx.COLOR_ATTACHMENT,texture1,3);
+ *
+ * @param attachments_or_config
+ */
+ContextGL.prototype.createFramebuffer = function(attachments_or_config){
+    const id = this._uid++;
+    const framebuffer = this._framebuffers[id] = {
+        handle: this._gl.createFramebuffer(),
+        //color attachment textures or texture
+        colorAttachments : [],
+        attachmentPoints : [],
+        //stencilDepth or depth attachment texture or renderbuffer
+        stencilDepth_or_depthAttachment: null
+    };
+
+    this.pushFramebufferBinding();
+        this.setFramebuffer(id);
+        if(attachments_or_config !== undefined){
+
+            //CREATE FROM CONFIG
+
+            if(!Array.isArray(attachments_or_config)){
+                const config = attachments_or_config;
+                config.depthAttachmentFormat = config.depthAttachmentFormat || this.UNSIGNED_INT_24_8;
+
+                let width = config.width === null ? this._gl.drawingBufferWidth : config.width;
+                let height = config.height === null ? this._gl.drawingBufferHeight : config.height;
+
+                //Generate auto attachments
+                if(config.colorAttachments ||
+                    config.depthAttachment ||
+                    config.depthStencilAttachment){
+                    //validate width
+                    if(width <= 0 || height <= 0){
+                        throw new FramebufferError(`Invalid size ${width},${height}.`);
+                    }
+
+                    //Create auto color attachments
+                    if(config.colorAttachments){
+                        const numAttachments = config.numColorAttachments || 1;
+                        const config_ = {
+                            width : width,
+                            height : height,
+                            filter : this._gl.NEAREST,
+                            wrap : this._gl.CLAMP_TO_EDGE,
+                            format : null,
+                            dataType : null
+                        };
+                        for(let i = 0; i < numAttachments; ++i){
+                            const textureId = this.createTexture2d(config_);
+                            const texture = this._textures[textureId];
+                            //throws if above MAX_COLOR_ATTACHMENTS
+                            this._setFramebufferColorAttachment(texture, i, 0);
+                            framebuffer.colorAttachments.push(textureId);
+                            framebuffer.attachmentPoints.push(this._gl.COLOR_ATTACHMENT0 + i);
+                        }
+                        this._gl.drawBuffers(framebuffer.attachmentPoints);
+                    }
+
+                    /* Create auto depth attachments */
+                    if(config.depthAttachment || config.depthStencilAttachment){
+                        let stencilDepth_or_depthAttachment;
+
+                        //create auto depth,stencil attachments via texture
+                        if(this._glVersion === 2 || this._glCapabilites.DEPTH_TEXTURE){
+                            const config_ = {
+                                width : width,
+                                height : height,
+                                filter : this._gl.NEAREST,
+                                wrap : this._gl.CLAMP_TO_EDGE,
+                                format : null,
+                                dataType : null
+                            };
+                            let attachmentPoint;
+                            //depth stencil attachment
+                            if(config.depthStencilAttachment){
+                                config_.format = this._gl.DEPTH_STENCIL;
+                                //depth bits >= 24, stencil bits >= 8
+                                config_.dataType = this.UNSIGNED_INT_24_8;
+                                attachmentPoint = this._gl.DEPTH_STENCIL_ATTACHMENT;
+                                //only depth attachment
+                            }else{
+                                config_.format = this._gl.DEPTH_COMPONENT;
+                                //depth bits >= 16
+                                config_.dataType = config.depthAttachmentDataType || this._gl.UNSIGNED_INT;
+                                attachmentPoint = this._gl.DEPTH_ATTACHMENT;
+                            }
+                            //create and attach texture to framebuffer
+                            const textureId = this.createTexture2d(config_);
+                            const texture = this._textures[textureId];
+                            this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, attachmentPoint, this._gl.TEXTURE_2D,
+                                texture.handle, 0);
+
+                            stencilDepth_or_depthAttachment = textureId;
+
+                        //create depth,stencil buffers
+                        }else{
+                            //render buffer binding currently not managed
+                            const renderbufferPrev = this._gl.getParameter(this._gl.RENDERBUFFER);
+                            const renderbufferId = this._createRenderbufferRAW();
+                            const renderbuffer = this._renderbuffers[renderbufferId];
+
+                            let internalFormat;
+                            let attachmentPoint;
+
+                            //depth stencil attachment
+                            if(config.depthStencilAttachment){
+                                internalFormat = this._gl.DEPTH_STENCIL;
+                                attachmentPoint = this._gl.DEPTH_STENCIL_ATTACHMENT;
+                                //depth attachment
+                            }else{
+                                internalFormat = this._gl.DEPTH_COMPONENT16;
+                                attachmentPoint = this._gl.DEPTH_ATTACHMENT;
+                            }
+
+                            this._gl.bindRenderbuffer(this._gl.RENDERBUFFER, renderbuffer);
+                            this._gl.renderbufferStorage(this._gl.RENDERBUFFER, internalFormat, width, height);
+                            this._gl.bindRenderbuffer(this._gl.RENDERBUFFER, renderbufferPrev);
+
+                            this._gl.framebufferRenderbuffer(this._gl.FRAMEBUFFER, attachmentPoint, this._gl.RENDERBUFFER, renderbuffer)
+
+                            stencilDepth_or_depthAttachment = renderbufferId;
+                        }
+
+                        framebuffer.stencilDepth_or_depthAttachment = stencilDepth_or_depthAttachment;
+                    }
+                }
+
+                //CREATE FROM SPECIFIC ATTACHMENTS
+
+
+            }
+        }
+
+    this.popFramebufferBinding();
+    return id;
+};
+
+ContextGL.prototype.setFramebuffer = function(id){
+    if(id === this._framebufferActive){
+        return;
+    } else if(id === null || id === undefined){
+        this.invalidateFramebuffer();
+        return;
+    }
+    const framebuffer = this._framebuffers[id];
+    if(!framebuffer){
+        throw new FramebufferError(strFramebufferInvalidId(id));
+    }
+    this._gl.bindFramebuffer(this._gl.FRAMEBUFFER, framebuffer.handle);
+    this._framebufferActive = id;
+};
+
+/**
+ * Sets a frambuffers color-, depth-, and depth-stencil-attachment.
+ * @example
+ * @param type
+ * @param attachmentId
+ * @param [attachmentPoint_or_mipmapLevel]
+ * @param [mipmapLevel]
+ */
+ContextGL.prototype.setFramebufferColorAttachment = function(type, attachmentId, attachmentPoint_or_mipmapLevel, mipmapLevel){
+};
+
+ContextGL.prototype.setFramebufferSize = function(size){
+    this.setFramebufferSize2(size[0],size[1]);
+};
+
+ContextGL.prototype.setFramebufferSize2 = function(width,height){
+
+    this.pushTextureBinding();
+
+    this.popTextureBinding();
+};
+
+ContextGL.prototype.getFramebufferSize = function(id_or_out,out){
+
+};
+
+ContextGL.prototype.getFramebufferBounds = function(id_or_out,out){
+
+};
+
+ContextGL.prototype.getFramebufferInfo = function(id){
+
+};
+
+ContextGL.prototype.getFramebufferDepthAttachment = function(){
+
+};
 
 ContextGL.prototype.deleteFramebuffer = function(id){};
 
