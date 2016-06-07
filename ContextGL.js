@@ -4634,35 +4634,66 @@ ContextGL.prototype.setFramebufferSize2 = function(width,height){
     this.popTextureBinding();
 };
 
+/**
+ * Returns the size of the current active or a specific framebuffer, the smallest size gets returned.
+ * @param id_or_out
+ * @param out
+ */
 ContextGL.prototype.getFramebufferSize = function(id_or_out,out){
-
+    if(id_or_out === undefined || Array.isArray(id_or_out)){
+        const framebuffer = this.getFramebufferInfo(id_or_out);
+        return Vec2.set2(id_or_out || Vec2.create(), framebuffer.width, framebuffer.height);
+    }
+    const framebuffer = this.getFramebufferInfo(id_or_out);
+    return Vec2.set2(out || Vec2.create(), framebuffer.width, framebuffer.height);
 };
 
+/**
+ * Returns the bound of the current active or a specific framebuffer, the smallest bounds get returned.
+ * @param id_or_out
+ * @param out
+ * @returns {*}
+ */
 ContextGL.prototype.getFramebufferBounds = function(id_or_out,out){
-
+    if(id_or_out === undefined || Array.isArray(id_or_out)){
+        const framebuffer = this.getFramebufferInfo(id_or_out);
+        return Rect.set4(id_or_out || Rect.create(),0,0,framebuffer.width,framebuffer.height);
+    }
+    const framebuffer = this.getFramebufferInfo(id_or_out);
+    return Rect.set4(out || Rect.create(),0,0,framebuffer.width,framebuffer.height);
 };
 
-ContextGL.prototype.getFramebufferInfo = function(id){
-
-};
 
 ContextGL.prototype.getFramebufferDepthAttachment = function(){
 
 };
 
-ContextGL.prototype.deleteFramebuffer = function(id){};
+ContextGL.prototype.deleteFramebuffer = function(id){
+    this._gl.deleteFramebuffer(this._framebuffers[id].handle);
+    delete this._framebuffers[id];
+};
 
-ContextGL.prototype.hasFramebuffer = function(id){};
+ContextGL.prototype.hasFramebuffer = function(id){
+    return !!this._framebuffers[id];
+};
 
-ContextGL.prototype.getActiveFramebuffer = function(){};
-
-ContextGL.prototype.getFramebufferState = function(id){};
-
-ContextGL.prototype.getFramebufferSize = function(id){};
-
-ContextGL.prototype.getFramebufferWidth = function(id){};
-
-ContextGL.prototype.getFramebufferHeight = function(id){};
+ContextGL.prototype.getFramebufferInfo = function(id){
+    let framebuffer;
+    //active framebuffer
+    if(id === undefined){
+        framebuffer = this._framebuffers[this._framebufferActive];
+        if(!framebuffer){
+            throw new FramebufferError(STR_FRAME_BUFFER_ERROR_NOTHING_BOUND);
+        }
+    //specific framebuffer
+    } else {
+        framebuffer = this._framebuffers[id];
+        if(!framebuffer){
+            throw new FramebufferError(strFramebufferInvalidId(id));
+        }
+    }
+    return framebuffer;
+};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // MATRIX STACK
