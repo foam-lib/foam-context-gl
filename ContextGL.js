@@ -4988,6 +4988,16 @@ ContextGL.prototype.translate = function(v){
  * Translates the current model matrix.
  * @param x
  * @param y
+ */
+ContextGL.prototype.translate2 = function(x,y){
+    Mat44.translate3(this._matrix[MATRIX_MODEL],x,y,0);
+    this._matrixSend[MATRIX_MODEL] = false;
+};
+
+/**
+ * Translates the current model matrix.
+ * @param x
+ * @param y
  * @param z
  */
 ContextGL.prototype.translate3 = function(x,y,z){
