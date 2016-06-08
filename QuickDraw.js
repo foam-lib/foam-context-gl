@@ -1233,8 +1233,8 @@ QuickDraw.prototype.rectStroked = function(size){
  * @param size
  */
 QuickDraw.prototype.rectStroked1 = function(size){
-    this.rectStroked(size,size);
-}
+    this.rectStroked2(size,size);
+};
 
 /**
  * Draws a stroked rectangle.
