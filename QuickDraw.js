@@ -768,6 +768,22 @@ QuickDraw.prototype.getDrawState = function(){
 };
 
 /**
+ * Saves the current draw and transformation state.
+ */
+QuickDraw.prototype.save = function(){
+    this.pushDraw();
+    this._ctx.pushModelMatrix();
+};
+
+/**
+ * Restores the previously saved draw and transformation state.
+ */
+QuickDraw.prototype.restore = function(){
+    this._ctx.popModelMatrix();
+    this.popDraw();
+};
+
+/**
  * Sets the draw color.
  * @param color
  */
