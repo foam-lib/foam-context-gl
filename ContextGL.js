@@ -4355,6 +4355,8 @@ const DefaultConfigFramebuffer = Object.freeze({
     depthAttachmentDataType: WebGLStaticConstants.UNSIGNED_INT,
     //creates a default depth stencil attachment
     depthStencilAttachment: true,
+    //if true all attachments will be deleted if the framebuffer gets disposed
+    deleteAttachments : true,
     //if true, renderbuffers will be used as depth and stencil attachmnents
     forceFallbackDepthStencilAttachment: false
 });
@@ -4481,7 +4483,9 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
         colorAttachments : [],
         attachmentPoints : [],
         //stencilDepth or depth attachment texture or renderbuffer
-        stencilDepth_or_depthAttachment: null
+        stencilDepth_or_depthAttachment: null,
+        //delete attachments on dispose
+        deleteAttachments : true
     };
 
     attachments_or_config = !attachments_or_config || DefaultConfigFramebuffer;
@@ -4605,14 +4609,17 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
 
                     framebuffer.stencilDepth_or_depthAttachment = stencilDepth_or_depthAttachment;
                 }
-                framebuffer.width = width;
-                framebuffer.height = height;
             }
+            framebuffer.width = width;
+            framebuffer.height = height;
+            framebuffer.deleteAttachments = config.deleteAttachments;
+
         //CREATE FROM SPECIFIC ATTACHMENTS
         } else {
+            const attachments = attachments_or_config;
+
             width = Number.MAX_VALUE;
             height = Number.MAX_VALUE;
-            const attachments = attachments_or_config;
             for(let i = 0;i < attachments.length; ++i){
                 const attachment = attachments[i];
                 if(attachment.src === undefined){
@@ -4677,12 +4684,12 @@ ContextGL.prototype.setFramebufferColorAttachment = function(type, attachmentId,
  * @returns {*}
  */
 ContextGL.prototype.getFramebufferColorAttachment = function(framebuffer_or_attachment,attachmentPoint){
+    let framebuffer, attachment;
     if(attachmentPoint === undefined){
         if(framebuffer_or_attachment === this._framebufferActive){
             return this.getFramebufferInfo().colorAttachments[0];
         }
-        let framebuffer = this._framebuffers[framebuffer_or_attachment];
-        let attachment;
+        framebuffer = this._framebuffers[framebuffer_or_attachment];
         if(!framebuffer){
             attachment = framebuffer.colorAttachments[framebuffer_or_attachment];
         } else {
@@ -4693,8 +4700,8 @@ ContextGL.prototype.getFramebufferColorAttachment = function(framebuffer_or_atta
         }
         return attachment;
     }
-    const framebuffer = this.getFramebufferInfo(framebuffer_or_attachment);
-    const attachment = framebuffer.colorAttachments[attachmentPoint];
+    framebuffer = this.getFramebufferInfo(framebuffer_or_attachment);
+    attachment = framebuffer.colorAttachments[attachmentPoint];
     if(!attachment){
         throw new FramebufferError(`Invalid attachment point ${attachmentPoint}.`);
     }
@@ -4735,7 +4742,7 @@ ContextGL.prototype.getFramebufferDepthAttachment = function(framebuffer){
  * @param texture
  */
 //TODO: what happens to the already existing depth attachment?
-//TODO: split unsported / supported func
+//TODO: split unsupported / supported func
 ContextGL.prototype.setFramebufferDepthStencilAttachment = function(texture){
     if(!this._glCapabilites.DEPTH_TEXTURE){
         throw new FramebufferError(`Depth stencil texture attachment not supported.`);
@@ -4793,8 +4800,32 @@ ContextGL.prototype.getFramebufferBounds = function(id_or_out,out){
  * @param id
  */
 ContextGL.prototype.deleteFramebuffer = function(id){
+    const framebuffer = this._framebuffers[id];
+    if(!framebuffer){
+        throw new FramebufferError(strFramebufferInvalidId(id));
+    }
+
+    //TODO: Add active texture invalidation
+    if(framebuffer.deleteAttachments){
+        for(let i = 0; i < framebuffer.colorAttachments.length; ++i){
+            this._deleteTexture(framebuffer.colorAttachments[i]);
+        }
+
+        if(framebuffer.stencilDepth_or_depthAttachment){
+            if(this._glVersion === 2 || this._glCapabilites.DEPTH_TEXTURE){
+                this._deleteTexture(framebuffer.stencilDepth_or_depthAttachment)
+            } else {
+                this._deleteRenderbufferRAW(framebuffer.stencilDepth_or_depthAttachment);
+            }
+        }
+    }
+
     this._gl.deleteFramebuffer(this._framebuffers[id].handle);
     delete this._framebuffers[id];
+
+    if(this._framebufferActive === id){
+        this.invalidateFramebuffer();
+    }
 };
 
 /**
