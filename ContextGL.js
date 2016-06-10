@@ -388,7 +388,6 @@ function ContextGL(canvas,options){
         this.UNSIGNED_INT_24_8 = extDepthTexture.UNSIGNED_INT_24_8_WEBGL;
     }
     glCapabilities.DEPTH_TEXTURE = !!extDepthTexture;
-
     //anisotropy
     glCapabilities.ELEMENT_INDEX_UINT = !!this._gl.getExtension('OES_element_index_uint');
     this._glCapabilites = Object.freeze(glCapabilities);
@@ -397,8 +396,8 @@ function ContextGL(canvas,options){
     // Overall
     /*----------------------------------------------------------------------------------------------------------------*/
 
-    //internal object counter
-    this._uid = 64; //offset
+    //internal object counter, with offset for internal ids
+    this._uid = 64;
     this._mask = -1;
     this._maskStack = [];
 
@@ -722,6 +721,8 @@ function ContextGL(canvas,options){
 
     this.DEPTH_ATTACHMENT = this._gl.DEPTH_ATTACHMENT;
     this.DEPTH_STENCIL_ATTACHMENT = this._gl.DEPTH_STENCIL_ATTACHMENT;
+    this.DEPTH_COMPONENT = this._gl.DEPTH_COMPONENT;
+    this.DEPTH_STENCIL = this._gl.DEPTH_STENCIL;
 
     /*----------------------------------------------------------------------------------------------------------------*/
     // Matrix
@@ -4329,17 +4330,23 @@ function strFrambufferInvalidAttachmentPoint(attachmentPoint){
 
 const STR_FRAME_BUFFER_ERROR_NOTHING_BOUND = 'No framebuffer active.';
 
-
 const DefaultConfigFramebufferColorAttachment = Object.freeze({
-
+    minMagFilter: WebGLStaticConstants.NEAREST,
+    wrap: WebGLStaticConstants.CLAMP_TO_EDGE
 });
 
 const DefaultConfigFramebufferDepthAttachment = Object.freeze({
-
+    minMagFilter: DefaultConfigFramebufferColorAttachment.minMagFilter,
+    wrap : DefaultConfigFramebufferColorAttachment.wrap,
+    format : WebGLStaticConstants.DEPTH_STENCIL,
+    dataType: WebGLStaticConstants.UNSIGNED_INT
 });
 
 const DefaultConfigFramebufferDepthStencilAttachment = Object.freeze({
-
+    minMagFilter: DefaultConfigFramebufferColorAttachment.minMagFilter,
+    wrap: DefaultConfigFramebufferColorAttachment.wrap,
+    format: WebGLStaticConstants.DEPTH_COMPONENT
+    //dataType from capabilities
 });
 
 const DefaultConfigFramebuffer = Object.freeze({
@@ -4354,11 +4361,11 @@ const DefaultConfigFramebuffer = Object.freeze({
     //number of auto color attachments
     numColorAttachments: 1,
     //creates a default depth attachment
-    depthAttachment: false,
+    depthAttachment: true,
     //data type for depth only attachment, UNSIGNED_SHORT || UNSIGNED_INT
     depthAttachmentDataType: WebGLStaticConstants.UNSIGNED_INT,
     //creates a default depth stencil attachment
-    depthStencilAttachment: true,
+    depthStencilAttachment: false,
     //if true all attachments will be deleted if the framebuffer gets disposed
     deleteAttachments : true,
     //if true, renderbuffers will be used as depth and stencil attachmnents
@@ -4530,13 +4537,13 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                 }
 
                 //Create auto color attachments
-                if(config.colorAttachments){
-                    const numAttachments = config.numColorAttachments || 1;
+                if(config.colorAttachments && config.numColorAttachments > 0){
+                    const numAttachments = config.numColorAttachments === undefined ? 1 : config.numColorAttachments;
                     const config_ = {
                         width : width,
                         height : height,
                         minMagFilter : this._gl.NEAREST,
-                        wrap : this._gl.CLAMP_TO_EDGE,
+                        wrap : this._gl.CLAMP_TO_EDGE
                         //format: null, //to be set
                         //dataType : null //to be set
                     };
@@ -4587,7 +4594,9 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                         this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, attachmentPoint, this._gl.TEXTURE_2D,
                             texture.handle, 0);
 
-                        this._checkFramebufferStatus(framebuffer.handle);
+                        if(framebuffer.colorAttachments.length > 0){
+                            this._checkFramebufferStatus(framebuffer.handle);
+                        }
                         stencilDepth_or_depthAttachment = textureId;
 
                     //Create auto depth,stencil attachments via renderbuffers
@@ -4635,22 +4644,40 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
             height = Number.MAX_VALUE;
             for(let i = 0;i < attachments.length; ++i){
                 const attachment = attachments[i];
-                if(attachment.src === undefined){
+
+                //validate attachment config
+                for(let key in attachment){
+                    if(key !== 'attachmentPoint' && key !== 'texture'){
+                        throw new FramebufferError(`Invalid attachment config key '${key}'.`);
+                    }
+                }
+
+                //texture missing
+                if(attachment.texture === undefined){
                     throw new FramebufferError(`No attachment source defined at attachment index ${i}.`);
                 }
-                const textureId = attachment.src;
+                const textureId = attachment.texture;
                 const texture = this._textures[textureId];
+
+                //texture not existing
                 if(!texture){
                     throw new FramebufferError(`Invalid texture passed`);
                 }
                 const attachmentPoint = attachment.attachmentPoint || 0;
-                if(framebuffer.attachmentPoints.indexOf(attachmentPoint) !== -1){
+                const glAttachmentPoint = this._gl.COLOR_ATTACHMENT0 + attachmentPoint;
+
+                //attachmentPoint already taken, only validated with createFramebuffer
+                if(framebuffer.attachmentPoints.indexOf(glAttachmentPoint) !== -1){
                     throw new FramebufferError(`Duplicate attachment point ${attachmentPoint} at attachment index ${i}.`)
                 }
+                //add attachment
+                this._setFramebufferColorAttachment(texture,attachmentPoint);
+                framebuffer.colorAttachments.push(textureId);
+                framebuffer.attachmentPoints.push(glAttachmentPoint);
+
+                //update fbo size
                 width  = Math.min(texture.width,width);
                 height = Math.min(texture.height,height);
-                framebuffer.colorAttachments.push(textureId);
-                framebuffer.attachmentPoints.push(this._gl.COLOR_ATTACHMENT0 + attachmentPoint);
             }
             this._checkFramebufferStatus(framebuffer.handle);
             framebuffer.width = width;
@@ -4680,6 +4707,14 @@ ContextGL.prototype.setFramebuffer = function(id){
 };
 
 /**
+ * Returns the current active framebuffer
+ * @returns {null|*}
+ */
+ContextGL.prototype.getFramebuffer = function(){
+    return this._framebufferActive;
+};
+
+/**
  * Sets a framebuffer color attachment.
  * @param texture
  * @param attachmentPoint
@@ -4697,6 +4732,9 @@ ContextGL.prototype.setFramebufferColorAttachment = function(texture, attachment
     if(attachmentIndex === -1){
         framebuffer.colorAttachments.push(texture);
         framebuffer.attachmentPoints.push(glAttachmentPoint);
+        if(this._glVersion === 2 || this._glCapabilites.DRAW_BUFFERS){
+            this._gl.drawBuffers(framebuffer.attachmentPoints);
+        }
         return;
     }
     framebuffer.colorAttachments[attachmentIndex] = texture;
@@ -4756,8 +4794,23 @@ ContextGL.prototype.setFramebufferDepthAttachment = function(texture){
     }
     const framebuffer = this._framebuffers[this._framebufferActive];
     const texture_ = this.getTexture2dInfo(texture);
+    //validate data type
+    if(texture_.dataType !== this._gl.UNSIGNED_SHORT &&
+       texture_.dataType !== this._gl.UNSIGNED_INT){
+        throw new FramebufferError(`Unsupported depth texture data type '${glEnumToString(texture_.dataType)}'. Supported data types are ${glEnumToString(this._gl.UNSIGNED_SHORT)}, ${glEnumToString(this._gl.UNSIGNED_INT)}.`);
+    }
+    //validate format
+    if(texture_.format !== this._gl.DEPTH_COMPONENT &&
+       texture_.internalFormat !== this._gl.DEPTH_COMPONENT){
+        throw new FramebufferError(`Unsupported format '${glEnumToString(texture_.format)}','${glEnumToString(texture_.internalFormat)}'. Supported data format is ${glEnumToString(this._gl.DEPTH_COMPONENT)}`);
+    }
+    //attach
     this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.DEPTH_ATTACHMENT, this._gl.TEXTURE_2D,texture_.handle, 0);
     framebuffer.depthAttachment = texture;
+
+    if(framebuffer.colorAttachments.length === 0){
+        return;
+    }
     this._checkFramebufferStatus(framebuffer.handle);
 };
 
@@ -4787,6 +4840,10 @@ ContextGL.prototype.setFramebufferDepthStencilAttachment = function(texture){
     const texture_ = this.getTexture2dInfo(texture);
     this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.DEPTH_STENCIL_ATTACHMENT, this._gl.TEXTURE_2D,texture_.handle, 0);
     framebuffer.depthAttachment = texture;
+
+    if(framebuffer.colorAttachments.length === 0){
+        return;
+    }
     this._checkFramebufferStatus(framebuffer.handle);
 };
 
