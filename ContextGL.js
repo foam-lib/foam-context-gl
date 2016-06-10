@@ -4323,7 +4323,11 @@ function strFramebufferInvalidId(id){
     return `Invalid framebuffer id ${id}.`;
 }
 
-const STR_FRAME_BUFFER_ERROR_NOTHING_BOUND = 'No program active.';
+function strFrambufferInvalidAttachmentPoint(attachmentPoint){
+    return `Invalid attachment point ${attachmentPoint}.`
+}
+
+const STR_FRAME_BUFFER_ERROR_NOTHING_BOUND = 'No framebuffer active.';
 
 
 const DefaultConfigFramebufferColorAttachment = Object.freeze({
@@ -4396,6 +4400,17 @@ ContextGL.prototype._checkFramebufferStatus = function(framebuffer){
     if(status !== this._gl.FRAMEBUFFER_COMPLETE){
         throw new FramebufferError(`Incomplete framebuffer: ${glEnumToString(status)}`);
     }
+};
+
+ContextGL.prototype._getFramebufferAttachment = function(framebuffer,attachmentPoint){
+    attachmentPoint = attachmentPoint || 0;
+    const glAttachmentPoint = this._gl.COLOR_ATTACHMENT0 + attachmentPoint;
+    const attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
+    const attachment = framebuffer.colorAttachments[attachmentIndex];
+    if(!attachment){
+        throw new FramebufferError(strFrambufferInvalidAttachmentPoint(attachmentPoint));
+    }
+    return attachment;
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -4488,7 +4503,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
         deleteAttachments : true
     };
 
-    attachments_or_config = !attachments_or_config || DefaultConfigFramebuffer;
+    attachments_or_config = attachments_or_config || Object.assign({},DefaultConfigFramebuffer);
 
     this.pushFramebufferBinding();
         this.setFramebuffer(id);
@@ -4498,9 +4513,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
         let height;
 
         if(!Array.isArray(attachments_or_config)){
-            const config = attachments_or_config !== DefaultConfigFramebuffer ?
-                           validateOption(attachments_or_config,DefaultConfigFramebuffer) :
-                           attachments_or_config;
+            const config = validateOption(attachments_or_config,DefaultConfigFramebuffer);
 
             config.depthAttachmentFormat = config.depthAttachmentFormat || this.UNSIGNED_INT_24_8;
 
@@ -4696,35 +4709,36 @@ ContextGL.prototype.setFramebufferColorAttachment = function(texture, attachment
  * @returns {*}
  */
 ContextGL.prototype.getFramebufferColorAttachment = function(framebuffer_or_attachment,attachmentPoint){
-    const glAttachmentPoint = this._gl.COLOR_ATTACHMENT0 + (attachmentPoint || 0);
-
-    let framebuffer, attachmentIndex, attachment;
+    let framebuffer;
     if(attachmentPoint === undefined){
+
+        //return active framebuffer color attachment 0
         if(framebuffer_or_attachment === this._framebufferActive){
-            framebuffer = this.getFramebufferInfo();
-            attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
-            return framebuffer.colorAttachments[attachmentIndex];
+            return this._getFramebufferAttachment(this._framebuffers[this._framebufferActive]);
         }
+
         framebuffer = this._framebuffers[framebuffer_or_attachment];
-        if(!framebuffer){
-            attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
-            attachment = framebuffer.colorAttachments[attachmentIndex];
+
+        //return selected framebuffer color attachment 0
+        if(framebuffer){
+            return this._getFramebufferAttachment(framebuffer);
+
+        //return active framebuffer color attachment selected
         } else {
-            return framebuffer.colorAttachments[0];
+            framebuffer = this._framebuffers[this._framebufferActive];
+            if(!framebuffer){
+                throw new FramebufferError(STR_FRAME_BUFFER_ERROR_NOTHING_BOUND);
+            }
+            return this._getFramebufferAttachment(framebuffer,framebuffer_or_attachment);
         }
-        if(!attachment){
-            throw new FramebufferError(`Invalid framebuffer or attachment point ${framebuffer_or_attachment}.`);
-        }
-        return attachment;
     }
 
-    framebuffer = this.getFramebufferInfo(framebuffer_or_attachment);
-    attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
-    attachment = framebuffer.colorAttachments[attachmentIndex];
-    if(!attachment){
-        throw new FramebufferError(`Invalid attachment point ${attachmentPoint}.`);
+    //return selected frambebuffer with selected attachment
+    framebuffer = this._framebuffers[framebuffer_or_attachment];
+    if(!framebuffer){
+        throw new FramebufferError(strFramebufferInvalidId(framebuffer_or_attachment));
     }
-    return attachment;
+    return this._getFramebufferAttachment(framebuffer,attachmentPoint);
 };
 
 /**
