@@ -707,7 +707,7 @@ QuickDraw.prototype._drawTube = function(r,g,b,a){
  * Saves the current quickdraw state.
  * @param [newState]
  */
-QuickDraw.prototype.pushDrawState = function(newState){
+QuickDraw.prototype.pushDraw = function(newState){
     this._drawStateStack.push(this._drawState.copy());
     if(newState === undefined){
         return;
@@ -718,7 +718,7 @@ QuickDraw.prototype.pushDrawState = function(newState){
 /**
  * Restores the previously saved quickdraw staet.
  */
-QuickDraw.prototype.popDrawState = function(){
+QuickDraw.prototype.popDraw = function(){
     if(this._drawStateStack.length === 0){
         throw new Error('Invalid stack pop. Stack has length 0.');
     }
