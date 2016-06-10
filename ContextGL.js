@@ -4767,7 +4767,7 @@ ContextGL.prototype.setFramebufferDepthAttachment = function(texture){
  * @returns {boolean}
  */
 ContextGL.prototype.getFramebufferDepthAttachment = function(framebuffer){
-    return this.getFramebufferInfo(framebuffer).depthAttachment;
+    return this.getFramebufferInfo(framebuffer).stencilDepth_or_depthAttachment;
 };
 
 /**
@@ -4796,7 +4796,7 @@ ContextGL.prototype.setFramebufferDepthStencilAttachment = function(texture){
  * @returns {boolean}
  */
 ContextGL.prototype.getFramebufferDepthStencilAttachment = function(framebuffer){
-    return this.getFramebufferInfo(framebuffer).depthStencilAttachment;
+    return this.getFramebufferInfo(framebuffer).stencilDepth_or_depthAttachment;
 };
 
 /**
