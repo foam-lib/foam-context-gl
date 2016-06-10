@@ -4667,14 +4667,26 @@ ContextGL.prototype.setFramebuffer = function(id){
 };
 
 /**
- * Sets a frambuffers color-, depth-, and depth-stencil-attachment.
- * @example
- * @param type
- * @param attachmentId
- * @param [attachmentPoint_or_mipmapLevel]
- * @param [mipmapLevel]
+ * Sets a framebuffer color attachment.
+ * @param texture
+ * @param attachmentPoint
  */
-ContextGL.prototype.setFramebufferColorAttachment = function(type, attachmentId, attachmentPoint_or_mipmapLevel, mipmapLevel){
+//TODO: What happens to existing attachments?
+ContextGL.prototype.setFramebufferColorAttachment = function(texture, attachmentPoint){
+    if(this._framebufferActive === null){
+        throw new FramebufferError(STR_FRAME_BUFFER_ERROR_NOTHING_BOUND);
+    }
+    const glAttachmentPoint = this._gl.COLOR_ATTACHMENT0 + (attachmentPoint || 0);
+    const framebuffer = this._framebuffers[this._framebufferActive];
+    const texture_ = this.getTexture2dInfo(texture);
+    const attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
+    this._setFramebufferColorAttachment(texture_,attachmentPoint);
+    if(attachmentIndex === -1){
+        framebuffer.colorAttachments.push(texture);
+        framebuffer.attachmentPoints.push(glAttachmentPoint);
+        return;
+    }
+    framebuffer.colorAttachments[attachmentIndex] = texture;
 };
 
 /**
@@ -4684,14 +4696,19 @@ ContextGL.prototype.setFramebufferColorAttachment = function(type, attachmentId,
  * @returns {*}
  */
 ContextGL.prototype.getFramebufferColorAttachment = function(framebuffer_or_attachment,attachmentPoint){
-    let framebuffer, attachment;
+    const glAttachmentPoint = this._gl.COLOR_ATTACHMENT0 + (attachmentPoint || 0);
+
+    let framebuffer, attachmentIndex, attachment;
     if(attachmentPoint === undefined){
         if(framebuffer_or_attachment === this._framebufferActive){
-            return this.getFramebufferInfo().colorAttachments[0];
+            framebuffer = this.getFramebufferInfo();
+            attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
+            return framebuffer.colorAttachments[attachmentIndex];
         }
         framebuffer = this._framebuffers[framebuffer_or_attachment];
         if(!framebuffer){
-            attachment = framebuffer.colorAttachments[framebuffer_or_attachment];
+            attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
+            attachment = framebuffer.colorAttachments[attachmentIndex];
         } else {
             return framebuffer.colorAttachments[0];
         }
@@ -4700,8 +4717,10 @@ ContextGL.prototype.getFramebufferColorAttachment = function(framebuffer_or_atta
         }
         return attachment;
     }
+
     framebuffer = this.getFramebufferInfo(framebuffer_or_attachment);
-    attachment = framebuffer.colorAttachments[attachmentPoint];
+    attachmentIndex = framebuffer.attachmentPoints.indexOf(glAttachmentPoint);
+    attachment = framebuffer.colorAttachments[attachmentIndex];
     if(!attachment){
         throw new FramebufferError(`Invalid attachment point ${attachmentPoint}.`);
     }
