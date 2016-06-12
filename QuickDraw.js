@@ -1610,7 +1610,7 @@ QuickDraw.prototype.cylinder = function(){};
  */
 QuickDraw.prototype.fullscreenRect = function(size){
     if(size === undefined){
-        this.fullscreenRect2(size[0],size[1]);
+        this.fullscreenRect2(this._ctx.getDrawingbufferWidth(),this._ctx.getDrawingbufferHeight());
         return;
     }
     this.fullscreenRect2(size[0],size[1]);
