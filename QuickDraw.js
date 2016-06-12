@@ -1606,25 +1606,27 @@ QuickDraw.prototype.cylinder = function(){};
 
 /**
  * Draws a fullscreen rectangle.
- * @param size
+ * @param size_or_topleft
+ * @param topleft
  */
-QuickDraw.prototype.fullscreenRect = function(size){
-    if(size === undefined){
-        this.fullscreenRect2(this._ctx.getDrawingbufferWidth(),this._ctx.getDrawingbufferHeight());
+QuickDraw.prototype.fullscreenRect = function(size_or_topleft,topleft){
+    if(size_or_topleft === undefined || !Array.isArray(size_or_topleft)){
+        this.fullscreenRect2(this._ctx.getDrawingbufferWidth(),this._ctx.getDrawingbufferHeight(),size_or_topleft || false);
         return;
     }
-    this.fullscreenRect2(size[0],size[1]);
+    this.fullscreenRect2(size_or_topleft[0],size_or_topleft[1],topleft);
 };
 
 /**
  * Draws a fullscreen rectangle.
  * @param width
  * @param height
+ * @param topleft
  */
-QuickDraw.prototype.fullscreenRect2 = function(width,height){
+QuickDraw.prototype.fullscreenRect2 = function(width,height,topleft){
     width = width === undefined ? 1.0 : width;
     height = height === undefined ? 1.0 : height;
-    this.screenAlignedRect6(0,0,width,height,width,height);
+    this.screenAlignedRect6(0,0,width,height,width,height,topleft);
 };
 
 /**
