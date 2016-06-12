@@ -368,9 +368,9 @@ function ContextGL(canvas,options){
             maxColorAttachments = this._gl.getParameter(ext.MAX_COLOR_ATTACHMENTS_WEBGL);
             this._gl.drawBuffers = ext.drawBuffersWEBGL.bind(ext);
             this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
+            glCapabilities.DRAW_BUFFERS = true;
         } else {
             this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersNotSupported;
-            glCapabilities.DRAW_BUFFERS = true;
         }
         this.MAX_DRAW_BUFFERS = maxDrawBuffers;
         this.MAX_COLOR_ATTACHMENTS = maxColorAttachments;
@@ -4510,40 +4510,23 @@ ContextGL.prototype.popFramebufferBinding = function(){
  * const framebuffer = cctx.createFrameBuffer();
  *
  * //creates a framebuffer the size of the drawing buffer with 3 color attachments and depth attachment.
- * const framebuffer = cctx.createFramebuffer({
+ * const framebuffer = ctx.createFramebuffer({
  *     colorAttachment: true,
  *     numColorAttachment: 3.
  *     depthAttachment: true
  * });
  *
  * //creates a framebuffer with specific size and one default color attachment and depth attachment.
- * const framebuffer = cctx.createFramebuffer({
+ * const framebuffer = ctx.createFramebuffer({
  *     width: 800,
  *     height:600
  * });
  *
  * //Creates a framebuffer from source color attachment textures, size depends on textures passed.
- * const framebuffer = cctx.createFramebuffer([
- *     {type: ctx.COLOR_ATTACHMENT, src: texture0, attachmentPoint: 0},
- *     {type: ctx.COLOR_ATTACHMENT, src: texture1, attachmentPoint: 1}
- *     {type: ctx.DEPTH_ATTACHMENT, src, texture2}
+ * const framebuffer = ctx.createFramebuffer([
+ *     {attachmentPoint: 0, texture: texture0},
+ *     {attachmentPoint: 1, texture: texture1}
  * ]);
- *
- * //Single attachments can also be defined later
- * const framebuffer = ctx.createFramebuffer({
- *     width: 800,
- *     height: 600,
- *     colorAttachment: true,
- *     numColorAttachments: 2,
- *     depthAttachment: false
- * });
- *
- * //set active framebuffer
- * ctx.setFramebuffer(framebuffer);
- * //sets a depth attachment
- * ctx.setFramebufferColorAttachment(ctx.DEPTH_ATTACHMENT,texture0);
- * //sets a color attachment at attachment point 3
- * ctx.setFramebufferColorAttachment(ctx.COLOR_ATTACHMENT,texture1,3);
  *
  * @param attachments_or_config
  */
