@@ -862,6 +862,31 @@ ContextGL.prototype.getGLCapabilities = function(){
     return this._glCapabilites;
 };
 
+/**
+ * Returns the drawing buffer size.
+ * @param out
+ * @returns {*}
+ */
+ContextGL.prototype.getDrawingbufferSize = function(out){
+    return Vec2.set2(out || Vec2.create(), this._gl.drawingBufferWidth,this._gl.drawingBufferHeight);
+};
+
+/**
+ * Returns the drawing buffer width.
+ * @returns {Number}
+ */
+ContextGL.prototype.getDrawingbufferWidth = function(){
+    return this._gl.drawingBufferWidth;
+};
+
+/**
+ * Returns the drawing buffer height.
+ * @returns {Number}
+ */
+ContextGL.prototype.getDrawingbufferHeight = function(){
+    return this._gl.drawingBufferHeight;
+};
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 // VIEWPORT
 /*--------------------------------------------------------------------------------------------------------------------*/
