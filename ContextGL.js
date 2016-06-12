@@ -37,6 +37,8 @@ const VEC2_ZERO = [0,0];
 const VEC2_ONE = [1,1];
 const AXIS_Y = [0,1,0];
 
+const TEMP_VEC2_0 = [0,0];
+
 const GLEnumStringMap = {};
 for(let key in WebGLStaticConstants){
     GLEnumStringMap[WebGLStaticConstants[key]] = key;
@@ -215,6 +217,34 @@ ProgramDefaultAttributeByLocationMap[ATTRIB_LOCATION_NORMAL] = ATTRIB_NAME_NORMA
 const STR_ERROR_INVALID_STACK_POP = 'Invalid stack pop. Stack has length 0.';
 
 /*--------------------------------------------------------------------------------------------------------------------*/
+// BLIT
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+const glslBlitScreen = `
+#ifdef VERTEX_SHADER
+precision highp float;
+attribute vec4 aPosition;
+attribute vec2 aTexCoord;
+varying vec2 vTexCoord;
+uniform vec2 uScreenSize;
+
+void main(){
+    vTexCoord = aTexCoord;
+    gl_Position = -1.0 + aPosition * 2.0;
+}
+#endif
+#ifdef FRAGMENT_SHADER
+precision highp float;
+varying vec2 vTexCoord;
+uniform sampler2D uTexture;
+
+void main(){
+    gl_FragColor = texture2D(uTexture,vTexCoord);
+}
+#endif
+`;
+
+/*--------------------------------------------------------------------------------------------------------------------*/
 // UTILS
 /*--------------------------------------------------------------------------------------------------------------------*/
 
@@ -284,7 +314,11 @@ function ContextGL(canvas,options){
             VERTEX_ARRAYS : false,
             ELEMENT_INDEX_UINT : false,
             DRAW_BUFFERS:  false,
-            DEPTH_TEXTURE : false
+            DEPTH_TEXTURE : false,
+            FLOAT_TEXTURE : false,
+            HALF_FLOAT: false,
+            FLOAT_TEXTURE_LINEAR: false,
+            HALF_FLOAT_TEXTURE_LINEAR : false
         };
     }
 
@@ -315,7 +349,7 @@ function ContextGL(canvas,options){
 
     // instanced arrays
     if(!this._gl.drawElementsInstanced){
-        let ext = this._gl.getExtension('ANGLE_instanced_arrays');
+        const ext = this._gl.getExtension('ANGLE_instanced_arrays');
         if(!ext){
             this._gl.drawElementsInstanced =
             this._gl.drawArraysInstanced =
@@ -334,7 +368,7 @@ function ContextGL(canvas,options){
 
     //vertex arrays
     if(!this._gl.createVertexArray){
-        let ext = this._gl.getExtension('OES_vertex_array_object');
+        const ext = this._gl.getExtension('OES_vertex_array_object');
         if(!ext){
             this.createVertexArray = this._createVertexArrayShim;
             this.deleteVertexArray = this._deleteVertexArrayShim;
@@ -360,7 +394,7 @@ function ContextGL(canvas,options){
 
     //draw buffers, no shim
     if(!this._gl.drawBuffers){
-        let ext = this._gl.getExtension('WEBGL_draw_buffers');
+        const ext = this._gl.getExtension('WEBGL_draw_buffers');
         let maxDrawBuffers = 1;
         let maxColorAttachments = 1;
         if(ext){
@@ -388,6 +422,30 @@ function ContextGL(canvas,options){
         this.UNSIGNED_INT_24_8 = extDepthTexture.UNSIGNED_INT_24_8_WEBGL;
     }
     glCapabilities.DEPTH_TEXTURE = !!extDepthTexture;
+
+    //float texture
+    const extFloatTexture = this._gl.getExtension('OES_texture_float');
+    glCapabilities.FLOAT_TEXTURE = !!extFloatTexture;
+
+    //half float texture
+    if(!this._gl.HALF_FLOAT){
+        const ext = this._gl.getExtension('OES_texture_half_float');
+        if(ext){
+            this.HALF_FLOAT = ext.HALF_FLOAT_OES;
+        }
+        glCapabilities.HALF_FLOAT = !!ext;
+    } else {
+        this.HALF_FLOAT = this._gl.HALF_FLOAT;
+    }
+
+    //float texture linear
+    const extFloatTextureLinear = this._gl.getExtension('OES_texture_float_linear');
+    glCapabilities.FLOAT_TEXTURE_LINEAR = !!extFloatTextureLinear;
+
+    //half float texture linear
+    const extHalfFloatTextureLinear = this._gl.getExtension('OES_texture_half_float_linear');
+    glCapabilities.HALF_FLOAT_TEXTURE_LINEAR = !!extHalfFloatTextureLinear;
+
     //anisotropy
     glCapabilities.ELEMENT_INDEX_UINT = !!this._gl.getExtension('OES_element_index_uint');
     this._glCapabilites = Object.freeze(glCapabilities);
@@ -799,6 +857,29 @@ function ContextGL(canvas,options){
     this._programHasAttribColor = false;
     this._programHasAttribTexCoord = false;
     this._programHasUniformPointSize = false;
+
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Blit
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    //blit
+    this._bufferBlitRectPosition = this.createVertexBuffer(
+        new Float32Array([0,0, 1,0, 1,1, 0,1]),this.STATIC_DRAW,false
+    );
+    this._bufferBlitRectTexCoord = this.createVertexBuffer(
+        new Float32Array([0,0, 1,0, 1,1, 0,1]),this.DYNAMIC_DRAW,true
+    );
+    this._vertexArrayBlitRect = this.createVertexArray([
+        {location: this.ATTRIB_LOCATION_POSITION, buffer: this._bufferBlitRectPosition, size: this.SIZE_VEC2},
+        {location: this.ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferBlitRectTexCoord, size: this.SIZE_VEC2}
+    ]);
+
+    this._programBlit = this.createProgram(glslBlitScreen);
+    this.pushProgramBinding();
+        this.setProgram(this._programBlit);
+        this.setProgramUniform('uTexture',0);
+    this.popProgramBinding();
 }
 
 /**
@@ -4981,6 +5062,55 @@ ContextGL.prototype.getFramebufferInfo = function(id){
         }
     }
     return framebuffer;
+};
+
+ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,attachmentPoint_or_size,size){
+    if(framebuffer === undefined){
+        throw new Error('No framebuffer specified.');
+    }
+    const framebuffer_ = this._framebuffers[framebuffer];
+    if(!framebuffer_){
+        throw new FramebufferError(strFramebufferInvalidId(framebuffer));
+    }
+    let width, height;
+    let attachmentPoint = 0;
+    if(Array.isArray(attachmentPoint_or_size)){
+        size = attachmentPoint_or_size;
+    } else {
+        attachmentPoint = attachmentPoint_or_size || attachmentPoint;
+    }
+
+    const attachmentIndex = framebuffer_.attachmentPoints.indexOf(this._gl.COLOR_ATTACHMENT0 + attachmentPoint);
+    if(attachmentIndex == -1){
+        throw new FramebufferError(strFrambufferInvalidAttachmentPoint(attachmentPoint));
+    }
+    const attachment = framebuffer_.colorAttachments[attachmentIndex];
+
+    if(size){
+        width = size[0];
+        height = size[1];
+    } else {
+        width = framebuffer_.width;
+        height = framebuffer_.height;
+    }
+
+    const state =
+        this.VERTEX_ARRAY_BINDING_BIT |
+        this.ARRAY_BUFFER_BINDING_BIT |
+        this.ELEMENT_ARRAY_BUFFER_BINDING_BIT |
+        this.TEXTURE_BINDING_BIT |
+        this.PROGRAM_BINDING_BIT |
+        this.DEPTH_BIT |
+        this.VIEWPORT_BIT;
+
+    this.pushState(state);
+        this.setProgram(this._programBlit);
+        this.setDepthTest(false);
+        this.setViewport4(0,0,width,height);
+        this.setTexture2d(attachment);
+        this.setVertexArray(this._vertexArrayBlitRect);
+        this.drawArrays(this._gl.TRIANGLE_FAN,0,4);
+    this.popState(state);
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
