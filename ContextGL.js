@@ -957,12 +957,37 @@ ContextGL.prototype.setViewport4 = function(x,y,w,h){
 };
 
 /**
- * Returns the current viewport rectangle.
+ * Returns the current viewport bounds.
  * @param {Array} [out]
  * @returns {Array}
  */
 ContextGL.prototype.getViewport = function(out){
-    return Vec4.set(out || Vec4.create()).set(this._viewportState.viewport);
+    return Rect.set(out || Rect.create(),this._viewportState.viewport);
+};
+
+/**
+ * Returns the current viewport size.
+ * @param out
+ * @returns {*}
+ */
+ContextGL.prototype.getViewportSize = function(out){
+    return Vec2.set2(out || Vec2.create(),this._viewportState.viewport[2],this._viewportState.viewport[3]);
+};
+
+/**
+ * Returns the current viewport width.
+ * @returns {*}
+ */
+ContextGL.prototype.getViewportWidth = function(){
+    return this._viewportState.viewport[2];
+};
+
+/**
+ * Returns the current viewport height.
+ * @returns {*}
+ */
+ContextGL.prototype.getViewportHeight = function(){
+    return this._viewportState.viewport[3];
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
