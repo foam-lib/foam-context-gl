@@ -38,6 +38,7 @@ const VEC2_ONE = [1,1];
 const AXIS_Y = [0,1,0];
 
 const TEMP_VEC2_0 = [0,0];
+const TEMP_RECT_0 = [0,0,0,0];
 
 const GLEnumStringMap = {};
 for(let key in WebGLStaticConstants){
@@ -4139,10 +4140,19 @@ ContextGL.prototype.popTextureBinding = function(){
     this._setTextureBindingState(this._textureStack.pop());
 };
 
+/**
+ * Returns a copy of the current texture binding state.
+ * @returns {TextureState}
+ */
 ContextGL.prototype.getTextureBindingState = function(){
     return this._textureState.copy();
 };
 
+/**
+ * Creates a 2d texture.
+ * @param data_or_config
+ * @param config
+ */
 ContextGL.prototype.createTexture2d = function(data_or_config,config){
     let data = null;
     if(config === undefined){
@@ -4178,6 +4188,11 @@ ContextGL.prototype.createTexture2d = function(data_or_config,config){
     return id;
 };
 
+/**
+ * Sets the active texture 2d.
+ * @param id
+ * @param textureUnit
+ */
 ContextGL.prototype.setTexture2d = function(id,textureUnit){
     textureUnit = textureUnit || 0;
     if(id === this._textureState.textureActive[textureUnit]){
@@ -4357,6 +4372,10 @@ ContextGL.prototype.updateTexture2dData = function(data){
     }
 };
 
+/**
+ * Deletes a texture.
+ * @param id
+ */
 ContextGL.prototype.deleteTexture2d = function(id){
     const texture = this._textures[id];
     if(!texture){
@@ -4376,6 +4395,11 @@ ContextGL.prototype.deleteTexture2d = function(id){
     this._gl.activeTexture(this._gl.TEXTURE0 + this._textureState.textureUnitActive);
 };
 
+/**
+ * Returns a textures current state.
+ * @param id
+ * @returns {*}
+ */
 ContextGL.prototype.getTexture2dInfo = function(id){
     let texture;
     //active texture
@@ -4394,6 +4418,12 @@ ContextGL.prototype.getTexture2dInfo = function(id){
     return texture;
 };
 
+/**
+ * Returns the textures size.
+ * @param id_or_out
+ * @param out
+ * @returns {*}
+ */
 ContextGL.prototype.getTexture2dSize = function(id_or_out,out){
     if(id_or_out === undefined || Array.isArray(id_or_out)){
         const texture = this.getTexture2dInfo();
@@ -4403,6 +4433,12 @@ ContextGL.prototype.getTexture2dSize = function(id_or_out,out){
     return Vec2.set2(out || Vec2.create(),texture.width,texture.height);
 };
 
+/**
+ * Returns the textures bounds.
+ * @param id_or_out
+ * @param out
+ * @returns {*}
+ */
 ContextGL.prototype.getTexture2dBounds = function(id_or_out,out){
     if(id_or_out === undefined || Array.isArray(id_or_out)){
         const texture = this.getTexture2dInfo();
@@ -4412,15 +4448,29 @@ ContextGL.prototype.getTexture2dBounds = function(id_or_out,out){
     return Rect.set4(out || Rect.create(),0,0,texture.width,texture.height);
 };
 
+/**
+ * Returns true if the texture exists.
+ * @param id
+ * @returns {boolean}
+ */
 ContextGL.prototype.hasTexture2d = function(id){
     return !!this._textures[id];
 };
 
+/**
+ * Returns the current active texture at a specific texture unit.
+ * @param textureUnit
+ * @returns {*|null}
+ */
 ContextGL.prototype.getTexture2d = function(textureUnit){
     textureUnit = textureUnit === undefined ? this._textureState.textureUnitActive : textureUnit;
     return this._textureState.textureActive[textureUnit] || null;
 };
 
+/**
+ * Returns the current active texture unit.
+ * @returns {*}
+ */
 ContextGL.prototype.getTextureUnitActive = function(){
     return this._textureState.textureUnitActive;
 };
@@ -4555,6 +4605,9 @@ ContextGL.prototype._getFramebufferAttachment = function(framebuffer,attachmentP
 // FRAMEBUFFER PUBLIC
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+/**
+ * Invalidate the current framebuffer, equal to ctx.setFramebuffer(null).
+ */
 ContextGL.prototype.invalidateFramebuffer = function(){
     if(this._framebufferActive === null){
         return;
@@ -5064,6 +5117,12 @@ ContextGL.prototype.getFramebufferInfo = function(id){
     return framebuffer;
 };
 
+/**
+ * Draws the selected framebuffer to screen.
+ * @param framebuffer
+ * @param attachmentPoint_or_size
+ * @param size
+ */
 ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,attachmentPoint_or_size,size){
     if(framebuffer === undefined){
         throw new Error('No framebuffer specified.');
@@ -5891,10 +5950,17 @@ ContextGL.prototype.setState = function(state){
 // OPTIONAL SHARED CONTEXT
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+/**
+ * Sets shared context from instance.
+ */
 ContextGL.prototype.makeShared = function(){
     ContextGL.__sharedContext = this;
 };
 
+/**
+ * Returns a shared context.
+ * @returns {ContextGL|*|null}
+ */
 ContextGL.sharedContext = function(){
     return ContextGL.__sharedContext;
 };
