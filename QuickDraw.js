@@ -6,8 +6,55 @@ import * as Vec4 from 'foam-math/Vec4';
 const VEC2_ZERO = [0,0];
 const VEC2_ONE = [1,1];
 
+const PROGRAM_DEFAULT_GLSL =
+`#ifdef VERTEX_SHADER
+ precision highp float;
+
+ attribute vec4 aPosition;
+ attribute vec4 aColor;
+ attribute vec2 aTexCoord;
+
+ varying vec4 vColor;
+ varying vec2 vTexCoord;
+
+ uniform mat4 uProjectionMatrix;
+ uniform mat4 uViewMatrix;
+ uniform mat4 uModelMatrix;
+
+ uniform float uPointSize;
+
+ void main(){
+     vColor = aColor;
+     vTexCoord = aTexCoord;
+     gl_Position = uProjectionMatrix * uViewMatrix * uModelMatrix * aPosition;
+     gl_PointSize = uPointSize;
+ }
+ #endif
+
+ #ifdef FRAGMENT_SHADER
+ precision highp float;
+
+ varying vec4 vColor;
+ varying vec2 vTexCoord;
+
+ uniform sampler2D uTexture;
+ uniform float uUseTexture;
+
+ void main(){
+     gl_FragColor = vColor * (1.0 - uUseTexture) + texture2D(uTexture,vTexCoord) * uUseTexture;
+ }
+ #endif`;
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// CONSTRUCTOR
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 function QuickDraw(ctx){
     ctx = this._ctx = ctx || ContextGL.sharedContext();
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // State
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._numSegmentsCircleMin  = 3;
     this._numSegmentsCircleMax  = 128;
@@ -29,7 +76,9 @@ function QuickDraw(ctx){
     this._drawStateStack = [];
 
 
+    /*----------------------------------------------------------------------------------------------------------------*/
     // Point
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._bufferPointPosition = ctx.createVertexBuffer(
         new Float32Array(3), ctx.DYNAMIC_DRAW, true
@@ -59,7 +108,9 @@ function QuickDraw(ctx){
 
     this._tempArrPoints = [];
 
+    /*----------------------------------------------------------------------------------------------------------------*/
     // Line
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._bufferLinePosition = ctx.createVertexBuffer(
         new Float32Array(6), ctx.DYNAMIC_DRAW, true
@@ -105,7 +156,9 @@ function QuickDraw(ctx){
 
     this._tempArrLines = [];
 
-    // Rect points
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Rect
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._bufferRectPosition = ctx.createVertexBuffer(
         new Float32Array([0,0, 1,0, 1,1, 0,1]),ctx.STATIC_DRAW
@@ -150,7 +203,9 @@ function QuickDraw(ctx){
     ], this._bufferRectIndex);
     console.assert(ctx.getGLError());
 
+    /*----------------------------------------------------------------------------------------------------------------*/
     // Circle
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._bufferCirclePosition = ctx.createVertexBuffer(
         new Float32Array(this._numSegmentsCircleMax * 3), ctx.STATIC_DRAW,true
@@ -172,7 +227,9 @@ function QuickDraw(ctx){
     ]);
     console.assert(ctx.getGLError());
 
-    //Ellipse
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Ellipse
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._bufferEllipsePosition = ctx.createVertexBuffer(
         new Float32Array(this._numSegmentsEllipseMax * 3), ctx.STATIC_DRAW,true
@@ -209,7 +266,9 @@ function QuickDraw(ctx){
         {buffer: this._bufferTriangleColor, location: ctx.ATTRIB_LOCATION_COLOR, size: 4}
     ]);
 
-    // Cube stroked / points
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Cube
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._bufferCubeCornerPosition = ctx.createVertexBuffer(
         new Float32Array([
@@ -358,7 +417,10 @@ function QuickDraw(ctx){
     ], this._bufferCubeIndex);
     console.assert(ctx.getGLError());
 
-    //head
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // arrow heads
+    /*----------------------------------------------------------------------------------------------------------------*/
+
     this._numHeadPoints = 20;
     const positionsHead = new Float32Array(this._numHeadPoints * 3);
 
@@ -385,6 +447,10 @@ function QuickDraw(ctx){
         { buffer : this._bufferHeadColor,    location : ctx.ATTRIB_LOCATION_COLOR,    size : 4 }
     ]);
     console.assert(ctx.getGLError());
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Tube
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     //tube
     this._numTubePoints   = 20 * 2;
@@ -428,7 +494,9 @@ function QuickDraw(ctx){
     ]);
     console.assert(ctx.getGLError());
 
-    //Grid
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Grid
+    /*----------------------------------------------------------------------------------------------------------------*/
 
     this._bufferGridPosition = ctx.createVertexBuffer(
         new Float32Array(0), ctx.DYNAMIC_DRAW, true
@@ -449,7 +517,34 @@ function QuickDraw(ctx){
         { buffer : this._bufferGridColor,    location : ctx.ATTRIB_LOCATION_COLOR,    size : 4 }
     ], this._bufferGridIndex);
     console.assert(ctx.getGLError());
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Default program
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    this._defaultStockProgram = this._ctx.createProgram(PROGRAM_DEFAULT_GLSL);
+    this._ctx.pushProgramBinding();
+        this._ctx.setProgram(this._defaultStockProgram);
+        this._ctx.setProgramUniform('uUseTexture',0.0);
+        this._ctx.setProgramUniform('uPointSize',this._drawState.pointSize);
+    this._ctx.popProgramBinding();
 }
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// DEFAULT PROGRAM
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+/**
+ * Use the default quickdraw stock program.
+ */
+QuickDraw.prototype.useDefaultStockProgram = function(){
+    this._ctx.setProgram(this._defaultStockProgram);
+    //TODO: bind empty tex if nothing bound
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// INTERNAL
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 export class QuickDrawError extends Error{
     constructor(msg){
@@ -459,8 +554,6 @@ export class QuickDrawError extends Error{
 }
 
 const STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION = "Program has no default attrib 'aPosition'.";
-
-//INTERNAL
 
 QuickDraw.prototype._updateGrid = function(subdivs){
     this._ctx.setVertexBuffer(this._bufferGridColor);
@@ -703,6 +796,10 @@ QuickDraw.prototype._drawTube = function(r,g,b,a){
     this._ctx.drawArrays(this._ctx.TRIANGLE_STRIP,0,this._numTubePoints);
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+// STATE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 /**
  * Saves the current quickdraw state.
  * @param [newState]
@@ -783,6 +880,10 @@ QuickDraw.prototype.restore = function(){
     this.popDraw();
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+// COLOR
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 /**
  * Sets the draw color.
  * @param color
@@ -838,6 +939,10 @@ QuickDraw.prototype.getColor = function(out){
     return Vec4.set(out || Vec4.create(), this._color);
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+// POINT SIZE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 /**
  * Sets the draw point size.
  * @param pointSize
@@ -860,37 +965,9 @@ QuickDraw.prototype.getPointSize = function(){
     return this._drawState.pointSize;
 };
 
-/**
- * Sets the number of draw ellipse segments.
- * @param num
- */
-QuickDraw.prototype.setEllipseSegmentsNum = function(num){
-    this._drawState.numSegmentsEllipse = num;
-};
-
-/**
- * Returns the current number of draw ellipse segments.
- * @returns {Number}
- */
-QuickDraw.prototype.getEllipseSegmentsNum = function(){
-    return this._drawState.numSegmentsEllipse;
-};
-
-/**
- * Sets the number of draw circle segments.
- * @param num
- */
-QuickDraw.prototype.setCircleSegmentsNum = function(num){
-    this._drawState.numSegmentsCircle = num;
-};
-
-/**
- * Returns the current number of draw circle segments.
- * @returns {Number}
- */
-QuickDraw.prototype.getCircleSegmentsNum = function(){
-    return this._drawState.numSegmentsCircle;
-};
+/*--------------------------------------------------------------------------------------------------------------------*/
+// POINT / ELLIPSE CIRCLE
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * Draws a single point.
@@ -929,6 +1006,109 @@ QuickDraw.prototype.pointsFlat = function(points){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
 };
+
+/**
+ * Sets the number of draw ellipse segments.
+ * @param num
+ */
+QuickDraw.prototype.setEllipseSegmentsNum = function(num){
+    this._drawState.numSegmentsEllipse = num;
+};
+
+/**
+ * Returns the current number of draw ellipse segments.
+ * @returns {Number}
+ */
+QuickDraw.prototype.getEllipseSegmentsNum = function(){
+    return this._drawState.numSegmentsEllipse;
+};
+
+/**
+ * Sets the number of draw circle segments.
+ * @param num
+ */
+QuickDraw.prototype.setCircleSegmentsNum = function(num){
+    this._drawState.numSegmentsCircle = num;
+};
+
+/**
+ * Returns the current number of draw circle segments.
+ * @returns {Number}
+ */
+QuickDraw.prototype.getCircleSegmentsNum = function(){
+    return this._drawState.numSegmentsCircle;
+};
+
+
+/**
+ * Draws a circle.
+ * @param radius
+ */
+QuickDraw.prototype.circle = function(radius){
+    radius = radius === undefined ? 0.5 : radius;
+    this._circleInternal(radius, this._ctx.TRIANGLE_FAN);
+};
+
+/**
+ * Draws a stroked circle.
+ * @param radius
+ */
+QuickDraw.prototype.circleStroked = function(radius){
+    radius = radius === undefined ? 0.5 : radius;
+    this._circleInternal(radius,this._ctx.LINE_LOOP);
+};
+
+
+QuickDraw.prototype.circles = function(){};
+
+QuickDraw.prototype.circlesStroked = function(){};
+
+/**
+ * Draws an ellipse.
+ * @param radii
+ */
+QuickDraw.prototype.ellipse = function(radii){
+    this.ellipse2(radii[0],radii[1]);
+};
+
+/**
+ * Draws an ellipse.
+ * @param radiusX
+ * @param radiusY
+ */
+QuickDraw.prototype.ellipse2 = function(radiusX,radiusY){
+    radiusX = radiusX === undefined ? 0.5 : radiusX;
+    radiusY = radiusY === undefined ? radiusX : radiusY;
+    this._ellipseInternal(radiusX,radiusY,this._ctx.TRIANGLE_FAN);
+};
+
+/**
+ * Draws a stroked ellipse.
+ * @param radii
+ */
+QuickDraw.prototype.ellipseStroked = function(radii){
+    this.ellipseStroked2(radii[0],radii[1]);
+};
+
+/**
+ * Draws a stroked ellipse.
+ * @param radiusX
+ * @param radiusY
+ */
+QuickDraw.prototype.ellipseStroked2 = function(radiusX,radiusY){
+    radiusX = radiusX === undefined ? 0.5 : radiusX;
+    radiusY = radiusY === undefined ? radiusX : radiusY;
+    this._ellipseInternal(radiusX,radiusY,this._ctx.LINE_LOOP);
+};
+
+QuickDraw.prototype.ellipses = function(){};
+
+QuickDraw.prototype.ellipsesStroked = function(){};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// LINE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 
 /**
  * Draws a single line.
@@ -1097,6 +1277,11 @@ QuickDraw.prototype.linesFlat = function(lines){
 
     this._ctx.drawArrays(this._ctx.LINES,0,numElements);
 };
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// RECT
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 
 /**
  * Sets the uv coordinates used by rect draw calls.
@@ -1286,69 +1471,71 @@ QuickDraw.prototype.rectStroked2 = function(width,height){
 };
 
 /**
- * Draws a circle.
- * @param radius
+ * Draws a fullscreen rectangle.
+ * @param size_or_topleft
+ * @param topleft
  */
-QuickDraw.prototype.circle = function(radius){
-    radius = radius === undefined ? 0.5 : radius;
-    this._circleInternal(radius, this._ctx.TRIANGLE_FAN);
+QuickDraw.prototype.fullscreenRect = function(size_or_topleft,topleft){
+    if(size_or_topleft === undefined || !Array.isArray(size_or_topleft)){
+        this.fullscreenRect2(this._ctx.getDrawingbufferWidth(),this._ctx.getDrawingbufferHeight(),size_or_topleft || false);
+        return;
+    }
+    this.fullscreenRect2(size_or_topleft[0],size_or_topleft[1],topleft);
 };
 
 /**
- * Draws a stroked circle.
- * @param radius
+ * Draws a fullscreen rectangle.
+ * @param width
+ * @param height
+ * @param topleft
  */
-QuickDraw.prototype.circleStroked = function(radius){
-    radius = radius === undefined ? 0.5 : radius;
-    this._circleInternal(radius,this._ctx.LINE_LOOP);
-};
-
-
-QuickDraw.prototype.circles = function(){};
-
-QuickDraw.prototype.circlesStroked = function(){};
-
-/**
- * Draws an ellipse.
- * @param radii
- */
-QuickDraw.prototype.ellipse = function(radii){
-    this.ellipse2(radii[0],radii[1]);
+QuickDraw.prototype.fullscreenRect2 = function(width,height,topleft){
+    width = width === undefined ? 1.0 : width;
+    height = height === undefined ? 1.0 : height;
+    this.screenAlignedRect6(0,0,width,height,width,height,topleft);
 };
 
 /**
- * Draws an ellipse.
- * @param radiusX
- * @param radiusY
+ * Draws a screen aligned rectangle.
+ * @param pos
+ * @param size
+ * @param windowSize
+ * @param topleft
  */
-QuickDraw.prototype.ellipse2 = function(radiusX,radiusY){
-    radiusX = radiusX === undefined ? 0.5 : radiusX;
-    radiusY = radiusY === undefined ? radiusX : radiusY;
-    this._ellipseInternal(radiusX,radiusY,this._ctx.TRIANGLE_FAN);
+QuickDraw.prototype.screenAlignedRect = function(pos,size,windowSize,topleft){
+    this.screenAlignedRect6(
+        pos[0],pos[1],
+        size[0],size[1],
+        windowSize[0],windowSize[1],
+        topleft
+    );
 };
 
 /**
- * Draws a stroked ellipse.
- * @param radii
+ * Draws a screen aligned rectangle.
+ * @param x
+ * @param y
+ * @param width
+ * @param height
+ * @param windowWidth
+ * @param windowHeight
+ * @param topleft
  */
-QuickDraw.prototype.ellipseStroked = function(radii){
-    this.ellipseStroked2(radii[0],radii[1]);
+QuickDraw.prototype.screenAlignedRect6 = function(x,y,width,height,windowWidth,windowHeight,topleft){
+    if(!this._ctx._programHasAttribPosition){
+        throw QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
+    }
+    topleft = topleft === undefined ? true : topleft;
+    this._ctx.pushMatrices();
+    this._ctx.setWindowMatrices2(windowWidth,windowHeight,topleft);
+    this._ctx.translate3(x,y,0);
+    this.rect2(width,height);
+    this._ctx.popMatrices();
 };
 
-/**
- * Draws a stroked ellipse.
- * @param radiusX
- * @param radiusY
- */
-QuickDraw.prototype.ellipseStroked2 = function(radiusX,radiusY){
-    radiusX = radiusX === undefined ? 0.5 : radiusX;
-    radiusY = radiusY === undefined ? radiusX : radiusY;
-    this._ellipseInternal(radiusX,radiusY,this._ctx.LINE_LOOP);
-};
-
-QuickDraw.prototype.ellipses = function(){};
-
-QuickDraw.prototype.ellipsesStroked = function(){};
+/*--------------------------------------------------------------------------------------------------------------------*/
+// TRIANGLE
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * Draws a single triangle.
@@ -1491,6 +1678,10 @@ QuickDraw.prototype.trianglePoints9 = function(x0,y0,z0,x1,y1,z1,x2,y2,z2){
     );
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+// CUBE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 /**
  * Draws a cube.
  */
@@ -1596,76 +1787,22 @@ QuickDraw.prototype.cubeStroked = function(scale){
     }
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+// SPHERE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 QuickDraw.prototype.sphere = function(){};
 
 QuickDraw.prototype.spherePoints = function(){};
 
 QuickDraw.prototype.sphereStroked = function(){};
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+// CYLINDER
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+
 QuickDraw.prototype.cylinder = function(){};
-
-/**
- * Draws a fullscreen rectangle.
- * @param size_or_topleft
- * @param topleft
- */
-QuickDraw.prototype.fullscreenRect = function(size_or_topleft,topleft){
-    if(size_or_topleft === undefined || !Array.isArray(size_or_topleft)){
-        this.fullscreenRect2(this._ctx.getDrawingbufferWidth(),this._ctx.getDrawingbufferHeight(),size_or_topleft || false);
-        return;
-    }
-    this.fullscreenRect2(size_or_topleft[0],size_or_topleft[1],topleft);
-};
-
-/**
- * Draws a fullscreen rectangle.
- * @param width
- * @param height
- * @param topleft
- */
-QuickDraw.prototype.fullscreenRect2 = function(width,height,topleft){
-    width = width === undefined ? 1.0 : width;
-    height = height === undefined ? 1.0 : height;
-    this.screenAlignedRect6(0,0,width,height,width,height,topleft);
-};
-
-/**
- * Draws a screen aligned rectangle.
- * @param pos
- * @param size
- * @param windowSize
- * @param topleft
- */
-QuickDraw.prototype.screenAlignedRect = function(pos,size,windowSize,topleft){
-    this.screenAlignedRect6(
-        pos[0],pos[1],
-        size[0],size[1],
-        windowSize[0],windowSize[1],
-        topleft
-    );
-};
-
-/**
- * Draws a screen aligned rectangle.
- * @param x
- * @param y
- * @param width
- * @param height
- * @param windowWidth
- * @param windowHeight
- * @param topleft
- */
-QuickDraw.prototype.screenAlignedRect6 = function(x,y,width,height,windowWidth,windowHeight,topleft){
-    if(!this._ctx._programHasAttribPosition){
-        throw QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
-    }
-    topleft = topleft === undefined ? true : topleft;
-    this._ctx.pushMatrices();
-    this._ctx.setWindowMatrices2(windowWidth,windowHeight,topleft);
-    this._ctx.translate3(x,y,0);
-    this.rect2(width,height);
-    this._ctx.popMatrices();
-};
 
 QuickDraw.prototype.pivotAxes = function(axesLength,headLength){
     if(!this._ctx._programHasAttribPosition){
