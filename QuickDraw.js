@@ -1466,7 +1466,7 @@ QuickDraw.prototype.rectStroked2 = function(width,height){
         this._ctx.drawArrays(this._ctx.LINE_LOOP,0,4);
         this._ctx.popModelMatrix();
     } else {
-        this._ctx.drawElements(this._ctx.LINE_LOOP,0,4);
+        this._ctx.drawArrays(this._ctx.LINE_LOOP,0,4);
     }
 };
 
@@ -1966,6 +1966,10 @@ QuickDraw.prototype.grid = function(size, subdivs){
 QuickDraw.prototype.gridPoints = function(size, subdivs){
     this._gridInternal(size,subdivs,this._ctx.POINTS);
 };
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// DEBUG DRAW
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 QuickDraw.prototype.debugFrustum = function(){};
 
