@@ -3475,7 +3475,7 @@ ContextGL.prototype.getIndexBufferUsage = function(id){
  * @returns {number|*|null|byteLength}
  */
 ContextGL.prototype.getIndexBufferDataLength = function(id){
-    return this.getIndexBufferInfo(id).byteLength;
+    return this.getIndexBufferInfo(id).length;
 };
 
 /**
@@ -3484,7 +3484,7 @@ ContextGL.prototype.getIndexBufferDataLength = function(id){
  * @returns {number|*|null|byteLength}
  */
 ContextGL.prototype.getIndexBufferDataByteLength = function(id){
-    return this.getIndexBufferInfo(id).length;
+    return this.getIndexBufferInfo(id).byteLength;
 };
 
 /**
