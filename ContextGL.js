@@ -3847,6 +3847,8 @@ ContextGL.prototype._setVertexArrayNative = function(id){
         this._buffers[this._gl.ELEMENT_ARRAY_BUFFER][vertexArray.indexBuffer].dataType :
         null;
     this._vertexArrayHasDivisor = vertexArray.hasDivisor;
+
+    this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER] = vertexArray.indexBuffer || null;
 };
 
 ContextGL.prototype._invalidateVertexArrayNative = function(){
