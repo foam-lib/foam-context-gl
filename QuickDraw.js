@@ -62,6 +62,8 @@ function QuickDraw(ctx){
     this._numSegmentsEllipseMin = this._numSegmentsCircleMin;
     this._numSegmentsEllipseMax = this._numSegmentsCircleMax;
     this._numSegmentsEllipsePrev = -1;
+    this._numSegmentsCylinderHPrev = -1;
+    this._numSegmentsCylinderVPrev = -1;
 
     this._color = [1,0,0,1];
     this._colorPrev = [0,0,0,0];
@@ -69,12 +71,13 @@ function QuickDraw(ctx){
     this._drawState = new DrawState(
         [1,1,1,1], //color
         ctx.getLineWidth(), //lineWidth
-        1, //pointSize
+        1,  //pointSize
         16, //numSegmentsCircle
-        16 //numSegmentsEllipse
+        16, //numSegmentsEllipse
+        16, //numSegmentsCylinderH
+        3   //numSegmentsCylinderV
     );
     this._drawStateStack = [];
-
 
     /*----------------------------------------------------------------------------------------------------------------*/
     // Point
@@ -449,7 +452,25 @@ function QuickDraw(ctx){
     console.assert(ctx.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
-    // Tube
+    // Cylinder
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    this._bufferCylinderPosition = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
+    this._bufferCylinderNormal = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
+    this._bufferCylinderColor = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW,true);
+    this._bufferCylinderTexCoord = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
+    this._bufferCylinderIndex = ctx.createIndexBuffer(new Uint16Array(0),ctx.DYNAMIC_DRAW);
+
+    this._vaoCylinder = ctx.createVertexArray([
+        {location: ctx.ATTRIB_LOCATION_POSITION, buffer: this._bufferCylinderPosition, size: 3},
+        {location: ctx.ATTRIB_LOCATION_NORMAL, buffer: this._bufferCylinderNormal, size: 3},
+        {location: ctx.ATTRIB_LOCATION_COLOR, buffer: this._bufferCylinderColor, size: 4},
+        {location: ctx.ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferCylinderTexCoord, size: 2}
+    ],this._bufferCylinderIndex);
+    console.assert(ctx.getGLError());
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Tube - Axes, Vectors
     /*----------------------------------------------------------------------------------------------------------------*/
 
     //tube
@@ -554,85 +575,6 @@ export class QuickDrawError extends Error{
 }
 
 const STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION = "Program has no default attrib 'aPosition'.";
-
-QuickDraw.prototype._updateGrid = function(subdivs){
-    this._ctx.setVertexBuffer(this._bufferGridColor);
-    let colors = this._ctx.getVertexBufferData();
-
-    if(subdivs == this._gridSubdivs){
-        if(!Vec4.equals(colors, this._color)){
-            ArrayUtil.fillv4(colors, this._color);
-            this._ctx.updateVertexBufferData();
-        }
-        return;
-    }
-
-    const subdivs1 = subdivs + 1;
-    const num = subdivs1 * subdivs1;
-
-    const positions = new Float32Array(num * 3);
-    colors = new Float32Array(ArrayUtil.createWithValuesv(num, this._color));
-
-    const step = 1.0 / subdivs;
-
-    for(let i = 0, j, index; i < subdivs1; ++i){
-        for(j = 0; j < subdivs1; ++j){
-            index = (i * subdivs1 + j) * 3;
-            positions[index] = -0.5 + step * j;
-            positions[index + 1] = 0;
-            positions[index + 2] = -0.5 + step * i;
-        }
-    }
-
-    const indices = [];
-
-    for(let i = 0, j, k; i < subdivs1; ++i){
-        for(j = 0; j < subdivs1; ++j){
-            if(j < subdivs){
-                k = i * subdivs1 + j;
-                indices.push(k, k + 1);
-            }
-            if(i < subdivs){
-                k = i * subdivs1 + j;
-                indices.push(k, k + subdivs1);
-            }
-        }
-    }
-
-    this._ctx.setVertexBuffer(this._bufferGridPosition);
-    this._ctx.setVertexBufferData(positions);
-
-    this._ctx.setVertexBuffer(this._bufferGridColor);
-    this._ctx.setVertexBufferData(colors);
-
-    this._ctx.setIndexBuffer(this._bufferGridIndex);
-    this._ctx.setIndexBufferData(new Uint16Array(indices));
-
-    this._gridSubdivs = subdivs;
-    this._gridNumIndices = indices.length;
-    this._gridNumElements = positions.length / 3;
-};
-
-QuickDraw.prototype._gridInternal = function(size, subdivs, mode){
-    size    = (size === undefined || (size[0] < 0 || size[1] < 0)) ? VEC2_ONE : size;
-    subdivs = (subdivs === undefined || subdivs < 0) ? 1 : subdivs;
-
-    if(!this._ctx._programHasAttribPosition){
-        return;
-    }
-
-    this._updateGrid(subdivs);
-
-    this._ctx.setVertexArray(this._vaoGrid);
-    this._ctx.pushModelMatrix();
-    this._ctx.scale3(size[0],1.0,size[1]);
-    if(mode === this._ctx.LINES){
-        this._ctx.drawElements(this._ctx.LINES, this._gridNumIndices);
-    } else {
-        this._ctx.drawArrays(this._ctx.POINTS, 0, this._gridNumElements);
-    }
-    this._ctx.popModelMatrix();
-};
 
 QuickDraw.prototype._updateCircleGeom = function(positions, texCoords, numSegments, offsetPositions, offsetTexcoords){
     offsetPositions = offsetPositions === undefined ? 0 : offsetPositions;
@@ -1801,8 +1743,121 @@ QuickDraw.prototype.sphereStroked = function(){};
 // CYLINDER
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+QuickDraw.prototype._updateCylinderGeometry = function(numSegmentsH,numSegmentsV){
+    const numElements = numSegmentsH * numSegmentsV;
 
-QuickDraw.prototype.cylinder = function(){};
+    const dataPosition = new Float32Array(numElements * 3);
+    const dataNormal = new Float32Array(numElements * 3);
+    const dataColor = new Float32Array(ArrayUtil.createWithValuesv(numElements,this._drawState.color));
+    const dataTexCoord = new Float32Array(numElements * 2);
+    const dataIndex = new Uint16Array(numSegmentsH * (numSegmentsV - 1) * 3 * 2);
+
+    const stepH = Math.PI * 2 / numSegmentsH;
+    const stepV = 1.0 / (numSegmentsV - 1);
+
+    for(let i = 0; i < numSegmentsV; ++i){
+        const y = stepV * i;
+        for(let j = 0; j < numSegmentsH; ++j){
+            const index = (j + i * numSegmentsH);
+            const index3 = index * 3;
+            const index2 = index * 2;
+
+            const angle = stepH * j;
+            const x = Math.cos(angle);
+            const z = Math.sin(angle);
+
+            dataPosition[index3    ] = x;
+            dataPosition[index3 + 1] = -0.5 + y;
+            dataPosition[index3 + 2] = z;
+
+            dataNormal[index3    ] = x;
+            dataNormal[index3 + 1] = y;
+            dataNormal[index2 + 2] = z;
+
+            dataTexCoord[index2] = j / numSegmentsH;
+            dataTexCoord[index2] = i / numSegmentsV;
+        }
+    }
+
+    for(let i = 0; i < (numSegmentsV - 1); ++i){
+        let offset = numSegmentsH * i;
+        for(let j = 0; j < numSegmentsH; ++j){
+            const index  = j + i * numSegmentsH;
+            const index6 = index * 6;
+
+            const a = offset + (j + 1) % numSegmentsH;
+            const b = offset + j;
+            const c = a + numSegmentsH;
+            const d = b + numSegmentsH;
+
+            dataIndex[index6    ] = a;
+            dataIndex[index6 + 1] = b;
+            dataIndex[index6 + 2] = c;
+
+            dataIndex[index6 + 3] = d;
+            dataIndex[index6 + 4] = b;
+            dataIndex[index6 + 5] = c;
+        }
+    }
+
+    this._ctx.setVertexBuffer(this._bufferCylinderPosition);
+    this._ctx.setVertexBufferData(dataPosition);
+    this._ctx.setVertexBuffer(this._bufferCylinderNormal);
+    this._ctx.setVertexBufferData(dataNormal);
+    this._ctx.setVertexBuffer(this._bufferCylinderColor);
+    this._ctx.setVertexBufferData(dataColor);
+    this._ctx.setVertexBuffer(this._bufferCylinderTexCoord);
+    this._ctx.setVertexBufferData(dataTexCoord);
+
+    this._ctx.setIndexBuffer(this._bufferCylinderIndex);
+    this._ctx.setIndexBufferData(dataIndex);
+};
+
+QuickDraw.prototype.setCylinderSegmentsNum = function(numSegmentsH,numSegmentsV){
+    this._drawState.numSegmentsCylinderH = Math.max(numSegmentsH || 0,3);
+    this._drawState.numSegmentsCylinderV = Math.max(numSegmentsV || 0,2);
+};
+
+QuickDraw.prototype.cylinder = function(radius,height){
+    if(!this._ctx._programHasAttribPosition){
+        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
+    }
+
+    radius = radius === undefined ? 0.5 : radius;
+    height = height === undefined ? 1.0 : height;
+
+    const numSegmentsH = this._drawState.numSegmentsCylinderH;
+    const numSegmentsV = this._drawState.numSegmentsCylinderV;
+
+    this._ctx.setVertexArray(this._vaoCylinder);
+
+    //update cylinder geom
+    if(numSegmentsH !== this._numSegmentsCylinderHPrev ||
+       numSegmentsV !== this._numSegmentsCylinderVPrev){
+        this._updateCylinderGeometry(numSegmentsH,numSegmentsV);
+        this._numSegmentsCylinderHPrev = numSegmentsH;
+        this._numSegmentsCylinderVPrev = numSegmentsV;
+
+    //update cylinder colors
+    } else if(this._ctx._programHasAttribColor){
+        this._ctx.setVertexBuffer(this._bufferCylinderColor);
+        const colors = this._ctx.getVertexBufferData();
+
+        if(!Vec4.equals(colors,this._drawState.color)){
+            ArrayUtil.fillv4(colors,this._drawState.color);
+            this._ctx.updateVertexBufferData();
+        }
+    }
+
+    this._ctx.pushModelMatrix();
+        this._ctx.scale3(radius * 2,height, radius * 2);
+        this._ctx.drawElements(this._ctx.TRIANGLES,this._ctx.getIndexBufferDataLength(this._bufferCylinderIndex));
+    this._ctx.popModelMatrix();
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// PIVOT / GIZMO
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 QuickDraw.prototype.pivotAxes = function(axesLength,headLength){
     if(!this._ctx._programHasAttribPosition){
@@ -1946,6 +2001,88 @@ QuickDraw.prototype.vectorFromTo6 = function(x0,y0,z0,x1,y1,z1){
     this._ctx.pushModelMatrix();
     this._ctx.translate3(x0,y0,z0);
     this.vector3(x,y,z);
+    this._ctx.popModelMatrix();
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// GRID
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+//internal
+QuickDraw.prototype._updateGrid = function(subdivs){
+    this._ctx.setVertexBuffer(this._bufferGridColor);
+    let colors = this._ctx.getVertexBufferData();
+
+    if(subdivs == this._gridSubdivs){
+        if(!Vec4.equals(colors, this._color)){
+            ArrayUtil.fillv4(colors, this._color);
+            this._ctx.updateVertexBufferData();
+        }
+        return;
+    }
+
+    const subdivs1 = subdivs + 1;
+    const num = subdivs1 * subdivs1;
+
+    const positions = new Float32Array(num * 3);
+    colors = new Float32Array(ArrayUtil.createWithValuesv(num, this._color));
+
+    const step = 1.0 / subdivs;
+
+    for(let i = 0, j, index; i < subdivs1; ++i){
+        for(j = 0; j < subdivs1; ++j){
+            index = (i * subdivs1 + j) * 3;
+            positions[index] = -0.5 + step * j;
+            positions[index + 1] = 0;
+            positions[index + 2] = -0.5 + step * i;
+        }
+    }
+
+    const indices = [];
+
+    for(let i = 0, j, k; i < subdivs1; ++i){
+        for(j = 0; j < subdivs1; ++j){
+            if(j < subdivs){
+                k = i * subdivs1 + j;
+                indices.push(k, k + 1);
+            }
+            if(i < subdivs){
+                k = i * subdivs1 + j;
+                indices.push(k, k + subdivs1);
+            }
+        }
+    }
+
+    this._ctx.setVertexBuffer(this._bufferGridPosition);
+    this._ctx.setVertexBufferData(positions);
+    this._ctx.setVertexBuffer(this._bufferGridColor);
+    this._ctx.setVertexBufferData(colors);
+    this._ctx.setIndexBuffer(this._bufferGridIndex);
+    this._ctx.setIndexBufferData(new Uint16Array(indices));
+
+    this._gridSubdivs = subdivs;
+    this._gridNumIndices = indices.length;
+    this._gridNumElements = positions.length / 3;
+};
+
+QuickDraw.prototype._gridInternal = function(size, subdivs, mode){
+    size    = (size === undefined || (size[0] < 0 || size[1] < 0)) ? VEC2_ONE : size;
+    subdivs = (subdivs === undefined || subdivs < 0) ? 1 : subdivs;
+
+    if(!this._ctx._programHasAttribPosition){
+        return;
+    }
+
+    this._ctx.setVertexArray(this._vaoGrid);
+    this._updateGrid(subdivs);
+
+    this._ctx.pushModelMatrix();
+    this._ctx.scale3(size[0],1.0,size[1]);
+    if(mode === this._ctx.LINES){
+        this._ctx.drawElements(this._ctx.LINES, this._gridNumIndices);
+    } else {
+        this._ctx.drawArrays(this._ctx.POINTS, 0, this._gridNumElements);
+    }
     this._ctx.popModelMatrix();
 };
 
