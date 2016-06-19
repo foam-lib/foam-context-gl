@@ -706,7 +706,7 @@ function ContextGL(canvas,options){
     this.VERTEX_ARRAY_BINDING_BIT = VERTEX_ARRAY_BINDING_BIT;
 
     this._vertexArrays = {};
-    this._vertexArrayState = new VertexArrayBindingState(null);
+    this._vertexArrayState = new VertexArrayBindingState(INVALID_ID);
     this._vertexArrayHasIndexBuffer = false;
     this._vertexArrayIndexBufferDataType = null;
     this._vertexArrayHasDivisor = false;
