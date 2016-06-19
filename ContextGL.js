@@ -3397,6 +3397,12 @@ ContextGL.prototype.hasIndexBuffer = function(id){
  */
 ContextGL.prototype.setIndexBuffer = function(id){
     this._setBuffer(this._gl.ELEMENT_ARRAY_BUFFER,id);
+    //sync vertex array index buffer tracking
+    const vertexArray = this._vertexArrayState.binding;
+    if(vertexArray === INVALID_ID){
+        return;
+    }
+    this._vertexArrays[vertexArray].indexBuffer = id;
 };
 
 /**
