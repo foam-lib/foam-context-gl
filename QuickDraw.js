@@ -539,16 +539,45 @@ function QuickDraw(ctx){
     ], this._bufferGridIndex);
     console.assert(ctx.getGLError());
 
+    const dataTextureSize = 64;
+    const dataTextureGrid = new Uint8Array(dataTextureSize * dataTextureSize * 4);
+
+    for(let y = 0; y < dataTextureSize; ++y){
+        for(let x = 0; x < dataTextureSize; ++x){
+            const index = (x + y * dataTextureSize) * 4;
+            if(x === 0 || y === 0 ||
+               x === dataTextureSize - 1 || y === dataTextureSize -1){
+                dataTextureGrid[index  ] =
+                dataTextureGrid[index+1] =
+                dataTextureGrid[index+2] = 255;
+            }
+            dataTextureGrid[index+3] = 255;
+        }
+    }
+
+    this._gridTexture = ctx.createTexture2d(dataTextureGrid, {
+        width : dataTextureSize,
+        height : dataTextureSize,
+        dataType: ctx.UNSIGNED_BYTE,
+        wrap: ctx.REPEAT,
+        minFilter: ctx.LINEAR_MIPMAP_LINEAR,
+        magFilter: ctx.NEAREST,
+        mipmap : true
+    });
+
     /*----------------------------------------------------------------------------------------------------------------*/
     // Default program
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this._defaultStockProgram = this._ctx.createProgram(PROGRAM_DEFAULT_GLSL);
+    this._ctx.pushTextureBinding();
     this._ctx.pushProgramBinding();
         this._ctx.setProgram(this._defaultStockProgram);
         this._ctx.setProgramUniform('uUseTexture',0.0);
         this._ctx.setProgramUniform('uPointSize',this._drawState.pointSize);
+        this._ctx.setProgramUniform('uTexture',0);
     this._ctx.popProgramBinding();
+    this._ctx.popTextureBinding();
 }
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -2105,6 +2134,29 @@ QuickDraw.prototype.gridPoints = function(size, subdivs){
     this._gridInternal(size,subdivs,this._ctx.POINTS);
 };
 
+QuickDraw.prototype.gridTextured = function(size,subdivs){
+    size    = (size === undefined || (size[0] < 0 || size[1] < 0)) ? VEC2_ONE : size;
+    subdivs = (subdivs === undefined || subdivs < 0) ? 20 : subdivs;
+
+    if(!this._ctx._programHasAttribPosition ||
+       !this._ctx._programHasAttribTexCoord){
+       return;
+    }
+
+    this._ctx.pushTextureBinding();
+    this._ctx.pushModelMatrix();
+        this._ctx.rotateXYZ3(Math.PI * 0.5,0,0);
+        this._ctx.scale3(size[0],size[1],1.0);
+        this._ctx.translate3(-0.5,-0.5,0);
+        this._ctx.setTexture2d(this._gridTexture);
+        this._ctx.setProgramUniform('uUseTexture',1.0);
+        this.setRectTexCoord2(0,0, subdivs,0, subdivs,subdivs, 0,subdivs);
+        this.rect();
+        this._ctx.setProgramUniform('uUseTexture',0.0);
+    this._ctx.popModelMatrix();
+    this._ctx.popTextureBinding();
+};
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 // DEBUG DRAW
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -2128,7 +2180,6 @@ QuickDraw.prototype.debugNormals = function(position,normals){
 };
 
 QuickDraw.prototype.debugNormalsFlat = function(positions,normals){
-
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
