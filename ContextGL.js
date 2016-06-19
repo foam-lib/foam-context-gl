@@ -21,7 +21,8 @@ import {
     LineWidthState,
     BlendState,
     DrawState,
-    TextureState
+    TextureState,
+    VertexArrayBindingState
 } from './State';
 
 //Safari does not expose static WebGLRenderingContext constants
@@ -376,6 +377,7 @@ function ContextGL(canvas,options){
             this.setVertexArray = this._setVertexArrayShim;
             this.invalidateVertexArray = this._invalidateVertexArrayShim;
         } else {
+            this._gl.VERTEX_ARRAY_BINDING = ext.VERTEX_ARRAY_BINDING_OES;
             this._gl.createVertexArray = ext.createVertexArrayOES.bind(ext);
             this._gl.deleteVertexArray = ext.deleteVertexArrayOES.bind(ext);
             this._gl.bindVertexArray = ext.bindVertexArrayOES.bind(ext);
@@ -702,11 +704,13 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.VERTEX_ARRAY_BINDING_BIT = VERTEX_ARRAY_BINDING_BIT;
+
     this._vertexArrays = {};
-    this._vertexArrayActive = null;
+    this._vertexArrayState = new VertexArrayBindingState(null);
     this._vertexArrayHasIndexBuffer = false;
     this._vertexArrayIndexBufferDataType = null;
     this._vertexArrayHasDivisor = false;
+
     this._vertexArrayStack = [];
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -3718,7 +3722,7 @@ ContextGL.prototype._createVertexArrayShim = function(attributes,indexBuffer){
     this.pushBufferBinding();
     this.pushVertexArrayBinding();
     {
-        this._vertexArrayActive = id;
+        this._vertexArrayState.binding = id;
         this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
         this._vertexArraySetupBuffers(vertexArray);
         console.assert(this.getGLError());
@@ -3737,7 +3741,7 @@ ContextGL.prototype._deleteVertexArrayShim = function(id){};
  * @private
  */
 ContextGL.prototype._setVertexArrayShim = function(id){
-    if(id === this._vertexArrayActive){
+    if(id === this._vertexArrayState.binding){
         return;
     }
     if(id === null){
@@ -3750,7 +3754,7 @@ ContextGL.prototype._setVertexArrayShim = function(id){
     }
     //rebind/setup all buffers, no vao here
     this._vertexArraySetupBuffers(vertexArray);
-    this._vertexArrayActive = id;
+    this._vertexArrayState.binding = id;
 
     this._vertexArrayHasIndexBuffer = !!vertexArray.indexBuffer;
     this._vertexArrayIndexBufferDataType =
@@ -3796,7 +3800,7 @@ ContextGL.prototype._createVertexArrayNative = function(attributes,indexBuffer){
     this.pushBufferBinding();
     this.pushVertexArrayBinding();
     {
-        this._vertexArrayActive = id;
+        this._vertexArrayState.binding = id;
         this._gl.bindVertexArray(vertexArray.handle);
         this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
         this._vertexArraySetupBuffers(vertexArray);
@@ -3816,7 +3820,7 @@ ContextGL.prototype._deleteVertexArrayNative = function(id){
     this._gl.deleteVertexArray(vertexArray.handle);
     delete this._vertexArrays[id];
 
-    if(this._vertexArrayActive === id){
+    if(this._vertexArrayState.binding === id){
         this._invalidateVertexArrayNative();
     }
 };
@@ -3827,7 +3831,7 @@ ContextGL.prototype._deleteVertexArrayNative = function(id){
  * @private
  */
 ContextGL.prototype._setVertexArrayNative = function(id){
-    if(id === this._vertexArrayActive){
+    if(id === this._vertexArrayState.binding){
         return;
     }
     if(id === null){
@@ -3839,7 +3843,7 @@ ContextGL.prototype._setVertexArrayNative = function(id){
         throw new VertexArrayError(strVertexArrayErrorInvalidId(id));
     }
     this._gl.bindVertexArray(vertexArray.handle);
-    this._vertexArrayActive = id;
+    this._vertexArrayState.binding = id;
 
     this._vertexArrayHasIndexBuffer = !!vertexArray.indexBuffer;
     this._vertexArrayIndexBufferDataType =
@@ -3852,11 +3856,11 @@ ContextGL.prototype._setVertexArrayNative = function(id){
 };
 
 ContextGL.prototype._invalidateVertexArrayNative = function(){
-    if(this._vertexArrayActive === null){
+    if(this._vertexArrayState.binding === null){
         return;
     }
     this._gl.bindVertexArray(null);
-    this._vertexArrayActive = null;
+    this._vertexArrayState.binding = null;
     this._vertexArrayHasIndexBuffer = false;
     this._vertexArrayIndexBufferDataType = null;
     this._vertexArrayHasDivisor = false;
@@ -3866,11 +3870,11 @@ ContextGL.prototype._invalidateVertexArrayNative = function(){
  * Saves the current vertex array binding.
  */
 ContextGL.prototype.pushVertexArrayBinding = function(newState){
-    this._vertexArrayStack.push(this._vertexArrayActive);
+    this._vertexArrayStack.push(this._vertexArrayState.copy());
     if(newState === undefined){
         return;
     }
-    this.setVertexArray(newState);
+    this.setVertexArray(newState.binding);
 };
 
 /**
@@ -3880,7 +3884,26 @@ ContextGL.prototype.popVertexArrayBinding = function(){
     if(this._vertexArrayStack.length === 0){
         throw new Error(STR_ERROR_INVALID_STACK_POP);
     }
-    this.setVertexArray(this._vertexArrayStack.pop());
+    this.setVertexArrayBindingState(this._vertexArrayStack.pop());
+};
+
+/**
+ * Sets the current vertex array binding state.
+ * @param state
+ */
+ContextGL.prototype.setVertexArrayBindingState = function(state){
+    if(state.binding === undefined){
+        return;
+    }
+    this.setVertexArray(state.binding);
+};
+
+/**
+ * Returns a copy of the current vertex array binding state.
+ * @returns {VertexArrayBindingState}
+ */
+ContextGL.prototype.getVertexArrayBindingState = function(){
+    return this._vertexArrayState.copy();
 };
 
 /**
@@ -3931,7 +3954,7 @@ ContextGL.prototype.invalidateVertexArray = function(){
  * @returns {number|*}
  */
 ContextGL.prototype.getVertexArray = function(){
-    return this._vertexArrayActive;
+    return this._vertexArrayState.binding;
 };
 
 /**
@@ -3947,11 +3970,23 @@ ContextGL.prototype.hasVertexArray = function(id){
  * Returns the vertex array state.
  * @returns {*}
  */
-ContextGL.prototype.getVertexArrayInfo = function(){
-    if(this._vertexArrayActive === INVALID_ID){
-        throw new VertexArrayError(STR_VERTEX_ARRAY_ERROR_NOTHING_BOUND);
+ContextGL.prototype.getVertexArrayInfo = function(id){
+    let vertexArray;
+    //active vertex array
+    if(id === undefined){
+        const bindingActive = this._vertexArrayState.binding;
+        if(bindingActive === INVALID_ID){
+            throw new VertexArrayError(STR_VERTEX_ARRAY_ERROR_NOTHING_BOUND);
+        }
+        vertexArray = this._vertexArrays[bindingActive];
+    //specific vertex array
+    } else {
+        vertexArray = this._vertexArrays[id];
+        if(!vertexArray){
+            throw new VertexArrayError(strVertexArrayErrorInvalidId(id));
+        }
     }
-    return this._vertexArrays[this._vertexArrayActive];
+    return vertexArray;
 };
 
 /**
@@ -3959,10 +3994,10 @@ ContextGL.prototype.getVertexArrayInfo = function(){
  * @returns {boolean}
  */
 ContextGL.prototype.hasVertexArrayIndexBuffer = function(){
-    if(this._vertexArrayActive === INVALID_ID){
+    if(this._vertexArrayState.binding === INVALID_ID){
         throw new VertexArrayError(STR_VERTEX_ARRAY_ERROR_NOTHING_BOUND);
     }
-    return !!this._vertexArrays[this._vertexArrayActive].indexBuffer;
+    return !!this._vertexArrays[this._vertexArrayState.binding].indexBuffer;
 };
 
 /**
@@ -3970,10 +4005,10 @@ ContextGL.prototype.hasVertexArrayIndexBuffer = function(){
  * @returns {null|*}
  */
 ContextGL.prototype.getVertexArrayIndexBuffer = function(){
-    if(this._vertexArrayActive === INVALID_ID){
+    if(this._vertexArrayState.binding === INVALID_ID){
         throw new VertexArrayError(STR_VERTEX_ARRAY_ERROR_NOTHING_BOUND);
     }
-    return this._vertexArrays[this._vertexArrayActive].indexBuffer;
+    return this._vertexArrays[this._vertexArrayState.binding].indexBuffer;
 };
 
 /**
@@ -3981,10 +4016,10 @@ ContextGL.prototype.getVertexArrayIndexBuffer = function(){
  * @returns {boolean|*}
  */
 ContextGL.prototype.vertexArrayHasDivisor = function(){
-    if(this._vertexArrayActive === INVALID_ID){
+    if(this._vertexArrayState.binding === INVALID_ID){
         throw new VertexArrayError(STR_VERTEX_ARRAY_ERROR_NOTHING_BOUND);
     }
-    return this._vertexArrays[this._vertexArrayActive].hasDivisor;
+    return this._vertexArrays[this._vertexArrayState.binding].hasDivisor;
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -5840,7 +5875,7 @@ ContextGL.prototype.getState = function(mask){
     }
     //vertex array binding
     if((mask & VERTEX_ARRAY_BINDING_BIT) == VERTEX_ARRAY_BINDING_BIT){
-        state.vertexArrayBinding = this._vertexArrayActive;
+        state.vertexArrayBinding = this.getVertexArrayBindingState();
     }
     //texture
     if((mask & TEXTURE_BINDING_BIT) == TEXTURE_BINDING_BIT){
@@ -5924,6 +5959,9 @@ ContextGL.prototype.setState = function(state){
     }
     if(state.programBinding !== undefined){
         this.setProgram(state.programBinding);
+    }
+    if(state.vertexArrayBinding !== undefined){
+        this.setVertexArrayBindingState(state.vertexArrayBinding);
     }
     if(state.vertexBufferBinding !== undefined){
         this.setVertexBuffer(state.vertexBufferBinding);
