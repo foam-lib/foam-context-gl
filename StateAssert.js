@@ -108,3 +108,19 @@ export function assertEqualStateBlend(state){
     equal(stateb.blendFuncSeparate[2],gl.getParameter(gl.BLEND_SRC_ALPHA));
     equal(stateb.blendFuncSeparate[3],gl.getParameter(gl.BLEND_DST_ALPHA));
 }
+
+export function assertEqualStateVertexArrayBinding(state){
+    const ctx = ContextGL.sharedContext();
+    const gl = ctx.getGL();
+
+    const statea = ctx.getState(ctx.VERTEX_ARRAY_BINDING_BIT);
+    const stateb = state || ctx.getVertexArrayBindingState();
+    deepEqual(statea.vertexArrayBinding, stateb);
+    let vertexArrayHandle;
+    try{
+        vertexArrayHandle = ctx.getVertexArrayInfo(stateb.binding).handle;
+    } catch(e){
+        vertexArrayHandle = null;
+    }
+    equal(vertexArrayHandle, gl.getParameter(gl.VERTEX_ARRAY_BINDING));
+}
