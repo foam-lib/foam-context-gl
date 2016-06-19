@@ -576,7 +576,7 @@ export class QuickDrawError extends Error{
 
 const STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION = "Program has no default attrib 'aPosition'.";
 
-QuickDraw.prototype._updateCircleGeom = function(positions, texCoords, numSegments, offsetPositions, offsetTexcoords){
+QuickDraw.prototype._updateCircleGeometry = function(positions, texCoords, numSegments, offsetPositions, offsetTexcoords){
     offsetPositions = offsetPositions === undefined ? 0 : offsetPositions;
     offsetTexcoords = offsetTexcoords === undefined ? 0 : offsetTexcoords;
     var step = Math.PI * 2 / numSegments;
@@ -604,7 +604,7 @@ QuickDraw.prototype._circleInternal = function(radius, drawMode){
         this._ctx.setVertexBuffer(this._bufferCircleTexcoord);
         const texcoords = this._ctx.getVertexBufferData();
 
-        this._updateCircleGeom(positions,texcoords,numSegmentsCircle);
+        this._updateCircleGeometry(positions,texcoords,numSegmentsCircle);
 
         this._ctx.setVertexBuffer(this._bufferCirclePosition);
         this._ctx.updateVertexBufferData();
@@ -641,7 +641,7 @@ QuickDraw.prototype._ellipseInternal = function(radiusX, radiusY, drawMode){
         this._ctx.setVertexBuffer(this._bufferEllipseTexcoord);
         const texcoords = this._ctx.getVertexBufferData();
 
-        this._updateCircleGeom(positions,texcoords,numSegmentsEllipse);
+        this._updateCircleGeometry(positions,texcoords,numSegmentsEllipse);
 
         this._ctx.setVertexBuffer(this._bufferEllipsePosition);
         this._ctx.updateVertexBufferData();
@@ -2010,7 +2010,7 @@ QuickDraw.prototype.vectorFromTo6 = function(x0,y0,z0,x1,y1,z1){
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 //internal
-QuickDraw.prototype._updateGrid = function(subdivs){
+QuickDraw.prototype._updateGridGeometry = function(subdivs){
     this._ctx.setVertexBuffer(this._bufferGridColor);
     let colors = this._ctx.getVertexBufferData();
 
@@ -2075,7 +2075,7 @@ QuickDraw.prototype._gridInternal = function(size, subdivs, mode){
     }
 
     this._ctx.setVertexArray(this._vaoGrid);
-    this._updateGrid(subdivs);
+    this._updateGridGeometry(subdivs);
 
     this._ctx.pushModelMatrix();
     this._ctx.scale3(size[0],1.0,size[1]);
