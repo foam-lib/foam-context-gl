@@ -1744,6 +1744,7 @@ QuickDraw.prototype.sphereStroked = function(){};
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 QuickDraw.prototype._updateCylinderGeometry = function(numSegmentsH,numSegmentsV){
+    numSegmentsH = numSegmentsH + 1;
     const numElements = numSegmentsH * numSegmentsV;
 
     const dataPosition = new Float32Array(numElements * 3);
@@ -1752,7 +1753,7 @@ QuickDraw.prototype._updateCylinderGeometry = function(numSegmentsH,numSegmentsV
     const dataTexCoord = new Float32Array(numElements * 2);
     const dataIndex = new Uint16Array(numSegmentsH * (numSegmentsV - 1) * 3 * 2);
 
-    const stepH = Math.PI * 2 / numSegmentsH;
+    const stepH = Math.PI * 2 / (numSegmentsH - 1);
     const stepV = 1.0 / (numSegmentsV - 1);
 
     for(let i = 0; i < numSegmentsV; ++i){
@@ -1774,18 +1775,18 @@ QuickDraw.prototype._updateCylinderGeometry = function(numSegmentsH,numSegmentsV
             dataNormal[index3 + 1] = 0;
             dataNormal[index3 + 2] = z;
 
-            dataTexCoord[index2] = j / numSegmentsH;
-            dataTexCoord[index2] = i / numSegmentsV;
+            dataTexCoord[index2    ] = j / numSegmentsH;
+            dataTexCoord[index2 + 1] = i / numSegmentsV;
         }
     }
 
     for(let i = 0; i < (numSegmentsV - 1); ++i){
         let offset = numSegmentsH * i;
-        for(let j = 0; j < numSegmentsH; ++j){
+        for(let j = 0; j < numSegmentsH - 1; ++j){
             const index  = j + i * numSegmentsH;
             const index6 = index * 6;
 
-            const a = offset + (j + 1) % numSegmentsH;
+            const a = offset + j + 1;
             const b = offset + j;
             const c = a + numSegmentsH;
             const d = b + numSegmentsH;
