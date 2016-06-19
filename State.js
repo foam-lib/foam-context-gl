@@ -355,14 +355,25 @@ VertexArrayBindingState.prototype.getDescription = function(){
  * @param pointSize
  * @param numSegmentsCircle
  * @param numSegmentsEllipse
+ * @param numSegmentsCylinderH
+ * @param numSegmentsCylinderV
  * @constructor
  */
-export function DrawState(color,lineWidth,pointSize,numSegmentsCircle,numSegmentsEllipse){
+export function DrawState(
+    color,
+    lineWidth,
+    pointSize,
+    numSegmentsCircle,
+    numSegmentsEllipse,
+    numSegmentsCylinderH,
+    numSegmentsCylinderV){
     this.color = color.slice(0);
     this.lineWidth = lineWidth;
     this.pointSize = pointSize;
     this.numSegmentsCircle = numSegmentsCircle;
     this.numSegmentsEllipse = numSegmentsEllipse;
+    this.numSegmentsCylinderH = numSegmentsCylinderH;
+    this.numSegmentsCylinderV = numSegmentsCylinderV;
 }
 
 /**
@@ -375,7 +386,9 @@ DrawState.prototype.copy = function(){
         this.lineWidth,
         this.pointSize,
         this.numSegmentsCircle,
-        this.numSegmentsEllipse
+        this.numSegmentsEllipse,
+        this.numSegmentsCylinderH,
+        this.numSegmentsCylinderV
     );
 };
 
@@ -389,6 +402,8 @@ DrawState.prototype.getDescription = function(){
         lineWidth : this.lineWidth,
         pointSize : this.pointSize,
         numSegmentsCircle : this.numSegmentsCircle,
-        numSegmentsEllipse : this.numSegmentsEllipse
+        numSegmentsEllipse : this.numSegmentsEllipse,
+        numSegmentsCylinderH : this.numSegmentsCylinderH,
+        numSegmentsCylinderV : this.numSegmentsCylinderV
     };
 };
