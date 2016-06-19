@@ -322,6 +322,33 @@ TextureState.prototype.getDescription = function(){
 };
 
 /**
+ * Vertex array binding representation.
+ * @param binding
+ * @constructor
+ */
+export function VertexArrayBindingState(binding){
+    this.binding = binding;
+}
+
+/**
+ * Returns a copy of the state.
+ * @returns {VertexArrayBindingState}
+ */
+VertexArrayBindingState.prototype.copy = function(){
+    return new VertexArrayBindingState(this.binding);
+};
+
+/**
+ * Returns a string description of the state.
+ * @returns {{binding: *}}
+ */
+VertexArrayBindingState.prototype.getDescription = function(){
+    return {
+        binding : this.binding
+    };
+};
+
+/**
  * Quickdraw state representation
  * @param color
  * @param lineWidth
