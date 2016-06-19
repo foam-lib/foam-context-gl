@@ -3051,7 +3051,7 @@ ContextGL.prototype._createBuffer = function(target,size_or_data,usage,preserveD
         if(prevId === INVALID_ID){
             this._invalidateBuffer(target);
         } else {
-            this._setBuffer(target,id);
+            this._setBuffer(target,prevId);
         }
     }
     return id;
@@ -3727,12 +3727,10 @@ ContextGL.prototype._createVertexArrayShim = function(attributes,indexBuffer){
 
     this.pushBufferBinding();
     this.pushVertexArrayBinding();
-    {
         this._vertexArrayState.binding = id;
         this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
         this._vertexArraySetupBuffers(vertexArray);
         console.assert(this.getGLError());
-    }
     this.popVertexArrayBinding();
     this.popBufferBinding();
 
@@ -3805,13 +3803,11 @@ ContextGL.prototype._createVertexArrayNative = function(attributes,indexBuffer){
 
     this.pushBufferBinding();
     this.pushVertexArrayBinding();
-    {
         this._vertexArrayState.binding = id;
         this._gl.bindVertexArray(vertexArray.handle);
         this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
         this._vertexArraySetupBuffers(vertexArray);
         console.assert(this.getGLError());
-    }
     this.popVertexArrayBinding();
     this.popBufferBinding();
 
@@ -3857,7 +3853,7 @@ ContextGL.prototype._setVertexArrayNative = function(id){
         this._buffers[this._gl.ELEMENT_ARRAY_BUFFER][vertexArray.indexBuffer].dataType :
         null;
     this._vertexArrayHasDivisor = vertexArray.hasDivisor;
-
+    //sync internal vertex array representation
     this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER] = vertexArray.indexBuffer || null;
 };
 
