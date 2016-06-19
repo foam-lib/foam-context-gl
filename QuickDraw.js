@@ -1771,8 +1771,8 @@ QuickDraw.prototype._updateCylinderGeometry = function(numSegmentsH,numSegmentsV
             dataPosition[index3 + 2] = z;
 
             dataNormal[index3    ] = x;
-            dataNormal[index3 + 1] = y;
-            dataNormal[index2 + 2] = z;
+            dataNormal[index3 + 1] = 0;
+            dataNormal[index3 + 2] = z;
 
             dataTexCoord[index2] = j / numSegmentsH;
             dataTexCoord[index2] = i / numSegmentsV;
