@@ -5100,7 +5100,7 @@ ContextGL.prototype.setFramebufferDepthStencilAttachment = function(texture){
  * @returns {boolean}
  */
 ContextGL.prototype.getFramebufferDepthStencilAttachment = function(framebuffer){
-    return this.getFramebufferInfo(framebuffer).stencilDepth_or_depthAttachment;
+    return this.getFramebufferInfo(framebuffer).depthStencilAttachment;
 };
 
 /**
