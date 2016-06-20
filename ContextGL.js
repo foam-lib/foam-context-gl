@@ -5147,12 +5147,12 @@ ContextGL.prototype.deleteFramebuffer = function(id){
         for(let i = 0; i < framebuffer.colorAttachments.length; ++i){
             this._deleteTexture(framebuffer.colorAttachments[i]);
         }
-
-        if(framebuffer.stencilDepth_or_depthAttachment){
+        const depthStencil_or_depthAttachment = framebuffer.depthStencilAttachment || framebuffer.depthAttachment;
+        if(depthStencil_or_depthAttachment){
             if(this._glVersion === 2 || this._glCapabilites.DEPTH_TEXTURE){
-                this._deleteTexture(framebuffer.stencilDepth_or_depthAttachment)
+                this._deleteTexture(depthStencil_or_depthAttachment)
             } else {
-                this._deleteRenderbufferRAW(framebuffer.stencilDepth_or_depthAttachment);
+                this._deleteRenderbufferRAW(depthStencil_or_depthAttachment);
             }
         }
     }
