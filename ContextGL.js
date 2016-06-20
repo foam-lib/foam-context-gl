@@ -240,8 +240,13 @@ precision highp float;
 varying vec2 vTexCoord;
 uniform sampler2D uTexture;
 
+uniform vec4 uOffsetScale;
+
 void main(){
-    gl_FragColor = texture2D(uTexture,vTexCoord);
+    vec2 offset   = uOffsetScale.xy;
+    vec2 scale    = uOffsetScale.zw;
+    vec2 texCoord = offset + vTexCoord * scale;
+    gl_FragColor = texture2D(uTexture,texCoord);
 }
 #endif
 `;
@@ -884,6 +889,7 @@ function ContextGL(canvas,options){
     this.pushProgramBinding();
         this.setProgram(this._programBlit);
         this.setProgramUniform('uTexture',0);
+        this.setProgramUniform('uOffsetScale',0,0,1,1);
     this.popProgramBinding();
 }
 
@@ -5182,13 +5188,13 @@ ContextGL.prototype.getFramebufferInfo = function(id){
     return framebuffer;
 };
 
-/**
- * Draws the selected framebuffer to screen.
- * @param framebuffer
- * @param attachmentPoint_or_size
- * @param size
- */
-ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,attachmentPoint_or_size,size){
+/*--------------------------------------------------------------------------------------------------------------------*/
+// BLIT FRAME BUFFER
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+// internal
+
+ContextGL.prototype._getBlitFramebufferInfo = function(framebuffer, mask_or_attachmentPoint, out){
     if(framebuffer === undefined){
         throw new Error('No framebuffer specified.');
     }
@@ -5196,28 +5202,43 @@ ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,attachmentPoi
     if(!framebuffer_){
         throw new FramebufferError(strFramebufferInvalidId(framebuffer));
     }
-    let width, height;
-    let attachmentPoint = 0;
-    if(Array.isArray(attachmentPoint_or_size)){
-        size = attachmentPoint_or_size;
-    } else {
-        attachmentPoint = attachmentPoint_or_size || attachmentPoint;
+    mask_or_attachmentPoint = mask_or_attachmentPoint || 0;
+
+    let attachment;
+    switch(mask_or_attachmentPoint){
+        // depth attachment
+        case this._gl.DEPTH_ATTACHMENT:
+            if(!framebuffer_.depthAttachment){
+                throw new FramebufferError('Framebuffer has no depth attachment.');
+            }
+            attachment = framebuffer_.depthAttachment;
+            break;
+        // depth stencil attachment
+        case this._gl.DEPTH_STENCIL_ATTACHMENT:
+            if(!framebuffer_.depthStencilAttachment){
+                throw new FramebufferError('Framebuffer has no depth stencil attachment.');
+            }
+            attachment = framebuffer_.depthStencilAttachment;
+            break;
+        //color attachment
+        default:
+            const attachmentIndex = framebuffer_.attachmentPoints.indexOf(this._gl.COLOR_ATTACHMENT0 + mask_or_attachmentPoint);
+            if(attachmentIndex === -1){
+                throw new FramebufferError(strFrambufferInvalidAttachmentPoint(mask_or_attachmentPoint));
+            }
+            attachment = framebuffer_.colorAttachments[attachmentIndex];
+            break;
     }
 
-    const attachmentIndex = framebuffer_.attachmentPoints.indexOf(this._gl.COLOR_ATTACHMENT0 + attachmentPoint);
-    if(attachmentIndex == -1){
-        throw new FramebufferError(strFrambufferInvalidAttachmentPoint(attachmentPoint));
-    }
-    const attachment = framebuffer_.colorAttachments[attachmentIndex];
+    out[0] = framebuffer_;
+    out[1] = attachment;
+    return out;
+};
 
-    if(size){
-        width = size[0];
-        height = size[1];
-    } else {
-        width = framebuffer_.width;
-        height = framebuffer_.height;
-    }
-
+ContextGL.prototype._blitFramebufferAttachmentToScreen = function(
+    attachment,
+    srcOffsetx,srcOffsety,srcScalex,srcScaley,dstx,dsty,dstWidth,dstHeight
+){
     const state =
         this.VERTEX_ARRAY_BINDING_BIT |
         this.ARRAY_BUFFER_BINDING_BIT |
@@ -5229,12 +5250,102 @@ ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,attachmentPoi
 
     this.pushState(state);
         this.setProgram(this._programBlit);
+        this.setProgramUniform('uOffsetScale',srcOffsetx,srcOffsety,srcScalex,srcScaley);
         this.setDepthTest(false);
-        this.setViewport4(0,0,width,height);
+        this.setViewport4(dstx,dsty,dstWidth,dstHeight);
         this.setTexture2d(attachment);
         this.setVertexArray(this._vertexArrayBlitRect);
         this.drawArrays(this._gl.TRIANGLE_FAN,0,4);
     this.popState(state);
+};
+
+/**
+ * Blits a complete framebuffer attachment to screen.
+ * @param framebuffer
+ * @param bounds
+ * @param mask_or_attachmentPoint
+ */
+ContextGL.prototype.blitFullFramebufferToScreen = function(framebuffer,bounds,mask_or_attachmentPoint){
+    this.blitFullFramebufferToScreen2(framebuffer,bounds[0],bounds[1],bounds[2],bounds[3],mask_or_attachmentPoint);
+};
+
+/**
+ * Blits a complete framebuffer attachment to screen.
+ * @param framebuffer
+ * @param x
+ * @param y
+ * @param width
+ * @param height
+ * @param mask_or_attachmentPoint
+ */
+ContextGL.prototype.blitFullFramebufferToScreen2 = function(framebuffer,x,y,width,height,mask_or_attachmentPoint){
+    const info = this._getBlitFramebufferInfo(framebuffer,mask_or_attachmentPoint,TEMP_VEC2_0);
+    const attachment = info[1];
+
+    this._blitFramebufferAttachmentToScreen(attachment,0,0,1,1,x,y,width,height);
+};
+
+/**
+ * Blits a frambuffer attachment region to screen.
+ * @param framebuffer
+ * @param srcBounds
+ * @param dstBounds_or_mask_or_attachmentPoint
+ * @param mask_or_attachmentPoint
+ */
+ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,srcBounds,dstBounds_or_mask_or_attachmentPoint,mask_or_attachmentPoint){
+    let dstBounds;
+    if(mask_or_attachmentPoint === undefined){
+        if(Array.isArray(dstBounds_or_mask_or_attachmentPoint)){
+            dstBounds = dstBounds_or_mask_or_attachmentPoint;
+        } else{
+            dstBounds = srcBounds;
+            mask_or_attachmentPoint = 0;
+        }
+    }
+    this.blitFramebufferToScreen2(
+        framebuffer,
+        srcBounds[0], srcBounds[1], srcBounds[0] + srcBounds[2], srcBounds[1] + srcBounds[3],
+        dstBounds[0], dstBounds[1], dstBounds[0] + dstBounds[2], dstBounds[1] + dstBounds[3],
+        mask_or_attachmentPoint
+    );
+};
+
+/**
+ * Blits a frambuffer attachment region to screen.
+ * @param framebuffer
+ * @param srcx0
+ * @param srcy0
+ * @param srcx1
+ * @param srcy1
+ * @param dstx0
+ * @param dsty0
+ * @param dstx1
+ * @param dsty1
+ * @param mask_or_attachmentPoint
+ */
+ContextGL.prototype.blitFramebufferToScreen2 = function(framebuffer,srcx0,srcy0,srcx1,srcy1,dstx0,dsty0,dstx1,dsty1,mask_or_attachmentPoint){
+    const info = this._getBlitFramebufferInfo(framebuffer,mask_or_attachmentPoint,TEMP_VEC2_0);
+    const framebuffer_ = info[0];
+    const attachment = info[1];
+
+    const width = framebuffer_.width;
+    const height = framebuffer_.height;
+
+    const srcWidth = srcx1 - srcx0;
+    const srcHeight = srcy1 - srcy0;
+    const dstWidth = dstx1 - dstx0;
+    const dstHeight = dsty1 - dsty0;
+
+    const srcOffsetx = srcx0 / width;
+    const srcOffsety = srcy0 / height;
+    const srcScalex  = srcWidth / width;
+    const srcScaley  = srcHeight / height;
+
+    this._blitFramebufferAttachmentToScreen(
+        attachment,
+        srcOffsetx,srcOffsety,srcScalex,srcScaley,
+        dstx0,dsty0,dstWidth,dstHeight
+    )
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
