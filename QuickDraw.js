@@ -539,7 +539,7 @@ function QuickDraw(ctx){
     ], this._bufferGridIndex);
     console.assert(ctx.getGLError());
 
-    const dataTextureSize = 64;
+    const dataTextureSize = 128;
     const dataTextureGrid = new Uint8Array(dataTextureSize * dataTextureSize * 4);
 
     for(let y = 0; y < dataTextureSize; ++y){
@@ -561,7 +561,7 @@ function QuickDraw(ctx){
         dataType: ctx.UNSIGNED_BYTE,
         wrap: ctx.REPEAT,
         minFilter: ctx.LINEAR_MIPMAP_LINEAR,
-        magFilter: ctx.NEAREST,
+        magFilter: ctx.LINEAR,
         mipmap : true
     });
 
@@ -2136,7 +2136,7 @@ QuickDraw.prototype.gridPoints = function(size, subdivs){
 
 QuickDraw.prototype.gridTextured = function(size,subdivs){
     size    = (size === undefined || (size[0] < 0 || size[1] < 0)) ? VEC2_ONE : size;
-    subdivs = (subdivs === undefined || subdivs < 0) ? 20 : subdivs;
+    subdivs = (subdivs === undefined || subdivs < 0) ? 10 : subdivs;
 
     if(!this._ctx._programHasAttribPosition ||
        !this._ctx._programHasAttribTexCoord){
