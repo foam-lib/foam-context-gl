@@ -410,9 +410,11 @@ function ContextGL(canvas,options){
             maxColorAttachments = this._gl.getParameter(ext.MAX_COLOR_ATTACHMENTS_WEBGL);
             this._gl.drawBuffers = ext.drawBuffersWEBGL.bind(ext);
             this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
+            this.drawBuffers = this._drawBuffersSupported;
             glCapabilities.DRAW_BUFFERS = true;
         } else {
             this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersNotSupported;
+            this.drawBuffers = this._drawBuffersNotSupported;
         }
         this.MAX_DRAW_BUFFERS = maxDrawBuffers;
         this.MAX_COLOR_ATTACHMENTS = maxColorAttachments;
@@ -420,6 +422,7 @@ function ContextGL(canvas,options){
         this.MAX_DRAW_BUFFERS = this._gl.MAX_DRAW_BUFFERS;
         this.MAX_COLOR_ATTACHMENTS = this._gl.MAX_COLOR_ATTACHMENTS;
         this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
+        this.drawBuffers = this._drawBuffersSupported;
         glCapabilities.DRAW_BUFFERS = true;
     }
 
@@ -5353,6 +5356,21 @@ ContextGL.prototype.blitFramebufferToScreen2 = function(framebuffer,srcx0,srcy0,
         dstx0,dsty0,dstWidth,dstHeight
     )
 };
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// DRAW BUFFERS
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+ContextGL.prototype._drawBuffersSupported = function(buffers){
+    this._gl.drawBuffers(buffers);
+};
+
+ContextGL.prototype._drawBuffersNotSupported = function(buffers){
+    throw new Error('WebGL drawBuffers not supported.');
+}
+
+
+ContextGL.prototype.drawBuffers = function(buffers){};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // MATRIX STACK
