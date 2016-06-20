@@ -794,6 +794,7 @@ function ContextGL(canvas,options){
     this.DEPTH_STENCIL_ATTACHMENT = this._gl.DEPTH_STENCIL_ATTACHMENT;
     this.DEPTH_COMPONENT = this._gl.DEPTH_COMPONENT;
     this.DEPTH_STENCIL = this._gl.DEPTH_STENCIL;
+    this.COLOR_ATTACHMENT0 = this._gl.COLOR_ATTACHMENT0;
 
     /*----------------------------------------------------------------------------------------------------------------*/
     // Matrix
