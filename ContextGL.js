@@ -4742,8 +4742,10 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
         //color attachment textures or texture
         colorAttachments : [],
         attachmentPoints : [],
-        //stencilDepth or depth attachment texture or renderbuffer
-        stencilDepth_or_depthAttachment: null,
+        //stencilDepth texture or renderbuffer
+        depthStencilAttachment: null,
+        //depth attachment texture or renderbuffer
+        depthAttachment: null,
         //delete attachments on dispose
         deleteAttachments : true
     };
@@ -4799,7 +4801,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
 
                 //Create auto depth attachments
                 if(config.depthAttachment || config.depthStencilAttachment){
-                    let stencilDepth_or_depthAttachment;
+                    let depthStencil_or_depthAttachment;
 
                     //create auto depth,stencil attachments via texture
                     if(this._glVersion === 2 || this._glCapabilites.DEPTH_TEXTURE){
@@ -4835,7 +4837,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                         if(framebuffer.colorAttachments.length > 0){
                             this._checkFramebufferStatus(framebuffer.handle);
                         }
-                        stencilDepth_or_depthAttachment = textureId;
+                        depthStencil_or_depthAttachment = textureId;
 
                     //Create auto depth,stencil attachments via renderbuffers
                     }else{
@@ -4864,10 +4866,14 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                         this._gl.framebufferRenderbuffer(this._gl.FRAMEBUFFER, attachmentPoint, this._gl.RENDERBUFFER, renderbuffer)
 
                         this._checkFramebufferStatus(framebuffer.handle);
-                        stencilDepth_or_depthAttachment = renderbufferId;
+                        depthStencil_or_depthAttachment = renderbufferId;
                     }
 
-                    framebuffer.stencilDepth_or_depthAttachment = stencilDepth_or_depthAttachment;
+                    if(config.depthStencilAttachment){
+                        framebuffer.depthStencilAttachment = depthStencil_or_depthAttachment;
+                    } else {
+                        framebuffer.depthAttachment = depthStencil_or_depthAttachment;
+                    }
                 }
             }
             framebuffer.width = width;
