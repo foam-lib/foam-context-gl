@@ -4382,6 +4382,32 @@ ContextGL.prototype.setTexture2dData = function(data,config){
 };
 
 /**
+ * Sets the active textures min and mag filter.
+ * @param min_or_minMagFilter
+ * @param magFilter
+ */
+ContextGL.prototype.setTexture2dFilter = function(min_or_minMagFilter, magFilter){
+    const id = this._textureState.textureActive[this._textureState.textureUnitActive];
+    if(!id){
+        throw new TextureError(strTextureNotActive(id,this._textureState.textureUnitActive));
+    }
+    const texture = this._textures[id];
+    if(!texture){
+        throw new TextureError(strTextureErrorInvalidId(id));
+    }
+    magFilter = magFilter === undefined ? min_or_minMagFilter : magFilter;
+
+    if(texture.minFilter !== min_or_minMagFilter){
+        this._gl.texParameteri(texture.target, this._gl.TEXTURE_MIN_FILTER, min_or_minMagFilter);
+        texture.minFilter = min_or_minMagFilter;
+    }
+    if(texture.magFilter !== magFilter){
+        this._gl.texParameteri(texture.target, this._gl.TEXTURE_MAG_FILTER, magFilter);
+        texture.magFilter = magFilter;
+    }
+};
+
+/**
  * Updates texture2d data, must be initialized previously.
  * @param data
  */
