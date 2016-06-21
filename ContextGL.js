@@ -4927,6 +4927,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                 width  = Math.min(texture.width,width);
                 height = Math.min(texture.height,height);
             }
+            this._gl.drawBuffers(framebuffer.attachmentPoints);
             this._checkFramebufferStatus(framebuffer.handle);
             framebuffer.width = width;
             framebuffer.height = height;
