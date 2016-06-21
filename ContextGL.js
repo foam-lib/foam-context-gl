@@ -761,7 +761,11 @@ function ContextGL(canvas,options){
     this.MAX_TEXTURE_SIZE = this._gl.getParameter(this._gl.MAX_TEXTURE_SIZE);
     this.MAX_CUBE_MAP_TEXTURE_SIZE = this._gl.getParameter(this._gl.MAX_CUBE_MAP_TEXTURE_SIZE);
     this.MAX_COMBINED_TEXTURE_IMAGE_UNITS = this._gl.getParameter(this._gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
-    //this.MAX_ANISOPTRY
+    
+    this.ALPHA = this._gl.ALPHA;
+    this.RGB = this._gl.RGB;
+    this.RGBA = this._gl.RGBA;
+    
     console.assert(this.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -6148,6 +6152,37 @@ ContextGL.prototype.setState = function(state){
     if(state.matrixModel){
         this.setModelMatrix(state.matrixModel);
     }
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// READ PIXELS
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+/**
+ * Reads a block of pixels from a specified rectangle of the current color framebuffer into an ArrayBufferView object.
+ * @param bounds
+ * @param format
+ * @param type
+ * @param pixels
+ */
+ContextGL.prototype.readPixels = function(bounds,format,type,pixels){
+    return this.readPixels2(bounds[0],bounds[1],bounds[2],bounds[3],format,type,pixels);
+};
+
+/**
+ * Reads a block of pixels from a specified rectangle of the current color framebuffer into an ArrayBufferView object.
+ * @param x
+ * @param y
+ * @param width
+ * @param height
+ * @param format
+ * @param type
+ * @param pixels
+ * @returns {*}
+ */
+ContextGL.prototype.readPixels2 = function(x,y,width,height,format,type,pixels){
+    this._gl.readPixels(x,y,width,height,format,type,pixels);
+    return pixels;
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
