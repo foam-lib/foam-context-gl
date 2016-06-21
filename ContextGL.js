@@ -5369,8 +5369,7 @@ ContextGL.prototype._drawBuffersSupported = function(buffers){
 
 ContextGL.prototype._drawBuffersNotSupported = function(buffers){
     throw new Error('WebGL drawBuffers not supported.');
-}
-
+};
 
 ContextGL.prototype.drawBuffers = function(buffers){};
 
