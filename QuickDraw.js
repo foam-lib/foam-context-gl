@@ -39,9 +39,12 @@ const PROGRAM_DEFAULT_GLSL =
 
  uniform sampler2D uTexture;
  uniform float uUseTexture;
+ 
+ uniform vec2 uTexCoordOffset;
+ uniform vec2 uTexCoordScale;
 
  void main(){
-     gl_FragColor = vColor * (1.0 - uUseTexture) + texture2D(uTexture,vTexCoord) * uUseTexture;
+     gl_FragColor = vColor * (1.0 - uUseTexture) + texture2D(uTexture,uTexCoordOffset + vTexCoord * uTexCoordScale) * uUseTexture;
  }
  #endif`;
 
@@ -576,6 +579,8 @@ function QuickDraw(ctx){
         this._ctx.setProgramUniform('uUseTexture',0.0);
         this._ctx.setProgramUniform('uPointSize',this._drawState.pointSize);
         this._ctx.setProgramUniform('uTexture',0);
+        this._ctx.setProgramUniform('uTexCoordOffset',0,0);
+        this._ctx.setProgramUniform('uTexCoordScale',1,1);
     this._ctx.popProgramBinding();
     this._ctx.popTextureBinding();
 }
