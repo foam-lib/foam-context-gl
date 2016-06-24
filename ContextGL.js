@@ -2456,6 +2456,15 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
                                                   attribLocationBinding){
     const program = this._programs[id];
 
+    if(program.handleVertexShader){
+        //detach previous shaders for program reuse
+        this._gl.detachShader(program.handle,program.handleVertexShader);
+        this._gl.detachShader(program.handle,program.handleFragmentShader);
+        //remove shader references
+        program.handleVertexShader = null;
+        program.handleFragmentShader = null;
+    }
+
     let vertSrcPrefix = '';
     let fragSrcPrefix = '';
 
@@ -2500,11 +2509,11 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     }
 
     //compile and attach shaders
-    const vertShader = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrcPrefix + vertSrc);
-    const fragShader = this._compileShaderSource(this._gl.FRAGMENT_SHADER,fragSrcPrefix + fragSrc);
+    program.handleVertexShader   = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrcPrefix + vertSrc);
+    program.handleFragmentShader = this._compileShaderSource(this._gl.FRAGMENT_SHADER,fragSrcPrefix + fragSrc);
 
-    this._gl.attachShader(program.handle,vertShader);
-    this._gl.attachShader(program.handle,fragShader);
+    this._gl.attachShader(program.handle,program.handleVertexShader);
+    this._gl.attachShader(program.handle,program.handleFragmentShader);
 
     //track attribs bound by map
     let boundAttributeNames = [];
@@ -2525,8 +2534,8 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     }
 
     //mark shader to be deleted
-    this._gl.deleteShader(vertShader);
-    this._gl.deleteShader(fragShader);
+    this._gl.deleteShader(program.handleVertexShader);
+    this._gl.deleteShader(program.handleFragmentShader);
 
     //get actual active program attribs
     const numAttributes = this._gl.getProgramParameter(program.handle,this._gl.ACTIVE_ATTRIBUTES);
@@ -2787,6 +2796,8 @@ ContextGL.prototype.createProgram = function(vertSrc_or_vertAndFragSrc,
     let id = this._uid++;
     this._programs[id] = {
         handle : this._gl.createProgram(),
+        handleVertexShader : null,
+        handleFragmentShader : null,
         attributes : {},
         attributesPerLocation : {},
         uniforms : {},
