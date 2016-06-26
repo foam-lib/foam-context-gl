@@ -357,6 +357,7 @@ VertexArrayBindingState.prototype.getDescription = function(){
  * @param numSegmentsEllipse
  * @param numSegmentsCylinderH
  * @param numSegmentsCylinderV
+ * @param numSubdivisionsSphere
  * @constructor
  */
 export function DrawState(
@@ -366,7 +367,8 @@ export function DrawState(
     numSegmentsCircle,
     numSegmentsEllipse,
     numSegmentsCylinderH,
-    numSegmentsCylinderV){
+    numSegmentsCylinderV,
+    numSubdivisionsSphere){
     this.color = color.slice(0);
     this.lineWidth = lineWidth;
     this.pointSize = pointSize;
@@ -374,6 +376,7 @@ export function DrawState(
     this.numSegmentsEllipse = numSegmentsEllipse;
     this.numSegmentsCylinderH = numSegmentsCylinderH;
     this.numSegmentsCylinderV = numSegmentsCylinderV;
+    this.numSubdivisionsSphere = numSubdivisionsSphere
 }
 
 /**
@@ -388,7 +391,8 @@ DrawState.prototype.copy = function(){
         this.numSegmentsCircle,
         this.numSegmentsEllipse,
         this.numSegmentsCylinderH,
-        this.numSegmentsCylinderV
+        this.numSegmentsCylinderV,
+        this.numSubdivisionsSphere
     );
 };
 
@@ -404,6 +408,7 @@ DrawState.prototype.getDescription = function(){
         numSegmentsCircle : this.numSegmentsCircle,
         numSegmentsEllipse : this.numSegmentsEllipse,
         numSegmentsCylinderH : this.numSegmentsCylinderH,
-        numSegmentsCylinderV : this.numSegmentsCylinderV
+        numSegmentsCylinderV : this.numSegmentsCylinderV,
+        numSubdivisionsSphere : this.numSubdivisionsSphere
     };
 };
