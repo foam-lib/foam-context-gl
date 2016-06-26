@@ -67,6 +67,8 @@ function QuickDraw(ctx){
     this._numSegmentsEllipsePrev = -1;
     this._numSegmentsCylinderHPrev = -1;
     this._numSegmentsCylinderVPrev = -1;
+    this._numSubdivisionsSpherePrev = -1;
+    this._numElementsSphere = -1;
 
     this._color = [1,0,0,1];
     this._colorPrev = [0,0,0,0];
@@ -78,7 +80,8 @@ function QuickDraw(ctx){
         16, //numSegmentsCircle
         16, //numSegmentsEllipse
         16, //numSegmentsCylinderH
-        3   //numSegmentsCylinderV
+        3,  //numSegmentsCylinderV
+        32  //numSubdivisionsSphere
     );
     this._drawStateStack = [];
 
@@ -424,6 +427,42 @@ function QuickDraw(ctx){
     console.assert(ctx.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
+    // sphere
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    this._bufferSpherePosition = ctx.createVertexBuffer(new Float32Array(0),ctx.DYNAMIC_DRAW);
+    this._bufferSphereNormal = ctx.createVertexBuffer(new Float32Array(0),ctx.DYNAMIC_DRAW);
+    this._bufferSphereColor = ctx.createVertexBuffer(new Float32Array(0),ctx.DYNAMIC_DRAW,true);
+    this._bufferSphereTexCoord = ctx.createVertexBuffer(new Float32Array(0),ctx.DYNAMIC_DRAW);
+    this._bufferSphereIndices = ctx.createIndexBuffer(new Uint16Array(),ctx.DYNAMIC_DRAW);
+
+    this._vaoSphere = ctx.createVertexArray([
+        {location: ctx.ATTRIB_LOCATION_POSITION, buffer: this._bufferSpherePosition, size: 3},
+        {location: ctx.ATTRIB_LOCATION_NORMAL, buffer: this._bufferSphereNormal, size: 3},
+        {location: ctx.ATTRIB_LOCATION_COLOR, buffer: this._bufferSphereColor, size: 4},
+        {location: ctx.ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferSphereTexCoord, size: 2}
+    ], this._bufferSphereIndices);
+    console.assert(ctx.getGLError());
+
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Cylinder
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    this._bufferCylinderPosition = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
+    this._bufferCylinderNormal = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
+    this._bufferCylinderColor = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW,true);
+    this._bufferCylinderTexCoord = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
+    this._bufferCylinderIndex = ctx.createIndexBuffer(new Uint16Array(0),ctx.DYNAMIC_DRAW);
+
+    this._vaoCylinder = ctx.createVertexArray([
+        {location: ctx.ATTRIB_LOCATION_POSITION, buffer: this._bufferCylinderPosition, size: 3},
+        {location: ctx.ATTRIB_LOCATION_NORMAL, buffer: this._bufferCylinderNormal, size: 3},
+        {location: ctx.ATTRIB_LOCATION_COLOR, buffer: this._bufferCylinderColor, size: 4},
+        {location: ctx.ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferCylinderTexCoord, size: 2}
+    ],this._bufferCylinderIndex);
+    console.assert(ctx.getGLError());
+
+    /*----------------------------------------------------------------------------------------------------------------*/
     // arrow heads
     /*----------------------------------------------------------------------------------------------------------------*/
 
@@ -452,24 +491,6 @@ function QuickDraw(ctx){
         { buffer : this._bufferHeadPosition, location : ctx.ATTRIB_LOCATION_POSITION, size : 3 },
         { buffer : this._bufferHeadColor,    location : ctx.ATTRIB_LOCATION_COLOR,    size : 4 }
     ]);
-    console.assert(ctx.getGLError());
-
-    /*----------------------------------------------------------------------------------------------------------------*/
-    // Cylinder
-    /*----------------------------------------------------------------------------------------------------------------*/
-
-    this._bufferCylinderPosition = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
-    this._bufferCylinderNormal = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
-    this._bufferCylinderColor = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW,true);
-    this._bufferCylinderTexCoord = ctx.createVertexBuffer(new Float32Array(0), ctx.DYNAMIC_DRAW);
-    this._bufferCylinderIndex = ctx.createIndexBuffer(new Uint16Array(0),ctx.DYNAMIC_DRAW);
-
-    this._vaoCylinder = ctx.createVertexArray([
-        {location: ctx.ATTRIB_LOCATION_POSITION, buffer: this._bufferCylinderPosition, size: 3},
-        {location: ctx.ATTRIB_LOCATION_NORMAL, buffer: this._bufferCylinderNormal, size: 3},
-        {location: ctx.ATTRIB_LOCATION_COLOR, buffer: this._bufferCylinderColor, size: 4},
-        {location: ctx.ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferCylinderTexCoord, size: 2}
-    ],this._bufferCylinderIndex);
     console.assert(ctx.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -1767,11 +1788,142 @@ QuickDraw.prototype.cubeStroked = function(scale){
 // SPHERE
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-QuickDraw.prototype.sphere = function(){};
+QuickDraw.prototype._updateSphereGeometry = function(subdivisions){
+    const numRings = Math.round(subdivisions * 0.5);
+    const numRings_1 = numRings - 1;
+    const numSegments = subdivisions + 1;
+    const numSegments_1 = numSegments - 1;
+    const numElements = this._numElementsSphere = numSegments * numRings;
 
-QuickDraw.prototype.spherePoints = function(){};
+    const dataPosition = new Float32Array(numElements * 3);
+    const dataNormal = new Float32Array(numElements * 3);
+    const dataColor = new Float32Array(ArrayUtil.createWithValuesv(numElements, this._drawState.color));
+    const dataTexCoord = new Float32Array(numElements * 2);
+    const dataIndices = new Uint16Array(numElements * 6);
 
-QuickDraw.prototype.sphereStroked = function(){};
+    const stepRing = 1.0 / (numRings - 1);
+    const stepSeg  = 1.0 / (numSegments - 1);
+
+    for(let i = 0; i < numRings; ++i){
+        const v = i * stepRing;
+        for(let j = 0; j < numSegments; ++j){
+            const index  = j + i * numSegments;
+
+            const index2 = index * 2;
+            const index3 = index * 3;
+
+            const u    = 1.0 - j * stepSeg;
+            const upi2 = u * Math.PI * 2;
+            const vpi  = v * Math.PI;
+
+            const x = Math.sin(upi2) * Math.sin(vpi);
+            const y = Math.sin((v - 0.5) * Math.PI);
+            const z = Math.cos(upi2) * Math.sin(vpi);
+
+            dataPosition[index3  ] = x;
+            dataPosition[index3+1] = y;
+            dataPosition[index3+2] = z;
+
+            dataNormal[index3  ] = x;
+            dataNormal[index3+1] = y;
+            dataNormal[index3+2] = z;
+
+            dataTexCoord[index2  ] = u;
+            dataTexCoord[index2+1] = v;
+        }
+    }
+
+    for(let i = 0; i < numRings_1; ++i){
+        for(let j = 0; j < numSegments_1; ++j){
+            const index  = j + i * numSegments_1;
+            const index6 = index * 6;
+
+            const a = i * numSegments + j;
+            const b = a + 1;
+            const c = (i + 1) * numSegments + j;
+            const d = c + 1;
+
+            dataIndices[index6  ] = b;
+            dataIndices[index6+1] = a;
+            dataIndices[index6+2] = d;
+
+            dataIndices[index6+3] = c;
+            dataIndices[index6+4] = d;
+            dataIndices[index6+5] = a;
+        }
+    }
+
+    this._ctx.setVertexBuffer(this._bufferSpherePosition);
+    this._ctx.setVertexBufferData(dataPosition);
+    this._ctx.setVertexBuffer(this._bufferSphereColor);
+    this._ctx.setVertexBufferData(dataColor);
+    this._ctx.setVertexBuffer(this._bufferSphereNormal);
+    this._ctx.setVertexBufferData(dataNormal);
+    this._ctx.setVertexBuffer(this._bufferSphereTexCoord);
+    this._ctx.setVertexBufferData(dataTexCoord);
+
+    this._ctx.setIndexBuffer(this._bufferSphereIndices);
+    this._ctx.setIndexBufferData(dataIndices);
+};
+
+QuickDraw.prototype._sphere = function(){
+    if(!this._ctx._programHasAttribPosition){
+        throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
+    }
+
+    this._ctx.setVertexArray(this._vaoSphere);
+
+    //update sphere geometry
+    const numSubdivisions = this._drawState.numSubdivisionsSphere;
+    if(numSubdivisions !== this._numSubdivisionsSpherePrev){
+        this._updateSphereGeometry(numSubdivisions);
+        this._numSubdivisionsSpherePrev = numSubdivisions;
+
+    //update sphere colors
+    } else if(this._ctx._programHasAttribColor){
+        this._ctx.setVertexBuffer(this._bufferSphereColor);
+        const colors = this._ctx.getVertexBufferData();
+
+        if(!Vec4.equals(colors,this._drawState.color)){
+            ArrayUtil.fillv4(colors,this._drawState.color);
+            this._ctx.updateVertexBufferData();
+        }
+    }
+};
+
+QuickDraw.prototype.setSphereSubdivisionsNum = function(numSubdivisions){
+    this._drawState.numSubdivisionsSphere = Math.max(numSubdivisions,4);
+};
+
+QuickDraw.prototype.sphere = function(scale){
+    scale = scale === undefined ? 1.0 : scale;
+
+    this._sphere();
+    const length = this._ctx.getIndexBufferDataLength();
+    if(scale !== 1.0){
+        this._ctx.pushModelMatrix();
+            this._ctx.scale1(scale);
+            this._ctx.drawElements(this._ctx.TRIANGLES,length);
+        this._ctx.popModelMatrix();
+    } else {
+        this._ctx.drawElements(this._ctx.TRIANGLES,length);
+    }
+};
+
+QuickDraw.prototype.spherePoints = function(scale){
+    scale = scale === undefined ? 1.0 : scale;
+
+    this._sphere();
+
+    if(scale !== 1.0){
+        this._ctx.pushModelMatrix();
+            this._ctx.scale1(scale);
+            this._ctx.drawArrays(this._ctx.POINTS,0,this._numElementsSphere);
+        this._ctx.popModelMatrix();
+    } else {
+        this._ctx.drawArrays(this._ctx.POINTS,0,this._numElementsSphere);
+    }
+};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // CYLINDER
