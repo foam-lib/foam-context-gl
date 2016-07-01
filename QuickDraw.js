@@ -324,8 +324,8 @@ function QuickDraw(ctx){
         new Float32Array([
             //front face
             -0.5, -0.5,  0.5,   1.0,  1.0,  1.0,
-            0.5, -0.5,  0.5,   1.0,  1.0,  1.0,
-            0.5,  0.5,  0.5,   1.0,  1.0,  1.0,
+            0.5, -0.5,  0.5,    1.0,  1.0,  1.0,
+            0.5,  0.5,  0.5,    1.0,  1.0,  1.0,
             -0.5,  0.5,  0.5,   1.0,  1.0,  1.0,
             //back face
             -0.5, -0.5, -0.5,   1.0,  0.0,  0.0,
@@ -357,7 +357,14 @@ function QuickDraw(ctx){
     );
 
     this._bufferCubeTexCoord = ctx.createVertexBuffer(
-        new Float32Array([]),
+        new Float32Array([
+            0.0, 0.0,  1.0, 0.0,  1.0, 1.0,  0.0, 1.0,
+            0.0, 0.0,  1.0, 0.0,  1.0, 1.0,  0.0, 1.0,
+            0.0, 0.0,  1.0, 0.0,  1.0, 1.0,  0.0, 1.0,
+            0.0, 0.0,  1.0, 0.0,  1.0, 1.0,  0.0, 1.0,
+            0.0, 0.0,  1.0, 0.0,  1.0, 1.0,  0.0, 1.0,
+            0.0, 0.0,  1.0, 0.0,  1.0, 1.0,  0.0, 1.0
+        ]),
         ctx.STATIC_DRAW
     );
 
@@ -375,7 +382,8 @@ function QuickDraw(ctx){
 
     this._vaoCubeColored = ctx.createVertexArray([
         {buffer : this._bufferCubeColored, location : ctx.ATTRIB_LOCATION_POSITION, size : 3, stride : 6 * 4, offset : 0    },
-        {buffer : this._bufferCubeColored, location : ctx.ATTRIB_LOCATION_COLOR,    size : 3, stride : 6 * 4, offset : 3 * 4}
+        {buffer : this._bufferCubeColored, location : ctx.ATTRIB_LOCATION_COLOR,    size : 3, stride : 6 * 4, offset : 3 * 4},
+        {buffer : this._bufferCubeTexCoord, location: ctx.ATTRIB_LOCATION_TEX_COORD,size : 2}
     ], this._bufferCubeIndex);
     console.assert(ctx.getGLError());
 
@@ -422,6 +430,7 @@ function QuickDraw(ctx){
     this._vaoCube = ctx.createVertexArray([
         { buffer : this._bufferCube, location : ctx.ATTRIB_LOCATION_POSITION, size : 3, stride : 6 * 4, offset : 0     },
         { buffer : this._bufferCube, location : ctx.ATTRIB_LOCATION_NORMAL, size : 3, stride : 6 * 4, offset : 3 * 4 },
+        {buffer : this._bufferCubeTexCoord, location: ctx.ATTRIB_LOCATION_TEX_COORD,size : 2},
         { buffer : this._bufferCubeColor,    location : ctx.ATTRIB_LOCATION_COLOR, size : 4    }
     ], this._bufferCubeIndex);
     console.assert(ctx.getGLError());
@@ -1810,7 +1819,7 @@ QuickDraw.prototype._updateSphereGeometry = function(subdivisions){
             const index  = j + i * numSegments;
 
             const index2 = index * 2;
-            const index3 = index * 3;
+            const index3 = index * 3;       
 
             const u    = 1.0 - j * stepSeg;
             const upi2 = u * Math.PI * 2;
