@@ -34,12 +34,20 @@ import * as WebGLStaticConstants from  './Constants';
 // DEFINES
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-const VEC2_ZERO = [0,0];
-const VEC2_ONE = [1,1];
-const AXIS_Y = [0,1,0];
+const WEBGL_1_CONTEXT_IDS = ['webkit-3d','webgl','experimental-webgl'];
+const WEBGL_2_CONTEXT_IDS = ['webgl2'];
+const WEBGL_1_VERSION = 1;
+const WEBGL_2_VERSION = 2;
 
-const TEMP_VEC2_0 = [0,0];
-const TEMP_RECT_0 = [0,0,0,0];
+function getWebGLRenderingContext(canvas,contextIds,options){
+    for(let i = 0; i < contextIds.length; ++i){
+        const gl = canvas.getContext(contextIds[i],options);
+        if(gl){
+            return gl;
+        }
+    }
+    return null;
+}
 
 const GLEnumStringMap = {};
 for(let key in WebGLStaticConstants){
@@ -53,7 +61,11 @@ const INVALID_ID = null;
  * @type {Object}
  */
 export const DefaultConfig = Object.freeze({
+    //ContextGL specific
     warn : true,
+    version: 1,
+    fallback: true,
+    //WebGLRenderingContext specific
     alpha : true,
     depth : true,
     stencil : false,
@@ -252,7 +264,7 @@ void main(){
 `;
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-// UTILS
+// UTILS & TEMPS
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 function strWrongNumArgs(has,expectedMust, expectedOpt){
@@ -295,6 +307,13 @@ export function assertProgramBinding(ctx,program){
     }
 }
 
+const VEC2_ZERO = [0,0];
+const VEC2_ONE = [1,1];
+const AXIS_Y = [0,1,0];
+
+const TEMP_VEC2_0 = [0,0];
+const TEMP_RECT_0 = [0,0,0,0];
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 // CONSTRUCTOR
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -308,19 +327,23 @@ export function assertProgramBinding(ctx,program){
 function ContextGL(canvas,options){
     options = validateOption(options,DefaultConfig);
 
+    if(options.version !== WEBGL_1_VERSION &&
+       options.version !== WEBGL_2_VERSION){
+        throw new Error(`Invalid context version ${options.version}.`);
+    }
+
     /*----------------------------------------------------------------------------------------------------------------*/
     // gl
     /*----------------------------------------------------------------------------------------------------------------*/
 
-    this._glVersion = 1;
+    this._glVersion = -1;
+    this._gl = null;
 
     //capabiliies for context version
     let glCapabilities;
-    let contextQueries;
 
-    //WebGL1
-    if(this._glVersion === 1){
-        contextQueries = ['webkit-3d','webgl','experimental-webgl'];
+    //WebGLRenderingContext
+    if(options.version === WEBGL_1_VERSION){
         glCapabilities = {
             INSTANCED_ARRAYS : false,
             VERTEX_ARRAYS : false,
@@ -332,7 +355,10 @@ function ContextGL(canvas,options){
             FLOAT_TEXTURE_LINEAR: false,
             HALF_FLOAT_TEXTURE_LINEAR : false
         };
-    //WebGL2
+        this._glVersion = options.version;
+        this._gl = getWebGLRenderingContext(canvas,WEBGL_1_CONTEXT_IDS,options);
+
+    //WebGL2RenderingContext
     } else {
         glCapabilities = {
             DEPTH_TEXTURE : false,
@@ -341,29 +367,32 @@ function ContextGL(canvas,options){
             FLOAT_TEXTURE_LINEAR : false,
             HALF_FLOAT_TEXTURE_LINEAR : false
         };
-        contextQueries = ['webgl2'];
-    }
+        this._glVersion = options.version;
+        this._gl = getWebGLRenderingContext(canvas,WEBGL_2_CONTEXT_IDS,options);
 
-    // context creation
-
-    for(let i = 0; i < contextQueries.length; ++i){
-        const gl = canvas.getContext(contextQueries[i],options);
-        if(!gl){
-            continue;
+        //not available, use allowed fallback version
+        if(!this._gl && options.fallback){
+            this._glVersion = WEBGL_1_VERSION;
+            this._gl = getWebGLRenderingContext(canvas,WEBGL_1_CONTEXT_IDS,options);
         }
-        this._gl = gl;
-        break;
     }
 
+    //WebGLRenderingContext creation failed
     if(!this._gl){
-        throw new Error('ContextGL not available.');
+        const msgFallback = options.version === WEBGL_2_VERSION ? !options.fallback ? ' No fallback set.' : ' Fallback version 1 not available.' : '';
+        const msgError = `ContextGL not available. Requested WebGL version ${options.version} not available.${msgFallback}`;
+        throw new Error(msgError);
     }
 
-    // check config requests
+    if(options.warn && this._glVersion !== options.version){
+        console.info('Requested WebGL version 2 not available. Using fallback version 1.');
+    }
+
+    // check config request
     if(options.warn){
         const contextAttributes = this._gl.getContextAttributes();
         for(let option in options){
-            if(option === 'warn'){
+            if(option === 'warn' || option === 'version' || option === 'fallback'){
                 continue;
             }
             if(options[option] !== contextAttributes[option]){
