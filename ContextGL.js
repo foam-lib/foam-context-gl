@@ -4385,7 +4385,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     //format
     const format = config.format;
     const formatInternal = config.internalFormat || format;
-    if(this._glVersion === 1 && format !== formatInternal){
+    if(this._glVersion === WEBGL_1_VERSION && format !== formatInternal){
         //TODO: throw
         console.warn('format !== internalFormat');
     }
@@ -4868,7 +4868,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                     let depthStencil_or_depthAttachment;
 
                     //create auto depth,stencil attachments via texture
-                    if(this._glVersion === 2 || this._glCapabilites.DEPTH_TEXTURE){
+                    if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DEPTH_TEXTURE){
                         const config_ = {
                             width : width,
                             height : height,
@@ -5041,7 +5041,7 @@ ContextGL.prototype.setFramebufferColorAttachment = function(texture, attachment
     if(attachmentIndex === -1){
         framebuffer.colorAttachments.push(texture);
         framebuffer.attachmentPoints.push(glAttachmentPoint);
-        if(this._glVersion === 2 || this._glCapabilites.DRAW_BUFFERS){
+        if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DRAW_BUFFERS){
             this._gl.drawBuffers(framebuffer.attachmentPoints);
         }
         return;
@@ -5211,7 +5211,7 @@ ContextGL.prototype.deleteFramebuffer = function(id){
         }
         const depthStencil_or_depthAttachment = framebuffer.depthStencilAttachment || framebuffer.depthAttachment;
         if(depthStencil_or_depthAttachment){
-            if(this._glVersion === 2 || this._glCapabilites.DEPTH_TEXTURE){
+            if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DEPTH_TEXTURE){
                 this._deleteTexture(depthStencil_or_depthAttachment)
             } else {
                 this._deleteRenderbufferRAW(depthStencil_or_depthAttachment);
