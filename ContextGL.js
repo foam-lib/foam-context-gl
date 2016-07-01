@@ -314,8 +314,13 @@ function ContextGL(canvas,options){
 
     this._glVersion = 1;
 
+    //capabiliies for context version
     let glCapabilities;
+    let contextQueries;
+
+    //WebGL1
     if(this._glVersion === 1){
+        contextQueries = ['webkit-3d','webgl','experimental-webgl'];
         glCapabilities = {
             INSTANCED_ARRAYS : false,
             VERTEX_ARRAYS : false,
@@ -327,13 +332,28 @@ function ContextGL(canvas,options){
             FLOAT_TEXTURE_LINEAR: false,
             HALF_FLOAT_TEXTURE_LINEAR : false
         };
+    //WebGL2
+    } else {
+        glCapabilities = {
+            DEPTH_TEXTURE : false,
+            FLOAT_TEXTURE : false,
+            HALF_FLOAT : false,
+            FLOAT_TEXTURE_LINEAR : false,
+            HALF_FLOAT_TEXTURE_LINEAR : false
+        };
+        contextQueries = ['webgl2'];
     }
 
     // context creation
 
-    this._gl = canvas.getContext('webkit-3d',options) ||
-               canvas.getContext('webgl',options) ||
-               canvas.getContext('experimental-webgl',options);
+    for(let i = 0; i < contextQueries.length; ++i){
+        const gl = canvas.getContext(contextQueries[i],options);
+        if(!gl){
+            continue;
+        }
+        this._gl = gl;
+        break;
+    }
 
     if(!this._gl){
         throw new Error('ContextGL not available.');
@@ -369,8 +389,6 @@ function ContextGL(canvas,options){
             this._gl.vertexAttribDivisor = ext.vertexAttribDivisorANGLE.bind(ext);
             glCapabilities.INSTANCED_ARRAYS = true;
         }
-    } else {
-        glCapabilities.INSTANCED_ARRAYS = true;
     }
 
     //vertex arrays
@@ -397,7 +415,6 @@ function ContextGL(canvas,options){
         this.deleteVertexArray = this._deleteVertexArrayNative;
         this.setVertexArray = this._setVertexArrayNative;
         this.invalidateVertexArray = this._invalidateVertexArrayNative;
-        glCapabilities.VERTEX_ARRAYS = true;
     }
 
     //draw buffers, no shim
@@ -423,7 +440,6 @@ function ContextGL(canvas,options){
         this.MAX_COLOR_ATTACHMENTS = this._gl.MAX_COLOR_ATTACHMENTS;
         this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
         this.drawBuffers = this._drawBuffersSupported;
-        glCapabilities.DRAW_BUFFERS = true;
     }
 
     //depth texture, no shim
