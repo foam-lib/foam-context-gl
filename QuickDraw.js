@@ -213,6 +213,25 @@ function QuickDraw(ctx){
     console.assert(ctx.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
+    // Quad
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    this._bufferQuadPosition = ctx.createVertexBuffer(
+        new Float32Array([0,0, 1,0, 1,1, 0,1]),ctx.DYNAMIC_DRAW,true
+    );
+    this._bufferQuadColor = ctx.createVertexBuffer(
+        new Float32Array(ArrayUtil.createWithValuesArgs(4,1,1,1,1)), ctx.DYNAMIC_DRAW,true
+    );
+    this._bufferQuadTexCoord = ctx.createVertexBuffer(
+        new Float32Array([0,0, 1,0, 1,1, 0,1]),ctx.DYNAMIC_DRAW,true
+    );
+    this._vaoQuad = ctx.createVertexArray([
+        { location : ctx.ATTRIB_LOCATION_POSITION, buffer : this._bufferQuadPosition, size : 2},
+        { location : ctx.ATTRIB_LOCATION_COLOR, buffer : this._bufferQuadColor, size : 4},
+        { location : ctx.ATTRIB_LOCATION_TEX_COORD, buffer : this._bufferQuadTexCoord, size : 2}
+    ]);
+    
+    /*----------------------------------------------------------------------------------------------------------------*/
     // Circle
     /*----------------------------------------------------------------------------------------------------------------*/
 
@@ -1537,6 +1556,66 @@ QuickDraw.prototype.screenAlignedRect6 = function(x,y,width,height,windowWidth,w
     this._ctx.translate3(x,y,0);
     this.rect2(width,height);
     this._ctx.popMatrices();
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// Quad
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+QuickDraw.prototype._quad2 = function(x0,y0,x1,y1,x2,y2,x3,y3){
+    if(!this._ctx._programHasAttribPosition){
+        throw QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
+    }
+
+    this._ctx.setVertexArray(this._vaoQuad);
+
+    this._ctx.setVertexBuffer(this._bufferQuadPosition);
+    const positions = this._ctx.getVertexBufferData();
+    if(x0 !== positions[0] ||
+        y0 !== positions[1] ||
+        x1 !== positions[2] ||
+        y1 !== positions[3] ||
+        x2 !== positions[4] ||
+        y2 !== positions[5] ||
+        x3 !== positions[6] ||
+        y3 !== positions[7]){
+        positions[0] = x0;
+        positions[1] = y0;
+        positions[2] = x1;
+        positions[3] = y1;
+        positions[4] = x2;
+        positions[5] = y2;
+        positions[6] = x3;
+        positions[7] = y3;
+        this._ctx.updateVertexBufferData();
+    }
+
+    if(this._ctx._programHasAttribColor){
+        this._ctx.setVertexBuffer(this._bufferQuadColor);
+        const colors = this._ctx.getVertexBufferData();
+        if(!Vec4.equals(colors,this._drawState.color)){
+            ArrayUtil.fillv4(colors,this._drawState.color);
+            this._ctx.updateVertexBufferData();
+        }
+    }
+};
+
+QuickDraw.prototype.quad2 = function(x0,y0,x1,y1,x2,y2,x3,y3){
+    this._quad2(x0,y0,x1,y1,x2,y2,x3,y3);
+    this._ctx.drawArrays(this._ctx.TRIANGLE_FAN,0,4);
+};
+
+QuickDraw.prototype.quad = function(p0,p1,p2,p3){
+    this.quad2(p0[0],p0[1],p1[0],p1[1],p2[0],p2[1],p3[0],p3[1]);
+};
+
+QuickDraw.prototype.quadStroked2 = function(x0,y0,x1,y1,x2,y2,x3,y3){
+    this._quad2(x0,y0,x1,y1,x2,y2,x3,y3);
+    this._ctx.drawArrays(this._ctx.LINE_LOOP,0,4);
+};
+
+QuickDraw.prototype.quadStroked = function(p0,p1,p2,p3){
+    this.quadStroked2(p0[0],p0[1],p1[0],p1[1],p2[0],p2[1],p3[0],p3[1]);
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
