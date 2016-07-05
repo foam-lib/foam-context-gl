@@ -964,6 +964,22 @@ QuickDraw.prototype.getColor = function(out){
     return Vec4.set(out || Vec4.create(), this._color);
 };
 
+/**
+ * Sets the draw colors alpha.
+ * @param alpha
+ */
+QuickDraw.prototype.setAlpha = function(alpha){
+    this._drawState.color[3] = alpha;
+};
+
+/**
+ * Returns the draw colors alpha.
+ * @returns {*}
+ */
+QuickDraw.prototype.getAlpha = function(){
+    return this._drawState.color[3];
+};
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 // POINT SIZE
 /*--------------------------------------------------------------------------------------------------------------------*/
