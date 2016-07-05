@@ -618,6 +618,12 @@ function QuickDraw(ctx){
     });
 
     /*----------------------------------------------------------------------------------------------------------------*/
+    // Debug
+    /*----------------------------------------------------------------------------------------------------------------*/
+
+    this._tempArrNormals = [];
+
+    /*----------------------------------------------------------------------------------------------------------------*/
     // Default program
     /*----------------------------------------------------------------------------------------------------------------*/
 
@@ -2436,11 +2442,50 @@ QuickDraw.prototype.debugRay = function(){};
 
 QuickDraw.prototype.debugPlane = function(){};
 
-QuickDraw.prototype.debugNormals = function(position,normals){
+QuickDraw.prototype.debugNormals = function(positions,normals,scale){
+    scale = scale == undefined ? 1.0 : scale;
+    const data = this._tempArrNormals;
 
+    data.length = positions.length * 3 * 2;
+    for(let i = 0; i < positions.length; ++i){
+        const index = i * 6;
+
+        const position = positions[i];
+        const normal = normals[i];
+
+        const x = position[0];
+        const y = position[1];
+        const z = position[2];
+
+        data[index  ] = x;
+        data[index+1] = y;
+        data[index+2] = z;
+        data[index+3] = x + normal[0] * scale;
+        data[index+4] = y + normal[1] * scale;
+        data[index+5] = z + normal[2] * scale;
+    }
+    this.linesFlat(data);
 };
 
-QuickDraw.prototype.debugNormalsFlat = function(positions,normals){
+QuickDraw.prototype.debugNormalsFlat = function(positions,normals,scale){
+    scale = scale == undefined ? 1.0 : scale;
+    const data = this._tempArrNormals;
+
+    data.length = positions.length * 2;
+    for(let i = 0; i < positions.length; i+=3){
+        const index = i * 2;
+        const x = positions[i];
+        const y = positions[i+1];
+        const z = positions[i+2];
+
+        data[index  ] = x;
+        data[index+1] = y;
+        data[index+2] = z;
+        data[index+3] = x + normals[i] * scale;
+        data[index+4] = y + normals[i+1] * scale;
+        data[index+5] = z + normals[i+2] * scale;
+    }
+    this.linesFlat(data);
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
