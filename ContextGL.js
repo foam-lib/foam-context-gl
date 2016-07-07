@@ -1032,6 +1032,14 @@ ContextGL.prototype.getDrawingbufferHeight = function(){
     return this._gl.drawingBufferHeight;
 };
 
+/**
+ * Returns the underlying HTMLCanvasElement.
+ * @returns {HTMLCanvasElement}
+ */
+ContextGL.prototype.getCanvas = function(){
+    return this._gl.canvas;
+}
+
 /*--------------------------------------------------------------------------------------------------------------------*/
 // VIEWPORT
 /*--------------------------------------------------------------------------------------------------------------------*/
