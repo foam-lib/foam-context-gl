@@ -2496,7 +2496,7 @@ QuickDraw.prototype.makeShared = function(){
     QuickDraw.__sharedQuickDraw = this;
 };
 
-QuickDraw.sharedContext = function(){
+QuickDraw.sharedQuickDraw = function(){
     return QuickDraw.__sharedQuickDraw;
 };
 
