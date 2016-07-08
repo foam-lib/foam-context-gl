@@ -4405,11 +4405,11 @@ ContextGL.prototype.setTexture2dData = function(data,config){
         texture.internalFormat = formatInternal;
         texture.internalFormatName = glEnumToString(format);
     }
-
+    
     //flip
     const flipY = config.flipY;
-    if(flipY && data){
-        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, true);
+    if(data){
+        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, flipY);
     }
     texture.flipY = flipY;
 
