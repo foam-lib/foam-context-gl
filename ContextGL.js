@@ -1300,6 +1300,7 @@ ContextGL.prototype.getScissorStateDefault = function(){
 /**
  * Sets the current scissor state.
  * @param state
+ * @example
  * ctx.setScissorState(newState);
  * ctx.setScissorState({
  *     scissorTest : false
@@ -1964,6 +1965,7 @@ ContextGL.prototype.getPolygonOffset = function(out){
 /**
  * Saves the current clear color & color mask state.
  * @param [newState] - Optional new state to set
+ * @example
  * ctx.pushColor();
  * ctx.pushColor(newState);
  * ctx.pushColor({
@@ -1994,6 +1996,7 @@ ContextGL.prototype.popColor = function(){
 /**
  * Sets the current color state.
  * @param state
+ * @example
  * ctx.setColorState(newState);
  * ctx.setColorState({
  *     clearColor : [1,1,1,1];
@@ -2180,6 +2183,7 @@ ContextGL.prototype.getLineWidth = function(){
 /**
  * Saves the current blend state.
  * @param [newState]
+ * @example
  * ctx.pushBlend();
  * ctx.pushBlend(newState);
  * ctx.pushBlend({
@@ -2221,6 +2225,7 @@ ContextGL.prototype.popBlend = function(){
 /**
  * Sets the current blend state
  * @param state
+ * @example
  * ctx.setBlendState({
  *     blend: true
  * });
