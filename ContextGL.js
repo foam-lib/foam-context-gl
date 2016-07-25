@@ -4168,8 +4168,9 @@ const DefaultConfigTexture2d = Object.freeze({
     //filter applied when tex larger then orig
     magFilter : WebGLStaticConstants.LINEAR,
     //if true mipmap is generated
-    flipY : true,
-    mipmap : false
+    mipmap : false,
+    //texture upload y flip
+    flipY : false,
 });
 
 const DefaultConfigTexture2dData = Object.freeze({
@@ -4412,11 +4413,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     }
     
     //flip
-    const flipY = config.flipY;
-    if(data){
-        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, flipY);
-    }
-    texture.flipY = flipY;
+    texture.flipY = config.flipY;
 
     //dataType
     const dataType = config.dataType;
@@ -4437,6 +4434,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
         if(!width || !height){
             throw new TextureError(strTextureInvalidSize(width,height));
         }
+        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, texture.flipY);
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
             texture.level, texture.internalFormat, texture.format,
@@ -4503,8 +4501,10 @@ ContextGL.prototype.updateTexture2dData = function(data){
     if(!texture){
         throw new TextureError(strTextureErrorInvalidId(id))
     }
+
     if(data instanceof Image || data instanceof ImageData ||
        data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement){
+        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, texture.flipY);
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
             texture.level, texture.internalFormat, texture.format,
