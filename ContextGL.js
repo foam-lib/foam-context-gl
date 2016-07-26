@@ -4463,6 +4463,48 @@ ContextGL.prototype.setTexture2dData = function(data,config){
 };
 
 /**
+ * Sets the active texture2d size, invalidates texture data.
+ * @param size
+ */
+ContextGL.prototype.setTexture2dSize = function(size){
+    this.setTexture2dSize2(size[0],size[1]);
+};
+
+/**
+ * Sets the active texture2d size, invalidates texture data.
+ * @param width
+ * @param height
+ */
+ContextGL.prototype.setTexture2dSize2 = function(width,height){
+    const id = this._textureState.textureActive[this._textureState.textureUnitActive];
+    if(!id){
+        throw new TextureError(strTextureNotActive(id,this._textureState.textureUnitActive));
+    }
+    const texture = this._textures[id];
+    if(!texture){
+        throw new TextureError(strTextureErrorInvalidId(id));
+    }
+    width = width || 0;
+    height = height || 0;
+    if(!width || !height){
+        throw new TextureError(strTextureInvalidSize(width,height));
+    }
+    if(width === texture.width && height === texture.height){
+        return;
+    }
+
+    this._gl.texImage2D(
+        this._gl.TEXTURE_2D,
+        texture.level, texture.internalFormat,
+        width, height,
+        0, texture.format, texture.dataType, null
+    );
+
+    texture.width = width;
+    texture.height = height;
+};
+
+/**
  * Sets the active textures min and mag filter.
  * @param min_or_minMagFilter
  * @param magFilter
@@ -4853,6 +4895,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                     throw new FramebufferError(`Invalid size ${width},${height}.`);
                 }
 
+                //TODO add max attachments check
                 //Create auto color attachments
                 if(config.colorAttachments && config.numColorAttachments > 0){
                     const numAttachments = config.numColorAttachments === undefined ? 1 : config.numColorAttachments;
@@ -5034,6 +5077,52 @@ ContextGL.prototype.setFramebuffer = function(id){
  */
 ContextGL.prototype.getFramebuffer = function(){
     return this._framebufferActive;
+};
+
+/**
+ * Sets the current framebuffer´s size, invalidates data.
+ * @param size
+ */
+ContextGL.prototype.setFramebufferSize = function(size){
+    this.setFramebufferSize2(size[0],size[1]);
+};
+
+/**
+ * Sets the current framebuffer´s size, invalidate data.
+ * @param width
+ * @param height
+ */
+ContextGL.prototype.setFramebufferSize2 = function(width,height){
+    if(this._framebufferActive === null){
+        throw new FramebufferError(STR_FRAME_BUFFER_ERROR_NOTHING_BOUND);
+    }
+    width = width || 0;
+    height = height || 0;
+
+    const framebuffer = this._framebuffers[this._framebufferActive];
+    const prev = this.getTexture2d();
+
+    //resize depth or depthStencil attachment
+    const depth_or_depthStencil_attachment = framebuffer.depthAttachment || framebuffer.depthStencilAttachment;
+    if(depth_or_depthStencil_attachment){
+        if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DEPTH_TEXTURE){
+            this.setTexture2d(depth_or_depthStencil_attachment);
+            this.setTexture2dSize2(width,height);
+        } else {
+            //TODO: Add renderbuffer resize
+        }
+    }
+
+    //resize color attachment
+    const colorAttachments = framebuffer.colorAttachments;
+    for(let i = 0; i < colorAttachments.length; ++i){
+        this.setTexture2d(colorAttachments[i]);
+        this.setTexture2dSize2(width,height);
+    }
+    this.setTexture2d(prev);
+
+    framebuffer.width = width;
+    framebuffer.height = height;
 };
 
 /**
