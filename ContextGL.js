@@ -5100,6 +5100,10 @@ ContextGL.prototype.setFramebufferSize2 = function(width,height){
     height = height || 0;
 
     const framebuffer = this._framebuffers[this._framebufferActive];
+    if(width === framebuffer.width && height === framebuffer.height){
+        return;
+    }
+
     const prev = this.getTexture2d();
 
     //resize depth or depthStencil attachment
