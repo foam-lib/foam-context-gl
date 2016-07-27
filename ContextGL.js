@@ -4562,12 +4562,22 @@ ContextGL.prototype.updateTexture2dData = function(data){
 
     if(data instanceof Image || data instanceof ImageData ||
        data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement){
+        const width = data.width || data.videoWidth;
+        const height = data.height || data.videoHeight;
+
+        if(!width || !height){
+            throw new TextureError(strTextureInvalidSize(width,height));
+        }
+
         this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, texture.flipY);
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
             texture.level, texture.internalFormat, texture.format,
             texture.dataType, data
         );
+        texture.width = width;
+        texture.height = height;
+
     } else {
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
