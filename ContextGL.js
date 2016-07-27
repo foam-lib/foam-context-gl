@@ -4229,11 +4229,7 @@ ContextGL.prototype._deleteTexture = function(id){
 ContextGL.prototype._setTextureBindingState = function(state){
     const textureActive = state.textureActive;
     for(let i = 0; i < this.MAX_TEXTURE_IMAGE_UNITS; ++i){
-        const id = textureActive[i];
-        if(!id){
-            continue;
-        }
-        this.setTexture2d(state.textureActive[i],i);
+        this.setTexture2d(textureActive[i]);
     }
     this._textureState.textureUnitActive = state.textureUnitActive;
 };
@@ -4269,6 +4265,23 @@ ContextGL.prototype.popTextureBinding = function(){
  */
 ContextGL.prototype.getTextureBindingState = function(){
     return this._textureState.copy();
+};
+
+ContextGL.prototype.invalidateTexture2d = function(textureUnit){
+    textureUnit = textureUnit || 0;
+
+    if(!this._textureState.textureActive[textureUnit]){
+        return;
+    }
+    const textureUnitActive = this._textureState.textureUnitActive;
+    if(textureUnit !== textureUnitActive){
+        this._gl.activeTexture(this._gl.TEXTURE0 + textureUnit);
+        this._gl.bindTexture(this._gl.TEXTURE_2D, null);
+        this._gl.activeTexture(this._gl.TEXTURE0 + textureUnitActive);
+    } else {
+        this._gl.bindTexture(this._gl.TEXTURE_2D,null);
+    }
+    this._textureState.textureActive[textureUnit] = null;
 };
 
 /**
@@ -4319,6 +4332,9 @@ ContextGL.prototype.createTexture2d = function(data_or_config,config){
 ContextGL.prototype.setTexture2d = function(id,textureUnit){
     textureUnit = textureUnit || 0;
     if(id === this._textureState.textureActive[textureUnit]){
+        return;
+    } else if(id === null || id === undefined){
+        this.invalidateTexture2d(textureUnit);
         return;
     }
     const texture = this._textures[id];
