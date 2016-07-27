@@ -3068,7 +3068,7 @@ ContextGL.prototype.setProgramUniformGroup = function(group){
         if(!uniform){
             throw new ProgramError(strProgramErrorNoValidUniform(name));
         }
-        program.uniformSetterMap[uniform.type](name,group[name]);
+        program.uniformSetterMap[uniform.type](uniform.location,group[name]);
     }
 };
 
