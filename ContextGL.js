@@ -1038,7 +1038,7 @@ ContextGL.prototype.getDrawingbufferHeight = function(){
  */
 ContextGL.prototype.getCanvas = function(){
     return this._gl.canvas;
-}
+};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // VIEWPORT
@@ -1046,6 +1046,7 @@ ContextGL.prototype.getCanvas = function(){
 
 /**
  * Saves the current viewport state.
+ * @category Viewport
  * @param [newState] - Optional new state to set
  * @example
  * ctx.pushViewport();
@@ -1061,6 +1062,7 @@ ContextGL.prototype.pushViewport = function(newState){
 
 /**
  * Restores the previous viewport state.
+ * @category Viewport
  */
 ContextGL.prototype.popViewport = function(){
     if(this._viewportStack.length === 0){
@@ -1071,6 +1073,7 @@ ContextGL.prototype.popViewport = function(){
 
 /**
  * Sets the current viewport state, equals setViewport
+ * @category Viewport
  * @param state
  */
 ContextGL.prototype.setViewportState = function(state){
@@ -1079,6 +1082,7 @@ ContextGL.prototype.setViewportState = function(state){
 
 /**
  * Returns a copy of the current viewport state.
+ * @category Viewport
  * @returns {ViewportState}
  */
 ContextGL.prototype.getViewportState = function(){
@@ -1087,6 +1091,7 @@ ContextGL.prototype.getViewportState = function(){
 
 /**
  * Sets the viewport.
+ * @category Viewport
  * @param {Array} rect
  */
 ContextGL.prototype.setViewport = function(rect){
@@ -1095,6 +1100,7 @@ ContextGL.prototype.setViewport = function(rect){
 
 /**
  * Sets the viewport.
+ * @category Viewport
  * @param {Number} x - origin x (lower left corner)
  * @param {Number} y - origin y (lower left corner)
  * @param {Number} w - rectangle width
@@ -1111,6 +1117,7 @@ ContextGL.prototype.setViewport4 = function(x,y,w,h){
 
 /**
  * Returns the current viewport bounds.
+ * @category Viewport
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -1120,6 +1127,7 @@ ContextGL.prototype.getViewport = function(out){
 
 /**
  * Returns the current viewport size.
+ * @category Viewport
  * @param out
  * @returns {*}
  */
@@ -1129,6 +1137,7 @@ ContextGL.prototype.getViewportSize = function(out){
 
 /**
  * Returns the current viewport width.
+ * @category Viewport
  * @returns {*}
  */
 ContextGL.prototype.getViewportWidth = function(){
@@ -1137,6 +1146,7 @@ ContextGL.prototype.getViewportWidth = function(){
 
 /**
  * Returns the current viewport height.
+ * @category Viewport
  * @returns {*}
  */
 ContextGL.prototype.getViewportHeight = function(){
@@ -1149,6 +1159,7 @@ ContextGL.prototype.getViewportHeight = function(){
 
 /**
  * Saves the current culling state.
+ * @category Culling
  * @param [newState] - Optional new state to set
  * @example
  * ctx.pushCulling();
@@ -1167,6 +1178,7 @@ ContextGL.prototype.pushCulling = function(newState){
 
 /**
  * Restores the previous culling state.
+ * @category Culling
  */
 ContextGL.prototype.popCulling = function(){
     if(this._cullStack.length === 0){
@@ -1179,6 +1191,7 @@ ContextGL.prototype.popCulling = function(){
 
 /**
  * Sets the current culling state.
+ * @category Culling
  * @param state
  * @example
  * ctx.setCullingState(newState);
@@ -1197,6 +1210,7 @@ ContextGL.prototype.setCullingState = function(state){
 
 /**
  * Returns a copy of the current culling state.
+ * @category Culling
  * @returns {CullingState}
  */
 ContextGL.prototype.getCullingState = function(){
@@ -1205,6 +1219,7 @@ ContextGL.prototype.getCullingState = function(){
 
 /**
  * Returns a copy of the default culling state.
+ * @category Culling
  * @returns {CullingState}
  */
 ContextGL.prototype.getCullingStateDefault = function(){
@@ -1213,6 +1228,7 @@ ContextGL.prototype.getCullingStateDefault = function(){
 
 /**
  * Enables / disables culling polygons based on their winding in window coordinates.
+ * @category Culling
  * @param {Boolean} cullFace
  */
 ContextGL.prototype.setCullFace = function(cullFace){
@@ -1229,6 +1245,7 @@ ContextGL.prototype.setCullFace = function(cullFace){
 
 /**
  * Returns true if culling is enabled.
+ * @category Culling
  * @returns {Boolean}
  */
 ContextGL.prototype.getCullFace = function(){
@@ -1237,6 +1254,7 @@ ContextGL.prototype.getCullFace = function(){
 
 /**
  * Specify whether front- or back-facing polygons can be culled.
+ * @category Culling
  * @param {Number} mode
  */
 ContextGL.prototype.setCullFaceMode = function(mode){
@@ -1249,6 +1267,7 @@ ContextGL.prototype.setCullFaceMode = function(mode){
 
 /**
  * Returns the current cull face mode.
+ * @category Culling
  * @returns {Number}
  */
 ContextGL.prototype.getCullFaceMode = function(){
@@ -1262,6 +1281,7 @@ ContextGL.prototype.getCullFaceMode = function(){
 /**
  * Saves the current scissor state.
  * @param [newState] - Optional new state to set
+ * @category Scissor
  * @example
  * ctx.pushScissor();
  * ctx.pushScissor(newState);
@@ -1279,6 +1299,7 @@ ContextGL.prototype.pushScissor = function(newState){
 
 /**
  * Restore the previous scissor state
+ * @category Scissor
  */
 ContextGL.prototype.popScissor = function(){
     if(this._scissorStack.length === 0){
@@ -1291,6 +1312,7 @@ ContextGL.prototype.popScissor = function(){
 
 /**
  * Returns a copy of the default scissor state.
+ * @category Scissor
  * @returns {ScissorState}
  */
 ContextGL.prototype.getScissorStateDefault = function(){
@@ -1299,6 +1321,7 @@ ContextGL.prototype.getScissorStateDefault = function(){
 
 /**
  * Sets the current scissor state.
+ * @category Scissor
  * @param state
  * @example
  * ctx.setScissorState(newState);
@@ -1317,6 +1340,7 @@ ContextGL.prototype.setScissorState = function(state){
 
 /**
  * Returns a copy of the current scissor state.
+ * @category Scissor
  * @returns {ScissorState}
  */
 ContextGL.prototype.getScissorState = function(){
@@ -1325,6 +1349,7 @@ ContextGL.prototype.getScissorState = function(){
 
 /**
  * Enables / disables discarding fragments that are outside the scissor rectangle.
+ * @category Scissor
  * @param {Boolean} scissor
  */
 ContextGL.prototype.setScissorTest = function(scissor){
@@ -1341,6 +1366,7 @@ ContextGL.prototype.setScissorTest = function(scissor){
 
 /**
  * Returns true if scissor test is enabled.
+ * @category Scissor
  * @returns {Boolean}
  */
 ContextGL.prototype.getScissorTest = function(){
@@ -1349,6 +1375,7 @@ ContextGL.prototype.getScissorTest = function(){
 
 /**
  * Defines the scissor box.
+ * @category Scissor
  * @param {Array} rect
  */
 ContextGL.prototype.setScissor = function(rect){
@@ -1357,6 +1384,7 @@ ContextGL.prototype.setScissor = function(rect){
 
 /**
  * Defines the scissor box.
+ * @category Scissor
  * @param {Number} x - origin x (lower left corner)
  * @param {Number} y - origin y (lower left corner)
  * @param {Number} w - width of the rectangle
@@ -1372,6 +1400,7 @@ ContextGL.prototype.setScissor4 = function(x,y,w,h){
 
 /**
  * Returns the current scissor box.
+ * @category Scissor
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -1385,6 +1414,7 @@ ContextGL.prototype.getScissor = function(out){
 
 /**
  * Saves the current stencil state.
+ * @category Stencil
  * @param [newState] - Optional new state to set
  * @example
  * ctx.pushStencil();
@@ -1403,6 +1433,7 @@ ContextGL.prototype.pushStencil = function(newState){
 
 /**
  * Restore the previous stencil state.
+ * @category Stencil
  */
 ContextGL.prototype.popStencil = function(){
     const state = this._stencilStack.pop();
@@ -1439,6 +1470,7 @@ ContextGL.prototype.popStencil = function(){
 
 /**
  * Sets the current stencil state.
+ * @category Stencil
  * @param state
  * @example
  * ctx.setStencilState(newState);
@@ -1500,6 +1532,7 @@ ContextGL.prototype.setStencilState = function(state){
 
 /**
  * Returns a copy of the current stencil state.
+ * @category Stencil
  * @returns {StencilState}
  */
 ContextGL.prototype.getStencilState = function(){
@@ -1508,6 +1541,7 @@ ContextGL.prototype.getStencilState = function(){
 
 /**
  * Returns a copy of the default stencil state.
+ * @category Stencil
  * @returns {StencilState}
  */
 ContextGL.prototype.getStencilStateDefault = function(){
@@ -1516,6 +1550,7 @@ ContextGL.prototype.getStencilStateDefault = function(){
 
 /**
  * Enables / disables stencil testing and updating the stencil buffer.
+ * @category Stencil
  * @param {Boolean} stencilTest
  */
 ContextGL.prototype.setStencilTest = function(stencilTest){
@@ -1532,6 +1567,7 @@ ContextGL.prototype.setStencilTest = function(stencilTest){
 
 /**
  * Returns true if stencil testing is enabled.
+ * @category Stencil
  * @returns {Boolean}
  */
 ContextGL.prototype.getStencilTest = function(){
@@ -1540,6 +1576,7 @@ ContextGL.prototype.getStencilTest = function(){
 
 /**
  * Sets the front and back function and reference value for stencil testing.
+ * @category Stencil
  * @param {Number} func - The test function
  * @param {Number} ref - The reference value for the stencil test
  * @param {Number} mask - A mask that is ANDed with both the reference value and the stored stencil value whe the test is done
@@ -1567,6 +1604,7 @@ ContextGL.prototype.setStencilFunc = function(func,ref,mask){
 
 /**
  * Returns the current stencil func set.
+ * @category Stencil
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -1586,6 +1624,7 @@ ContextGL.prototype.getStencilFunc = function(out){
 
 /**
  * Sets the front and back function and reference value for stencil testing.
+ * @category Stencil
  * @param {Number} face - Either front and/or back stencil to be updated
  * @param {Number} func - The test function
  * @param {Number} ref - The reference value for the stencil test
@@ -1622,6 +1661,7 @@ ContextGL.prototype.setStencilFuncSeparate = function(face, func, ref, mask){
 
 /**
  * Returns the current stencil func separate set.
+ * @category Stencil
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -1637,6 +1677,7 @@ ContextGL.prototype.getStencilFuncSeparate = function(face,out){
 
 /**
  * Sets the front and back stencil test actions.
+ * @category Stencil
  * @param {Number} fail - The action to take when stencil test fails
  * @param {Number} zfail - The stencil action when the stencil passes, but the depth test fails
  * @param {Number} zpass - The stencil action when both the stencil and the depth test pass, or when the stencil passes and either there is no depth buffer or depth testing is not enabled
@@ -1664,6 +1705,7 @@ ContextGL.prototype.setStencilOp = function(fail,zfail,zpass){
 
 /**
  * Returns the current front and back stencil test actions set.
+ * @category Stencil
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -1683,6 +1725,7 @@ ContextGL.prototype.getStencilOp = function(out){
 
 /**
  * Sets the front and/or back stencil test actions.
+ * @category Stencil
  * @param {Number} face - Either the front and/or back stencil to be updated
  * @param {Number} fail - The action to take when stencil test fails
  * @param {Number} zfail - The stencil action when the stencil passes, but the depth test fails
@@ -1719,6 +1762,7 @@ ContextGL.prototype.setStencilOpSeparate = function(face,fail,zfail,zpass){
 
 /**
  * Returns the current stencil test separate set.
+ * @category Stencil
  * @param {Number} face
  * @param {Array} [out]
  * @returns {Array}
@@ -1735,6 +1779,7 @@ ContextGL.prototype.getStencilOpSeparate = function(face,out){
 
 /**
  * Sets the clear value for the stencil buffer.
+ * @category Stencil
  * @param {Number} s - The index to be used when the stencil buffer is cleared.
  */
 ContextGL.prototype.clearStencil = function(s){
@@ -1748,6 +1793,7 @@ ContextGL.prototype.clearStencil = function(s){
 
 /**
  * Saves the current depth state.
+ * @category Depth
  * @param [newState] - Optional new state to set
  * @example
  * ctx.pushDepth();
@@ -1766,6 +1812,7 @@ ContextGL.prototype.pushDepth = function(newState){
 
 /**
  * Restores the previous depth state.
+ * @category Depth
  */
 ContextGL.prototype.popDepth = function(){
     if(this._depthStack.length === 0){
@@ -1782,6 +1829,7 @@ ContextGL.prototype.popDepth = function(){
 
 /**
  * Sets the current depth state.
+ * @category Depth
  * @param state
  * @example
  * ctx.setDepthState(newState);
@@ -1812,6 +1860,7 @@ ContextGL.prototype.setDepthState = function(state){
 
 /**
  * Returns a copy of the current depth state.
+ * @category Depth
  * @returns {DepthState}
  */
 ContextGL.prototype.getDepthState = function(){
@@ -1820,6 +1869,7 @@ ContextGL.prototype.getDepthState = function(){
 
 /**
  * Returns a copy of the default depth state.
+ * @category Depth
  * @returns {DepthState}
  */
 ContextGL.prototype.getDepthStateDefault = function(){
@@ -1828,6 +1878,7 @@ ContextGL.prototype.getDepthStateDefault = function(){
 
 /**
  * Enables / disables depth comparisons and updating the depth buffer.
+ * @category Depth
  * @param {Boolean} depthTest
  */
 ContextGL.prototype.setDepthTest = function(depthTest){
@@ -1844,6 +1895,7 @@ ContextGL.prototype.setDepthTest = function(depthTest){
 
 /**
  * Returns true if depth testing is enabled.
+ * @category Depth
  * @returns {Boolean}
  */
 ContextGL.prototype.getDepthTest = function(){
@@ -1852,6 +1904,7 @@ ContextGL.prototype.getDepthTest = function(){
 
 /**
  * Enables / disables writing into the depth buffer.
+ * @category Depth
  * @param {Boolean} flag
  */
 ContextGL.prototype.setDepthMask = function(flag){
@@ -1864,6 +1917,7 @@ ContextGL.prototype.setDepthMask = function(flag){
 
 /**
  * Returns true if writing into depth buffer is enabled.
+ * @category Depth
  * @returns {Boolean}
  */
 ContextGL.prototype.getDepthMask = function(){
@@ -1872,6 +1926,7 @@ ContextGL.prototype.getDepthMask = function(){
 
 /**
  * Sets the value used for depth comparisons.
+ * @category Depth
  * @param {Number} func
  */
 ContextGL.prototype.setDepthFunc = function(func){
@@ -1884,6 +1939,7 @@ ContextGL.prototype.setDepthFunc = function(func){
 
 /**
  * Returns the current depth func set.
+ * @category Depth
  * @returns {Number}
  */
 ContextGL.prototype.getDepthFunc = function(){
@@ -1892,6 +1948,7 @@ ContextGL.prototype.getDepthFunc = function(){
 
 /**
  * Sets the clear value for the depth buffer.
+ * @category Depth
  * @param {Number} depth
  */
 ContextGL.prototype.setClearDepth = function(depth){
@@ -1904,6 +1961,7 @@ ContextGL.prototype.setClearDepth = function(depth){
 
 /**
  * Returns the current depth buffer clear value set.
+ * @category Depth
  * @returns {Number}
  */
 ContextGL.prototype.getClearDepth = function(){
@@ -1912,6 +1970,7 @@ ContextGL.prototype.getClearDepth = function(){
 
 /**
  * Sets the mapping of depth values from normalized device coordinates to window coordinates.
+ * @category Depth
  * @param {Number} znear - The mapping of the near clipping plane to window coordinates
  * @param {Number} zfar - The mapping of the far clipping plane to window coordinates
  */
@@ -1927,6 +1986,7 @@ ContextGL.prototype.setDepthRange = function(znear,zfar){
 
 /**
  * Returns the current depth range values set.
+ * @category Depth
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -1936,6 +1996,7 @@ ContextGL.prototype.getDepthRange = function(out){
 
 /**
  * Sets the scale and units used to calculate depth values
+ * @category Depth
  * @param {Number} factor
  * @param {Number} units
  */
@@ -1951,6 +2012,7 @@ ContextGL.prototype.setPolygonOffset = function(factor,units){
 
 /**
  * Returns the current polygon offset values.
+ * @category Depth
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -1964,6 +2026,7 @@ ContextGL.prototype.getPolygonOffset = function(out){
 
 /**
  * Saves the current clear color & color mask state.
+ * @category Coloe
  * @param [newState] - Optional new state to set
  * @example
  * ctx.pushColor();
@@ -1982,6 +2045,7 @@ ContextGL.prototype.pushColor = function(newState){
 
 /**
  * Restores the previous clear color & color mask state.
+ * @category Coloe
  */
 ContextGL.prototype.popColor = function(){
     if(this._colorStack.length === 0){
@@ -1995,6 +2059,7 @@ ContextGL.prototype.popColor = function(){
 
 /**
  * Sets the current color state.
+ * @category Coloe
  * @param state
  * @example
  * ctx.setColorState(newState);
@@ -2014,6 +2079,7 @@ ContextGL.prototype.setColorState = function(state){
 
 /**
  * Returns a copy of the current color state.
+ * @category Coloe
  * @returns {ColorState}
  */
 ContextGL.prototype.getColorState = function(){
@@ -2022,6 +2088,7 @@ ContextGL.prototype.getColorState = function(){
 
 /**
  * Returns the default color state.
+ * @category Coloe
  * @returns {ColorState}
  */
 ContextGL.prototype.getColorStateDefault = function(){
@@ -2030,6 +2097,7 @@ ContextGL.prototype.getColorStateDefault = function(){
 
 /**
  * Sets the clear values for the color buffers.
+ * @category Coloe
  * @param color
  */
 ContextGL.prototype.setClearColor = function(color){
@@ -2038,6 +2106,7 @@ ContextGL.prototype.setClearColor = function(color){
 
 /**
  * Sets the clear values for the color buffers.
+ * @category Coloe
  * @param {Number} r - Red value
  * @param {Number} g - Green value
  * @param {Number} b - Blue value
@@ -2053,6 +2122,7 @@ ContextGL.prototype.setClearColor4 = function(r,g,b,a){
 
 /**
  * Sets the clear values for the color buffers.
+ * @category Coloe
  * @param {Number} r - Red value
  * @param {Number} g - Green value
  * @param {Number} b - Blue value
@@ -2063,6 +2133,7 @@ ContextGL.prototype.setClearColor3 = function(r,g,b){
 
 /**
  * Sets the clear values for the color buffers.
+ * @category Coloe
  * @param {Number} k - RGB value
  * @param {Number} a - Alpha value
  */
@@ -2072,6 +2143,7 @@ ContextGL.prototype.setClearColor2 = function(k,a){
 
 /**
  * Sets the clear values for the color buffers.
+ * @category Coloe
  * @param {Number} k - RGB value
  */
 ContextGL.prototype.setClearColor1 = function(k){
@@ -2080,6 +2152,7 @@ ContextGL.prototype.setClearColor1 = function(k){
 
 /**
  * Returns the current clear color set.
+ * @category Coloe
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -2089,6 +2162,7 @@ ContextGL.prototype.getClearColor = function(out){
 
 /**
  * Enables / disables writing of frame buffer color components.
+ * @category Coloe
  * @param {Boolean} r
  * @param {Boolean} g
  * @param {Boolean} b
@@ -2104,6 +2178,7 @@ ContextGL.prototype.setColorMask = function(r,g,b,a){
 
 /**
  * Returns the current color mask set.
+ * @category Coloe
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -2117,6 +2192,7 @@ ContextGL.prototype.getColorMask = function(out){
 
 /**
  * Saves the current line width state.
+ * @category Line Width
  */
 ContextGL.prototype.pushLineWidth = function(newState){
     this._lineWidthStack.push(this._lineWidthState.copy());
@@ -2128,6 +2204,7 @@ ContextGL.prototype.pushLineWidth = function(newState){
 
 /**
  * Restores the previous line width state.
+ * @category Line Width
  */
 ContextGL.prototype.popLineWidth = function(){
     if(this._lineWidthStack.length === 0){
@@ -2138,6 +2215,7 @@ ContextGL.prototype.popLineWidth = function(){
 
 /**
  * Sets the current linewidth state, equals setLineWidth
+ * @category Line Width
  * @param state
  */
 ContextGL.prototype.setLineWidthState = function(state){
@@ -2146,6 +2224,7 @@ ContextGL.prototype.setLineWidthState = function(state){
 
 /**
  * Returns a copy of the current line width state.
+ * @category Line Width
  * @returns {LineWidthState}
  */
 ContextGL.prototype.getLineWidthState = function(){
@@ -2154,6 +2233,7 @@ ContextGL.prototype.getLineWidthState = function(){
 
 /**
  * Returns the default line width state.
+ * @category Line Width
  * @returns {LineWidthState}
  */
 ContextGL.prototype.getLineWidthStateDefault = function(){
@@ -2162,6 +2242,7 @@ ContextGL.prototype.getLineWidthStateDefault = function(){
 
 /**
  * Sets the width of rasterized lines.
+ * @category Line Width
  * @param {Number} lineWidth
  */
 ContextGL.prototype.setLineWidth = function(lineWidth){
@@ -2172,6 +2253,11 @@ ContextGL.prototype.setLineWidth = function(lineWidth){
     this._lineWidthState.lineWidth = lineWidth;
 };
 
+/**
+ * Returns the current line width set.
+ * @category Line Width
+ * @returns {*}
+ */
 ContextGL.prototype.getLineWidth = function(){
     return this._lineWidthState.lineWidth;
 };
@@ -2182,6 +2268,7 @@ ContextGL.prototype.getLineWidth = function(){
 
 /**
  * Saves the current blend state.
+ * @category Blend
  * @param [newState]
  * @example
  * ctx.pushBlend();
@@ -2200,6 +2287,7 @@ ContextGL.prototype.pushBlend = function(newState){
 
 /**
  * Restores the previous blend state.
+ * @category Blend
  */
 ContextGL.prototype.popBlend = function(){
     if(this._blendStack.length === 0){
@@ -2224,6 +2312,7 @@ ContextGL.prototype.popBlend = function(){
 
 /**
  * Sets the current blend state
+ * @category Blend
  * @param state
  * @example
  * ctx.setBlendState({
@@ -2263,6 +2352,7 @@ ContextGL.prototype.setBlendState = function(state){
 
 /**
  * Returns a copy of the current blend state.
+ * @category Blend
  * @returns {BlendState}
  */
 ContextGL.prototype.getBlendState = function(){
@@ -2271,6 +2361,7 @@ ContextGL.prototype.getBlendState = function(){
 
 /**
  * Returns a copy of the default blend state.
+ * @category Blend
  * @returns {BlendState}
  */
 ContextGL.prototype.getBlendStateDefault = function(){
@@ -2279,6 +2370,7 @@ ContextGL.prototype.getBlendStateDefault = function(){
 
 /**
  * Enables / disables blending the computed fragment color values with the values in the color buffers.
+ * @category Blend
  * @param {Boolean} blend
  */
 ContextGL.prototype.setBlend = function(blend){
@@ -2295,6 +2387,7 @@ ContextGL.prototype.setBlend = function(blend){
 
 /**
  * Returns true if blending is enabled.
+ * @category Blend
  * @returns {Boolean}
  */
 ContextGL.prototype.getBlend = function(){
@@ -2303,6 +2396,7 @@ ContextGL.prototype.getBlend = function(){
 
 /**
  * Sets the blend color.
+ * @category Blend
  * @param {Array} color
  */
 ContextGL.prototype.setBlendColor = function(color){
@@ -2311,6 +2405,7 @@ ContextGL.prototype.setBlendColor = function(color){
 
 /**
  * Sets the blend color.
+ * @category Blend
  * @param {Number} r
  * @param {Number} g
  * @param {Number} b
@@ -2326,6 +2421,7 @@ ContextGL.prototype.setBlendColor4 = function(r,g,b,a){
 
 /**
  * Sets the blend color.
+ * @category Blend
  * @param r
  * @param g
  * @param b
@@ -2336,6 +2432,7 @@ ContextGL.prototype.setBlendColor3 = function(r,g,b){
 
 /**
  * Sets the blend color.
+ * @category Blend
  * @param k
  * @param a
  */
@@ -2345,6 +2442,7 @@ ContextGL.prototype.setBlendColor2 = function(k,a){
 
 /**
  * Sets the blend color.
+ * @category Blend
  * @param k
  */
 ContextGL.prototype.setBlendColor1 = function(k){
@@ -2353,16 +2451,17 @@ ContextGL.prototype.setBlendColor1 = function(k){
 
 /**
  * Return the current blend color set.
+ * @category Blend
  * @param {Array} [out]
  * @returns {Array}
  */
-
 ContextGL.prototype.getBlendColor = function(out){
     return Vec4.set(out || Vec4.create(),this._blendState.blendColor);
 };
 
 /**
  * Sets the equation used for both the RGB blend equation and the alpha blend equation.
+ * @category Blend
  * @param {Number} mode
  */
 ContextGL.prototype.setBlendEquation = function(mode){
@@ -2378,6 +2477,7 @@ ContextGL.prototype.setBlendEquation = function(mode){
 
 /**
  * Returns the current blend equation set.
+ * @category Blend
  * @returns {Number}
  */
 ContextGL.prototype.getBlendEquation = function(){
@@ -2386,6 +2486,7 @@ ContextGL.prototype.getBlendEquation = function(){
 
 /**
  * Sets the RGB blend equation and the alpha blend equation separately.
+ * @category Blend
  * @param {Number} modeRGB
  * @param {Number} modeAlpha
  */
@@ -2400,6 +2501,7 @@ ContextGL.prototype.setBlendEquationSeparate = function(modeRGB, modeAlpha){
 
 /**
  * Returns the current RGB and alpha blend equation set.
+ * @category Blend
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -2409,6 +2511,7 @@ ContextGL.prototype.getBlendEquationSeparate = function(out){
 
 /**
  * Sets the pixel arithmetic.
+ * @category Blend
  * @param {Number} sfactor - Specifies how the red, green, blue, and alpha source blending factors are computed
  * @param {Number} dfactor - Specifies how the red, green, blue, and alpha destination blending factors are computed
  */
@@ -2431,6 +2534,7 @@ ContextGL.prototype.setBlendFunc = function(sfactor,dfactor){
 
 /**
  * Returns the current pixel arithmetic set.
+ * @category Blend
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -2444,6 +2548,7 @@ ContextGL.prototype.getBlendFunc = function(out){
 
 /**
  * Sets the pixel arithmetic for RGB and alpha components separately.
+ * @category Blend
  * @param {Number} srcRGB - Specifies how the red, green, and blue blending factors are computed
  * @param {Number} dstRGB - Specifies how the red, green, and blue destination blending factors are computed
  * @param {Number} srcAlpha - Specifies how the alpha source blending factor is computed
@@ -2460,6 +2565,7 @@ ContextGL.prototype.setBlendFuncSeparate = function(srcRGB,dstRGB,srcAlpha,dstAl
 
 /**
  * Returns the current pixel arithmetic for RGB and alpha components separately set.
+ * @category Blend
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -4267,6 +4373,10 @@ ContextGL.prototype.getTextureBindingState = function(){
     return this._textureState.copy();
 };
 
+/**
+ * Invalidate the current texture2d, equal to ctx.setTexture2d(null).
+ * @param textureUnit
+ */
 ContextGL.prototype.invalidateTexture2d = function(textureUnit){
     textureUnit = textureUnit || 0;
 
