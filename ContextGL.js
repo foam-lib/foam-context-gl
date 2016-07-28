@@ -2579,6 +2579,7 @@ ContextGL.prototype.getBlendFuncSeparate = function(out){
 
 /**
  * Program error representation.
+ * @category Program
  */
 export class ProgramError extends Error{
     constructor(msg){
@@ -2906,6 +2907,7 @@ ContextGL.prototype._setProgramUniform = function(name,x,y,z,w){
 
 /**
  * Saves the current program binding.
+ * @category Program
  */
 ContextGL.prototype.pushProgramBinding = function(newState){
     this._programStack.push(this._programActive);
@@ -2917,6 +2919,7 @@ ContextGL.prototype.pushProgramBinding = function(newState){
 
 /**
  * Restores the previously saved program binding.
+ * @category Program
  */
 ContextGL.prototype.popProgramBinding = function(){
     if(this._programStack.length === 0){
@@ -2927,7 +2930,7 @@ ContextGL.prototype.popProgramBinding = function(){
 
 /**
  * Creates a program object.
- *
+ * @category Program
  * @example
  * //separate vertex and fragment source, attribute location definition
  * const program = ctx.createProgram(vertSrc,fragSrc,[
@@ -2980,6 +2983,7 @@ ContextGL.prototype.createProgram = function(vertSrc_or_vertAndFragSrc,
 
 /**
  * Deletes a program object.
+ * @category Program
  * @param id
  */
 ContextGL.prototype.deleteProgram = function(id){
@@ -2997,6 +3001,7 @@ ContextGL.prototype.deleteProgram = function(id){
 
 /**
  * Returns true if program is present.
+ * @category Program
  * @param id
  * @returns {boolean}
  */
@@ -3054,6 +3059,7 @@ ContextGL.prototype.setProgram = function(id){
 
 /**
  * Invalidates the current active program.
+ * @category Program
  */
 ContextGL.prototype.invalidateProgram = function(){
     if(this._programActive === null){
@@ -3073,6 +3079,7 @@ ContextGL.prototype.invalidateProgram = function(){
 
 /**
  * Returns the current active program, returns INVALID_ID if no program is active.
+ * @category Program
  * @returns {number|*}
  */
 ContextGL.prototype.getProgram = function(){
@@ -3081,6 +3088,7 @@ ContextGL.prototype.getProgram = function(){
 
 /**
  * Returns the program state.
+ * @category Program
  * @returns {*}
  */
 ContextGL.prototype.getProgramInfo = function(id){
@@ -3103,6 +3111,7 @@ ContextGL.prototype.getProgramInfo = function(id){
 
 /**
  * Updates the program shaders and attribute location bindings.
+ * @category Program
  * @param vertSrc_or_vertAndFragSrc
  * @param [fragSrc_or_attribLocationBinding]
  * @param [attribLocationBinding]
@@ -3123,6 +3132,7 @@ ContextGL.prototype.updateProgram = function(vertSrc_or_vertAndFragSrc,
 
 /**
  * Retutns true if program has uniform name.
+ * @category Program
  * @param name
  * @returns {boolean}
  */
@@ -3135,6 +3145,7 @@ ContextGL.prototype.hasProgramUniform = function(name){
 
 /**
  * Returns true if program has attribute location.
+ * @category Program
  * @param name
  * @returns {boolean}
  */
@@ -3147,6 +3158,7 @@ ContextGL.prototype.hasProgramAttributeLocation = function(name){
 
 /**
  * Updates a program uniform
+ * @category Program
  * @param name
  * @param x
  * @param y
@@ -3162,6 +3174,7 @@ ContextGL.prototype.setProgramUniform = function(name, x, y, z, w){
 
 /**
  * Updates a group of program uniforms.
+ * @category Program
  * @param group
  */
 ContextGL.prototype.setProgramUniformGroup = function(group){
@@ -3186,6 +3199,7 @@ ContextGL.prototype.setProgramUniformGroup = function(group){
 
 /**
  * Buffer error representation.
+ * @category Buffer
  */
 export class BufferError extends Error{
     constructor(msg){
@@ -3371,6 +3385,7 @@ ContextGL.prototype._setBufferSubData = function(target, id, offset, data){
 
 /**
  * Saves the current buffer binding state.
+ * @category Buffer
  */
 ContextGL.prototype.pushBufferBinding = function(newState){
     this._bufferStack[this._gl.ARRAY_BUFFER].push(this._bufferActive[this._gl.ARRAY_BUFFER]);
@@ -3388,6 +3403,7 @@ ContextGL.prototype.pushBufferBinding = function(newState){
 
 /**
  * Restores the previous buffer binding state.
+ * @category Buffer
  */
 ContextGL.prototype.popBufferBinding = function(){
     if(this._bufferStack[this._gl.ARRAY_BUFFER].length === 0 ||
@@ -3402,6 +3418,7 @@ ContextGL.prototype.popBufferBinding = function(){
 
 /**
  * Creates a new vertex buffer.
+ * @category Buffer
  * @param size_or_data
  * @param usage
  * @param preserveData
@@ -3412,6 +3429,7 @@ ContextGL.prototype.createVertexBuffer = function(size_or_data, usage, preserveD
 
 /**
  * Deletes a vertex buffer.
+ * @category Buffer
  * @param id
  */
 ContextGL.prototype.deleteVertexBuffer = function(id){
@@ -3420,6 +3438,7 @@ ContextGL.prototype.deleteVertexBuffer = function(id){
 
 /**
  * Returns true if vertex buffer is present.
+ * @category Buffer
  * @param id
  * @returns {boolean}
  */
@@ -3429,6 +3448,7 @@ ContextGL.prototype.hasVertexBuffer = function(id){
 
 /**
  * Sets the active vertex buffer.
+ * @category Buffer
  * @param id
  */
 ContextGL.prototype.setVertexBuffer = function(id){
@@ -3437,6 +3457,7 @@ ContextGL.prototype.setVertexBuffer = function(id){
 
 /**
  * Returns the current active vertex buffer id.
+ * @category Buffer
  * @returns {Number}
  */
 ContextGL.prototype.getVertexBuffer = function(){
@@ -3445,6 +3466,7 @@ ContextGL.prototype.getVertexBuffer = function(){
 
 /**
  * Allocates a size or copies vertex data into the data store.
+ * @category Buffer
  * @param {Number|Uint8Array|Uint16Array|Uint32Array|Float32Array} [size_or_data]
  */
 ContextGL.prototype.setVertexBufferData = function(size_or_data){
@@ -3458,6 +3480,7 @@ ContextGL.prototype.setVertexBufferData = function(size_or_data){
 
 /**
  * Updates the vertex buffer internal preserved data.
+ * @category Buffer
  */
 ContextGL.prototype.updateVertexBufferData = function(){
     //TODO: unroll
@@ -3466,6 +3489,7 @@ ContextGL.prototype.updateVertexBufferData = function(){
 
 /**
  * Redefines some or all of the data store.
+ * @category Buffer
  * @param {Number} offset - The offset into the buffers data store where the data replacement will begin, measure in bytes
  * @param {Uint8Array|Uint16Array|Uint32Array|Float32Array} data - The new data that will be copied into the data store
  */
@@ -3480,6 +3504,7 @@ ContextGL.prototype.setVertexBufferSubData = function(offset, data){
 
 /**
  * Returns the data send to the vertex buffer. (Returns null if preserveData is set to false on creation)
+ * @category Buffer
  * @param {Number} [id] - Optional specific buffer
  * @returns {null|Uint8Array|Uint16Array|Uint32Array|Float32Array}
  */
@@ -3489,6 +3514,7 @@ ContextGL.prototype.getVertexBufferData = function(id){
 
 /**
  * Returns vertex buffer´s data byte length.
+ * @category Buffer
  * @param {Number} [id] - Optional specific buffer
  * @returns {number|*|null|byteLength}
  */
@@ -3498,6 +3524,7 @@ ContextGL.prototype.getVertexBufferDataByteLength = function(id){
 
 /**
  * Returns vertex buffer´s data length.
+ * @category Buffer
  * @param {Number} [id] - Optional specific buffer
  * @returns {number|*|null|byteLength}
  */
@@ -3507,6 +3534,7 @@ ContextGL.prototype.getVertexBufferDataLength = function(id){
 
 /**
  * Sets the usage pattern of the vertex buffer data store.
+ * @category Buffer
  * @param usage
  */
 ContextGL.prototype.setVertexBufferUsage = function(usage){
@@ -3520,6 +3548,7 @@ ContextGL.prototype.setVertexBufferUsage = function(usage){
 
 /**
  * Returns the usage pattern of the vertex data store set.
+ * @category Buffer
  * @params {Number} [id] - Optional specific vertex buffer
  * @returns {Number}
  */
@@ -3529,6 +3558,7 @@ ContextGL.prototype.getVertexBufferUsage = function(id){
 
 /**
  * Returns the current vertex buffer state.
+ * @category Buffer
  * @params {Number} [id] - Optional specific vertex buffer
  * @returns {*}
  */
@@ -3555,6 +3585,7 @@ ContextGL.prototype.getVertexBufferInfo = function(id){
 
 /**
  * Creates a new index buffer.
+ * @category Buffer
  * @param size_or_data
  * @param usage
  * @param preserveData
@@ -3565,6 +3596,7 @@ ContextGL.prototype.createIndexBuffer = function(size_or_data, usage, preserveDa
 
 /**
  * Deletes a index buffer.
+ * @category Buffer
  * @param id
  */
 ContextGL.prototype.deleteIndexBuffer = function(id){
@@ -3573,6 +3605,7 @@ ContextGL.prototype.deleteIndexBuffer = function(id){
 
 /**
  * Returns true if index buffer is present.
+ * @category Buffer
  * @param id
  * @returns {boolean}
  */
@@ -3582,6 +3615,7 @@ ContextGL.prototype.hasIndexBuffer = function(id){
 
 /**
  * Sets the active index buffer.
+ * @category Buffer
  * @param id
  */
 ContextGL.prototype.setIndexBuffer = function(id){
@@ -3596,6 +3630,7 @@ ContextGL.prototype.setIndexBuffer = function(id){
 
 /**
  * Returns the current active index buffer id.
+ * @category Buffer
  * @returns {Number}
  */
 ContextGL.prototype.getIndexBuffer = function(){
@@ -3604,6 +3639,7 @@ ContextGL.prototype.getIndexBuffer = function(){
 
 /**
  * Allocates a size or copies index data into the data store.
+ * @category Buffer
  * @param {Number|Uint8Array|Uint16Array|Uint32Array} [size_or_data]
  */
 ContextGL.prototype.setIndexBufferData = function(size_or_data){
@@ -3617,6 +3653,7 @@ ContextGL.prototype.setIndexBufferData = function(size_or_data){
 
 /**
  * Updates the index buffer internal preserved data.
+ * @category Buffer
  */
 ContextGL.prototype.updateIndexBufferData = function(){
     //TODO: unroll
@@ -3625,6 +3662,7 @@ ContextGL.prototype.updateIndexBufferData = function(){
 
 /**
  * Redefines some or all of the data store.
+ * @category Buffer
  * @param {Number} offset - The offset into the buffers data store where the data replacement will begin, measure in bytes
  * @param {Uint8Array|Uint16Array|Uint32Array} data - The new data that will be copied into the data store
  */
@@ -3639,6 +3677,7 @@ ContextGL.prototype.setIndexBufferSubData = function(offset,data){
 
 /**
  * Returns the data send to the index buffer. (Returns null if preserveData is set to false on creation)
+ * @category Buffer
  * @param {Number} [id] - Optional specific buffer
  * @returns {null|Uint8Array|Uint16Array|Uint32Array}
  */
@@ -3648,6 +3687,7 @@ ContextGL.prototype.getIndexBufferData = function(id){
 
 /**
  * Sets the usage pattern of the index buffer data store.
+ * @category Buffer
  * @param usage
  */
 ContextGL.prototype.setIndexBufferUsage = function(usage){
@@ -3661,6 +3701,7 @@ ContextGL.prototype.setIndexBufferUsage = function(usage){
 
 /**
  * Returns the usage pattern of the index data store set.
+ * @category Buffer
  * @param {Number} [id] - Optional specific buffer
  * @returns {Number}
  */
@@ -3670,6 +3711,7 @@ ContextGL.prototype.getIndexBufferUsage = function(id){
 
 /**
  * Returns index buffer´s data byte length.
+ * @category Buffer
  * @param {Number} [id] - Optional specific buffer
  * @returns {number|*|null|byteLength}
  */
@@ -3679,6 +3721,7 @@ ContextGL.prototype.getIndexBufferDataLength = function(id){
 
 /**
  * Returns index buffer´s data length.
+ * @category Buffer
  * @param {Number} [id] - Optional specific buffer
  * @returns {number|*|null|byteLength}
  */
@@ -3688,6 +3731,7 @@ ContextGL.prototype.getIndexBufferDataByteLength = function(id){
 
 /**
  * Returns the current vertex buffer state.
+ * @category Buffer
  * @params {Number} [id] - Optional specific index buffer
  * @returns {*}
  */
@@ -3716,6 +3760,7 @@ ContextGL.prototype.getIndexBufferInfo = function(id){
 
 /**
  * Vertex error representation.
+ * @category Vertex Array
  */
 export class VertexArrayError extends Error{
     constructor(msg){
@@ -4059,6 +4104,7 @@ ContextGL.prototype._invalidateVertexArrayNative = function(){
 
 /**
  * Saves the current vertex array binding.
+ * @category Vertex Array
  */
 ContextGL.prototype.pushVertexArrayBinding = function(newState){
     this._vertexArrayStack.push(this._vertexArrayState.copy());
@@ -4070,6 +4116,7 @@ ContextGL.prototype.pushVertexArrayBinding = function(newState){
 
 /**
  * Restores the previous vertex array binding.
+ * @category Vertex Array
  */
 ContextGL.prototype.popVertexArrayBinding = function(){
     if(this._vertexArrayStack.length === 0){
@@ -4080,6 +4127,7 @@ ContextGL.prototype.popVertexArrayBinding = function(){
 
 /**
  * Sets the current vertex array binding state.
+ * @category Vertex Array
  * @param state
  */
 ContextGL.prototype.setVertexArrayBindingState = function(state){
@@ -4091,6 +4139,7 @@ ContextGL.prototype.setVertexArrayBindingState = function(state){
 
 /**
  * Returns a copy of the current vertex array binding state.
+ * @category Vertex Array
  * @returns {VertexArrayBindingState}
  */
 ContextGL.prototype.getVertexArrayBindingState = function(){
@@ -4098,6 +4147,7 @@ ContextGL.prototype.getVertexArrayBindingState = function(){
 };
 
 /**
+ * @category Vertex Array
  * @example
  * const vertexArray = ctx.createVertexArray([
  *     {location: ctx.ATTRIB_POSITION, buffer: buffer0, size: 3, stride: 0, offset:0},
@@ -4119,6 +4169,7 @@ ContextGL.prototype.createVertexArray = function(attributes,indexBuffer){
 
 /**
  * Deletes a vertex array object.
+ * @category Vertex Array
  * @param id
  */
 ContextGL.prototype.deleteVertexArray = function(id){
@@ -4127,6 +4178,7 @@ ContextGL.prototype.deleteVertexArray = function(id){
 
 /**
  * Sets the current active vertex array.
+ * @category Vertex Array
  * @param id
  */
 ContextGL.prototype.setVertexArray = function(id){
@@ -4135,6 +4187,7 @@ ContextGL.prototype.setVertexArray = function(id){
 
 /**
  * Invalidates the current active vertex array.
+ * @category Vertex Array
  */
 ContextGL.prototype.invalidateVertexArray = function(){
     // set depending on webgl capabilities on init
@@ -4142,6 +4195,7 @@ ContextGL.prototype.invalidateVertexArray = function(){
 
 /**
  * Returns the current active vertex array, returns INVALID_ID if no program is active.
+ * @category Vertex Array
  * @returns {number|*}
  */
 ContextGL.prototype.getVertexArray = function(){
@@ -4150,6 +4204,7 @@ ContextGL.prototype.getVertexArray = function(){
 
 /**
  * Returns true if vertex array is present.
+ * @category Vertex Array
  * @param id
  * @returns {boolean}
  */
@@ -4159,6 +4214,7 @@ ContextGL.prototype.hasVertexArray = function(id){
 
 /**
  * Returns the vertex array state.
+ * @category Vertex Array
  * @returns {*}
  */
 ContextGL.prototype.getVertexArrayInfo = function(id){
@@ -4182,6 +4238,7 @@ ContextGL.prototype.getVertexArrayInfo = function(id){
 
 /**
  * Returns true if the current vertex array has an index buffer bound.
+ * @category Vertex Array
  * @returns {boolean}
  */
 ContextGL.prototype.hasVertexArrayIndexBuffer = function(){
@@ -4193,6 +4250,7 @@ ContextGL.prototype.hasVertexArrayIndexBuffer = function(){
 
 /**
  * Returns the currently bound index buffer bound to the vertex array.
+ * @category Vertex Array
  * @returns {null|*}
  */
 ContextGL.prototype.getVertexArrayIndexBuffer = function(){
@@ -4204,6 +4262,7 @@ ContextGL.prototype.getVertexArrayIndexBuffer = function(){
 
 /**
  * Returns true if the active vertex array has a divisor set.
+ * @category Vertex Array
  * @returns {boolean|*}
  */
 ContextGL.prototype.vertexArrayHasDivisor = function(){
@@ -4217,6 +4276,10 @@ ContextGL.prototype.vertexArrayHasDivisor = function(){
 // TEXTURE INTERNAL
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+/**
+ * Texture error representation
+ * @category Texture
+ */
 export class TextureError extends Error{
     constructor(msg){
         super(msg);
@@ -4346,6 +4409,7 @@ ContextGL.prototype._setTextureBindingState = function(state){
 
 /**
  * Saves the current texture binding.
+ * @category Texture
  */
 ContextGL.prototype.pushTextureBinding = function(newState){
     this._textureStack.push(this._textureState.copy());
@@ -4357,6 +4421,7 @@ ContextGL.prototype.pushTextureBinding = function(newState){
 
 /**
  * Restores the previous texture binding.
+ * @category Texture
  */
 ContextGL.prototype.popTextureBinding = function(){
     if(this._textureStack.length === 0){
@@ -4367,6 +4432,7 @@ ContextGL.prototype.popTextureBinding = function(){
 
 /**
  * Returns a copy of the current texture binding state.
+ * @category Texture
  * @returns {TextureState}
  */
 ContextGL.prototype.getTextureBindingState = function(){
@@ -4375,6 +4441,7 @@ ContextGL.prototype.getTextureBindingState = function(){
 
 /**
  * Invalidate the current texture2d, equal to ctx.setTexture2d(null).
+ * @category Texture
  * @param textureUnit
  */
 ContextGL.prototype.invalidateTexture2d = function(textureUnit){
@@ -4396,6 +4463,7 @@ ContextGL.prototype.invalidateTexture2d = function(textureUnit){
 
 /**
  * Creates a 2d texture.
+ * @category Texture
  * @param data_or_config
  * @param config
  */
@@ -4436,6 +4504,7 @@ ContextGL.prototype.createTexture2d = function(data_or_config,config){
 
 /**
  * Sets the active texture 2d.
+ * @category Texture
  * @param id
  * @param textureUnit
  */
@@ -4464,6 +4533,7 @@ ContextGL.prototype.setTexture2d = function(id,textureUnit){
 
 /**
  * Initializes the current texture2d data setup.
+ * @category Texture
  * @param data
  * @param config
  */
@@ -4590,6 +4660,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
 
 /**
  * Sets the active texture2d size, invalidates texture data.
+ * @category Texture
  * @param size
  */
 ContextGL.prototype.setTexture2dSize = function(size){
@@ -4598,6 +4669,7 @@ ContextGL.prototype.setTexture2dSize = function(size){
 
 /**
  * Sets the active texture2d size, invalidates texture data.
+ * @category Texture
  * @param width
  * @param height
  */
@@ -4632,6 +4704,7 @@ ContextGL.prototype.setTexture2dSize2 = function(width,height){
 
 /**
  * Sets the active textures min and mag filter.
+ * @category Texture
  * @param min_or_minMagFilter
  * @param magFilter
  */
@@ -4658,6 +4731,7 @@ ContextGL.prototype.setTexture2dFilter = function(min_or_minMagFilter, magFilter
 
 /**
  * Updates texture2d data, must be initialized previously.
+ * @category Texture
  * @param data
  */
 ContextGL.prototype.updateTexture2dData = function(data){
@@ -4700,6 +4774,7 @@ ContextGL.prototype.updateTexture2dData = function(data){
 
 /**
  * Deletes a texture.
+ * @category Texture
  * @param id
  */
 ContextGL.prototype.deleteTexture2d = function(id){
@@ -4723,6 +4798,7 @@ ContextGL.prototype.deleteTexture2d = function(id){
 
 /**
  * Returns a textures current state.
+ * @category Texture
  * @param id
  * @returns {*}
  */
@@ -4746,6 +4822,7 @@ ContextGL.prototype.getTexture2dInfo = function(id){
 
 /**
  * Returns the textures size.
+ * @category Texture
  * @param id_or_out
  * @param out
  * @returns {*}
@@ -4761,6 +4838,7 @@ ContextGL.prototype.getTexture2dSize = function(id_or_out,out){
 
 /**
  * Returns the textures bounds.
+ * @category Texture
  * @param id_or_out
  * @param out
  * @returns {*}
@@ -4776,6 +4854,7 @@ ContextGL.prototype.getTexture2dBounds = function(id_or_out,out){
 
 /**
  * Returns true if the texture exists.
+ * @category Texture
  * @param id
  * @returns {boolean}
  */
@@ -4785,6 +4864,7 @@ ContextGL.prototype.hasTexture2d = function(id){
 
 /**
  * Returns the current active texture at a specific texture unit.
+ * @category Texture
  * @param textureUnit
  * @returns {*|null}
  */
@@ -4795,6 +4875,7 @@ ContextGL.prototype.getTexture2d = function(textureUnit){
 
 /**
  * Returns the current active texture unit.
+ * @category Texture
  * @returns {*}
  */
 ContextGL.prototype.getTextureUnitActive = function(){
@@ -4820,6 +4901,10 @@ ContextGL.prototype._deleteRenderbufferRAW = function(id){
 // FRAMEBUFFER INTERNAL
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+/**
+ * Framebuffer error representation
+ * @category Framebuffer
+ */
 export class FramebufferError extends Error{
     constructor(msg){
         super(msg);
@@ -4933,6 +5018,7 @@ ContextGL.prototype._getFramebufferAttachment = function(framebuffer,attachmentP
 
 /**
  * Invalidate the current framebuffer, equal to ctx.setFramebuffer(null).
+ * @category Framebuffer
  */
 ContextGL.prototype.invalidateFramebuffer = function(){
     if(this._framebufferActive === null){
@@ -4944,6 +5030,7 @@ ContextGL.prototype.invalidateFramebuffer = function(){
 
 /**
  * Saves the current framebuffer array binding.
+ * @category Framebuffer
  */
 ContextGL.prototype.pushFramebufferBinding = function(newState){
     this._framebufferStack.push(this._framebufferActive);
@@ -4955,6 +5042,7 @@ ContextGL.prototype.pushFramebufferBinding = function(newState){
 
 /**
  * Restores the previous framebuffer binding.
+ * @category Framebuffer
  */
 ContextGL.prototype.popFramebufferBinding = function(){
     if(this._framebufferStack.length === 0){
@@ -4966,6 +5054,7 @@ ContextGL.prototype.popFramebufferBinding = function(){
 /**
  * Creates a framebuffer.
  * @example
+ * @category Framebuffer
  * //Creates a framebuffer the size of the drawing buffer with one default color and a depth attachment.
  * const framebuffer = cctx.createFrameBuffer();
  *
@@ -5190,6 +5279,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
 
 /**
  * Sets the current framebuffer.
+ * @category Framebuffer
  * @param id
  */
 ContextGL.prototype.setFramebuffer = function(id){
@@ -5209,6 +5299,7 @@ ContextGL.prototype.setFramebuffer = function(id){
 
 /**
  * Returns the current active framebuffer
+ * @category Framebuffer
  * @returns {null|*}
  */
 ContextGL.prototype.getFramebuffer = function(){
@@ -5217,6 +5308,7 @@ ContextGL.prototype.getFramebuffer = function(){
 
 /**
  * Sets the current framebuffer´s size, invalidates data.
+ * @category Framebuffer
  * @param size
  */
 ContextGL.prototype.setFramebufferSize = function(size){
@@ -5225,6 +5317,7 @@ ContextGL.prototype.setFramebufferSize = function(size){
 
 /**
  * Sets the current framebuffer´s size, invalidate data.
+ * @category Framebuffer
  * @param width
  * @param height
  */
@@ -5267,6 +5360,7 @@ ContextGL.prototype.setFramebufferSize2 = function(width,height){
 
 /**
  * Sets a framebuffer color attachment.
+ * @category Framebuffer
  * @param texture
  * @param attachmentPoint
  */
@@ -5293,6 +5387,7 @@ ContextGL.prototype.setFramebufferColorAttachment = function(texture, attachment
 
 /**
  * Returns a framebuffers color attachment.
+ * @category Framebuffer
  * @param framebuffer_or_attachment
  * @param attachmentPoint
  * @returns {*}
@@ -5332,6 +5427,7 @@ ContextGL.prototype.getFramebufferColorAttachment = function(framebuffer_or_atta
 
 /**
  * Sets a framebuffers depth attachment.
+ * @category Framebuffer
  * @param texture
  */
 //TODO: what happens to the already existing depth attachment?
@@ -5367,6 +5463,7 @@ ContextGL.prototype.setFramebufferDepthAttachment = function(texture){
 
 /**
  * Returns a framebuffers depth attachment.
+ * @category Framebuffer
  * @param framebuffer
  * @returns {boolean}
  */
@@ -5376,6 +5473,7 @@ ContextGL.prototype.getFramebufferDepthAttachment = function(framebuffer){
 
 /**
  * Sets a framebuffers depth stencil attachment.
+ * @category Framebuffer
  * @param texture
  */
 //TODO: what happens to the already existing depth attachment?
@@ -5400,6 +5498,7 @@ ContextGL.prototype.setFramebufferDepthStencilAttachment = function(texture){
 
 /**
  * Returns a frambuffers depth stencil attachment.
+ * @category Framebuffer
  * @param framebuffer
  * @returns {boolean}
  */
@@ -5409,6 +5508,7 @@ ContextGL.prototype.getFramebufferDepthStencilAttachment = function(framebuffer)
 
 /**
  * Returns the size of the current active or a specific framebuffer, the smallest size gets returned.
+ * @category Framebuffer
  * @param id_or_out
  * @param out
  */
@@ -5423,6 +5523,7 @@ ContextGL.prototype.getFramebufferSize = function(id_or_out,out){
 
 /**
  * Returns the bound of the current active or a specific framebuffer, the smallest bounds get returned.
+ * @category Framebuffer
  * @param id_or_out
  * @param out
  * @returns {*}
@@ -5438,6 +5539,7 @@ ContextGL.prototype.getFramebufferBounds = function(id_or_out,out){
 
 /**
  * Deletes a framebuffer.
+ * @category Framebuffer
  * @param id
  */
 ContextGL.prototype.deleteFramebuffer = function(id){
@@ -5471,6 +5573,7 @@ ContextGL.prototype.deleteFramebuffer = function(id){
 
 /**
  * Returns true it the framebuffer exists.
+ * @category Framebuffer
  * @param id
  * @returns {boolean}
  */
@@ -5480,6 +5583,7 @@ ContextGL.prototype.hasFramebuffer = function(id){
 
 /**
  * Returns the current frambuffer state.
+ * @category Framebuffer
  * @param id
  * @returns {*}
  */
@@ -5574,6 +5678,7 @@ ContextGL.prototype._blitFramebufferAttachmentToScreen = function(
 
 /**
  * Blits a complete framebuffer attachment to screen.
+ * @category Framebuffer
  * @param framebuffer
  * @param bounds
  * @param mask_or_attachmentPoint
@@ -5584,6 +5689,7 @@ ContextGL.prototype.blitFullFramebufferToScreen = function(framebuffer,bounds,ma
 
 /**
  * Blits a complete framebuffer attachment to screen.
+ * @category Framebuffer
  * @param framebuffer
  * @param x
  * @param y
@@ -5600,6 +5706,7 @@ ContextGL.prototype.blitFullFramebufferToScreen2 = function(framebuffer,x,y,widt
 
 /**
  * Blits a frambuffer attachment region to screen.
+ * @category Framebuffer
  * @param framebuffer
  * @param srcBounds
  * @param dstBounds_or_mask_or_attachmentPoint
@@ -5625,6 +5732,7 @@ ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,srcBounds,dst
 
 /**
  * Blits a frambuffer attachment region to screen.
+ * @category Framebuffer
  * @param framebuffer
  * @param srcx0
  * @param srcy0
@@ -5673,6 +5781,11 @@ ContextGL.prototype._drawBuffersNotSupported = function(buffers){
     throw new Error('WebGL drawBuffers not supported.');
 };
 
+/**
+ * Defines an array of buffers into which outputs from the fragment shader data will be written.
+ * @category Framebuffer
+ * @param buffers
+ */
 ContextGL.prototype.drawBuffers = function(buffers){};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -5709,6 +5822,7 @@ ContextGL.prototype._getMatrixStack = function(mode,out){
 
 /**
  * Returns a copy of the current projection matrix stack.
+ * @category Matrix Stack
  * @param [out]
  */
 ContextGL.prototype.getProjectionMatrixStack = function(out){
@@ -5717,6 +5831,7 @@ ContextGL.prototype.getProjectionMatrixStack = function(out){
 
 /**
  * Returns a copy of the current view matrix stack.
+ * @category Matrix Stack
  * @param [out]
  */
 ContextGL.prototype.getViewMatrixStack = function(out){
@@ -5725,6 +5840,7 @@ ContextGL.prototype.getViewMatrixStack = function(out){
 
 /**
  * Returns a copy of the current model matrix stack.
+ * @category Matrix Stack
  * @param [out]
  */
 ContextGL.prototype.getModelMatrixStack = function(out){
@@ -5733,6 +5849,7 @@ ContextGL.prototype.getModelMatrixStack = function(out){
 
 /**
  * Sets the projection matrix to ortho and resets view and model matrix.
+ * @category Matrix Stack
  * @param size
  * @param topleft
  */
@@ -5742,6 +5859,7 @@ ContextGL.prototype.setWindowMatrices = function(size,topleft){
 
 /**
  * Sets the projection matrix to ortho and resets view and model matrix.
+ * @category Matrix Stack
  * @param width
  * @param height
  * @param topleft
@@ -5758,6 +5876,7 @@ ContextGL.prototype.setWindowMatrices2 = function(width,height,topleft){
 
 /**
  * Sets the projection matrix to be used.
+ * @category Matrix Stack
  * @param {Array} matrix
  */
 ContextGL.prototype.setProjectionMatrix = function(matrix){
@@ -5767,6 +5886,7 @@ ContextGL.prototype.setProjectionMatrix = function(matrix){
 
 /**
  * Sets the view matrix to be used.
+ * @category Matrix Stack
  * @param {Array} matrix
  */
 ContextGL.prototype.setViewMatrix = function(matrix){
@@ -5776,6 +5896,7 @@ ContextGL.prototype.setViewMatrix = function(matrix){
 
 /**
  * Set the model matrix to be used.
+ * @category Matrix Stack
  * @param {Array} matrix
  */
 ContextGL.prototype.setModelMatrix = function(matrix){
@@ -5785,6 +5906,7 @@ ContextGL.prototype.setModelMatrix = function(matrix){
 
 /**
  * Returns the current projection matrix.
+ * @category Matrix Stack
  * @param {Array} [out]
  * @returns {Array|Float32Array}
  */
@@ -5794,6 +5916,7 @@ ContextGL.prototype.getProjectionMatrix = function(out){
 
 /**
  * Returns the current view matrix.
+ * @category Matrix Stack
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -5803,6 +5926,7 @@ ContextGL.prototype.getViewMatrix = function(out){
 
 /**
  * Returns the current model matrix.
+ * @category Matrix Stack
  * @param {Array} [out]
  * @returns {Array}
  */
@@ -5812,6 +5936,7 @@ ContextGL.prototype.getModelMatrix = function(out){
 
 /**
  * Pushes the current projection matrix on the projection matrix stack.
+ * @category Matrix Stack
  */
 ContextGL.prototype.pushProjectionMatrix = function(){
     this._matrixStack[MATRIX_PROJECTION_BIT].push(Mat44.copy(this._matrix[MATRIX_PROJECTION]));
@@ -5819,6 +5944,7 @@ ContextGL.prototype.pushProjectionMatrix = function(){
 
 /**
  * Replaces the current projection matrix with the matrix previously pushed on the stack and removes the top.
+ * @category Matrix Stack
  */
 ContextGL.prototype.popProjectionMatrix = function(){
     this._matrix[MATRIX_PROJECTION] = this._matrixStack[MATRIX_PROJECTION_BIT].pop();
@@ -5827,6 +5953,7 @@ ContextGL.prototype.popProjectionMatrix = function(){
 
 /**
  * Pushes the current view matrix on the view matrix stack.
+ * @category Matrix Stack
  */
 ContextGL.prototype.pushViewMatrix = function(){
     this._matrixStack[MATRIX_VIEW_BIT].push(Mat44.copy(this._matrix[MATRIX_VIEW]));
@@ -5834,6 +5961,7 @@ ContextGL.prototype.pushViewMatrix = function(){
 
 /**
  * Replaces the current view matrix with the matrix previously pushed on the stack and removes the top.
+ * @category Matrix Stack
  */
 ContextGL.prototype.popViewMatrix = function(){
     this._matrix[MATRIX_VIEW] = this._matrixStack[MATRIX_VIEW_BIT].pop();
@@ -5842,6 +5970,7 @@ ContextGL.prototype.popViewMatrix = function(){
 
 /**
  * Pushes the current model matrix on the model matrix stack.
+ * @category Matrix Stack
  */
 ContextGL.prototype.pushModelMatrix = function(){
     this._matrixStack[MATRIX_MODEL_BIT].push(Mat44.copy(this._matrix[MATRIX_MODEL]));
@@ -5849,6 +5978,7 @@ ContextGL.prototype.pushModelMatrix = function(){
 
 /**
  * Replaces the current model matrix with the matrix previously pushed on the stack and removes the top.
+ * @category Matrix Stack
  */
 ContextGL.prototype.popModelMatrix = function(){
     this._matrix[MATRIX_MODEL] = this._matrixStack[MATRIX_MODEL_BIT].pop();
@@ -5857,6 +5987,7 @@ ContextGL.prototype.popModelMatrix = function(){
 
 /**
  * Pushes all matrices on their stack.
+ * @category Matrix Stack
  */
 ContextGL.prototype.pushMatrices = function(){
     this.pushProjectionMatrix();
@@ -5866,6 +5997,7 @@ ContextGL.prototype.pushMatrices = function(){
 
 /**
  * Replaces all matrices with the matrices previously pushed on the stack and removes the top.
+ * @category Matrix Stack
  */
 ContextGL.prototype.popMatrices = function(){
     this.popModelMatrix();
@@ -5875,6 +6007,7 @@ ContextGL.prototype.popMatrices = function(){
 
 /**
  * Resets the current model matrix to its identity.
+ * @category Matrix Stack
  */
 ContextGL.prototype.loadIdentity = function(){
     Mat44.identity(this._matrix[MATRIX_MODEL]);
@@ -5883,6 +6016,7 @@ ContextGL.prototype.loadIdentity = function(){
 
 /**
  * Resets all matrices to their identities.
+ * @category Matrix Stack
  */
 ContextGL.prototype.loadIdentities = function(){
     Mat44.identity(this._matrix[MATRIX_PROJECTION]);
@@ -5894,6 +6028,7 @@ ContextGL.prototype.loadIdentities = function(){
 
 /**
  * Scales the current model matrix.
+ * @category Matrix Stack
  * @param {Array} v
  */
 ContextGL.prototype.scale = function(v){
@@ -5903,6 +6038,7 @@ ContextGL.prototype.scale = function(v){
 
 /**
  * Scales the current model matrix.
+ * @category Matrix Stack
  * @param x
  * @param y
  * @param z
@@ -5914,6 +6050,7 @@ ContextGL.prototype.scale3 = function(x,y,z){
 
 /**
  * Scales the current model matrix.
+ * @category Matrix Stack
  * @param xyz
  */
 ContextGL.prototype.scale1 = function(xyz){
@@ -5923,6 +6060,7 @@ ContextGL.prototype.scale1 = function(xyz){
 
 /**
  * Translates the current model matrix.
+ * @category Matrix Stack
  * @param {Array} v
  */
 ContextGL.prototype.translate = function(v){
@@ -5932,6 +6070,7 @@ ContextGL.prototype.translate = function(v){
 
 /**
  * Translates the current model matrix.
+ * @category Matrix Stack
  * @param x
  * @param y
  */
@@ -5942,6 +6081,7 @@ ContextGL.prototype.translate2 = function(x,y){
 
 /**
  * Translates the current model matrix.
+ * @category Matrix Stack
  * @param x
  * @param y
  * @param z
@@ -5953,6 +6093,7 @@ ContextGL.prototype.translate3 = function(x,y,z){
 
 /**
  * Rotates the current model matrix with angle and axis.
+ * @category Matrix Stack
  * @param {Number} angle
  * @param {Array} v
  */
@@ -5963,6 +6104,7 @@ ContextGL.prototype.rotate = function(angle,v){
 
 /**
  * Rotates the current model matrix with rotation per axis.
+ * @category Matrix Stack
  * @param {Array} v
  */
 ContextGL.prototype.rotateXYZ = function(v){
@@ -5972,6 +6114,7 @@ ContextGL.prototype.rotateXYZ = function(v){
 
 /**
  * Rotates the current model matrix with rotation per axis.
+ * @category Matrix Stack
  * @param x
  * @param y
  * @param z
@@ -5983,6 +6126,7 @@ ContextGL.prototype.rotateXYZ3 = function(x,y,z){
 
 /**
  * Rotates the current model matrix with a quaternion.
+ * @category Matrix Stack
  * @param {Array} q
  */
 ContextGL.prototype.rotateQuat = function(q){
@@ -5992,6 +6136,7 @@ ContextGL.prototype.rotateQuat = function(q){
 
 /**
  * Multiplies the current model matrix with another matrix.
+ * @category Matrix Stack
  * @param {Array} m
  */
 ContextGL.prototype.multMatrix = function(m){
@@ -6001,6 +6146,7 @@ ContextGL.prototype.multMatrix = function(m){
 
 /**
  * Enables / disables auto uploading the projection matrix to the active program.
+ * @category Matrix Stack
  * @param enable
  */
 ContextGL.prototype.setAutoUploadProjectionMatrix = function(enable){
@@ -6009,6 +6155,7 @@ ContextGL.prototype.setAutoUploadProjectionMatrix = function(enable){
 
 /**
  * Enables / disables auto uploading the view matrix to the active program.
+ * @category Matrix Stack
  * @param enable
  */
 ContextGL.prototype.setAutoUploadViewMatrix = function(enable){
@@ -6017,6 +6164,7 @@ ContextGL.prototype.setAutoUploadViewMatrix = function(enable){
 
 /**
  * Enables / disables auto uploading the model matrix to the active program.
+ * @category Matrix Stack
  * @param enable
  */
 ContextGL.prototype.setAutoUploadModelMatrix = function(enable){
@@ -6068,6 +6216,7 @@ ContextGL.prototype._updateMatrixUniforms = function(){
 
 /**
  * Renders primitives from array data.
+ * @category Buffer Drawing
  * @param {Number} mode
  * @param {Number} first
  * @param {Number} count
@@ -6079,6 +6228,7 @@ ContextGL.prototype.drawArrays = function(mode,first,count){
 
 /**
  * Draws multiple instances of a range of elements.
+ * @category Buffer Drawing
  * @param mode
  * @param first
  * @param count
@@ -6091,6 +6241,7 @@ ContextGL.prototype.drawArraysInstanced = function(mode,first,count,primcount){
 
 /**
  * Renders primitives from array data
+ * @category Buffer Drawing
  * @param mode
  * @param count
  * @param offset
@@ -6102,6 +6253,7 @@ ContextGL.prototype.drawElements = function(mode, count, offset){
 
 /**
  * Draw multiple instances of a set of elements
+ * @category Buffer Drawing
  * @param {Number} mode
  * @param {Number} count
  * @param {Number} offset
@@ -6118,6 +6270,7 @@ ContextGL.prototype.drawElementsInstanced = function(mode,count,offset,primcount
 
 /**
  * Clears buffers to preset values.
+ * @category Buffer Clear
  * @param {Number} mask - Bitwise OR of masks that indicate the buffers to be cleared
  */
 ContextGL.prototype.clear = function(mask){
@@ -6130,11 +6283,13 @@ ContextGL.prototype.clear = function(mask){
 
 /**
  * Returns a copy of the overall initial default state.
+ * @category State Stack
  */
 ContextGL.prototype.getDefaultState = function(){};
 
 /**
  * Saves all or a selection of states.
+ * @category State Stack
  * @param mask
  */
 ContextGL.prototype.pushState = function(mask){
@@ -6211,6 +6366,7 @@ ContextGL.prototype.pushState = function(mask){
 
 /**
  * Restores all or a selection of states.
+ * @category State Stack
  * @param mask
  */
 ContextGL.prototype.popState = function(mask){
@@ -6287,6 +6443,7 @@ ContextGL.prototype.popState = function(mask){
 
 /**
  * Returns a copy of all or a selection of states.
+ * @category State Stack
  * @param mask
  * @returns {{*}}
  */
@@ -6369,6 +6526,7 @@ ContextGL.prototype.getState = function(mask){
 
 /**
  * Returns a human readable descirption of all or a selection of states.
+ * @category State Stack
  * @param mask
  */
 ContextGL.prototype.getStateDescription = function(mask){
@@ -6396,6 +6554,7 @@ ContextGL.prototype.getStateDescription = function(mask){
 
 /**
  * Sets all states or a selection of states.
+ * @category State Stack
  * @param state
  */
 ContextGL.prototype.setState = function(state){
