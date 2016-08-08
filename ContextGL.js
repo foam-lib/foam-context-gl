@@ -777,6 +777,21 @@ function ContextGL(canvas,options){
     this._textureState = new TextureState(new Array(this.MAX_TEXTURE_IMAGE_UNITS),0);
     this._textureStack = [];
 
+    //bind empty texture
+    const textureNullConfig = validateOption({width:1,height:1},DefaultConfigTexture2d);
+    const textureNullDataConfig = {};
+    for(const key in DefaultConfigTexture2dData){
+        textureNullDataConfig[key] = textureNullConfig[key];
+    }
+    this._texturesNull = new Array(this.MAX_TEXTURE_IMAGE_UNITS);
+    for(let i = this.MAX_TEXTURE_IMAGE_UNITS - 1; i > -1; --i){
+        const texture = this._texturesNull[i] = this._createTexture(this._gl.TEXTURE_2D);
+        this._textures[texture].level = 0;
+        this.setTexture2d(texture,i);
+        this.setTexture2dData(null,textureNullDataConfig);
+    }
+    console.assert(this.getGLError());
+
     this.NEAREST = this._gl.NEAREST;
     this.LINEAR = this._gl.LINEAR;
     this.NEAREST_MIPMAP_NEAREST = this._gl.NEAREST_MIPMAP_NEAREST;
@@ -4447,18 +4462,21 @@ ContextGL.prototype.getTextureBindingState = function(){
 ContextGL.prototype.invalidateTexture2d = function(textureUnit){
     textureUnit = textureUnit || 0;
 
-    if(!this._textureState.textureActive[textureUnit]){
+    const textureNullId = this._texturesNull[textureUnit];
+    if(this._textureState.textureActive[textureUnit] === textureNullId){
         return;
     }
     const textureUnitActive = this._textureState.textureUnitActive;
+    const textureNull = this._textures[textureNullId];
+
     if(textureUnit !== textureUnitActive){
         this._gl.activeTexture(this._gl.TEXTURE0 + textureUnit);
-        this._gl.bindTexture(this._gl.TEXTURE_2D, null);
+        this._gl.bindTexture(this._gl.TEXTURE_2D,textureNull.handle);
         this._gl.activeTexture(this._gl.TEXTURE0 + textureUnitActive);
-    } else {
-        this._gl.bindTexture(this._gl.TEXTURE_2D,null);
+    }else{
+        this._gl.bindTexture(this._gl.TEXTURE_2D,textureNull.handle);
     }
-    this._textureState.textureActive[textureUnit] = null;
+    this._textureState.textureActive[textureUnit] = textureNullId;
 };
 
 /**
@@ -4786,9 +4804,7 @@ ContextGL.prototype.deleteTexture2d = function(id){
     for(const unit in this._textureState.textureActive){
         const unit_ = +unit;
         if(this._textureState.textureActive[unit_] === id){
-            this._textureState.textureActive[unit_] = null;
-            this._gl.activeTexture(this._gl.TEXTURE0 + unit_);
-            this._gl.bindTexture(this._gl.TEXTURE_2D, texture.handle);
+            this.invalidateTexture2d(unit_);
         }
     }
 
@@ -4806,10 +4822,12 @@ ContextGL.prototype.getTexture2dInfo = function(id){
     let texture;
     //active texture
     if(id === undefined){
-        texture = this._textures[this._textureState.textureActive[this._textureState.textureUnitActive]];
-        if(!texture){
+        const textureUnit = this._textureState.textureUnitActive;
+        const textureId = this._textureState.textureActive[textureUnit];
+        if(textureId === this._texturesNull[textureUnit]){
             throw new TextureError(STR_TEXTURE_ERROR_NOTHING_BOUND);
         }
+        texture = this._textures[textureId];
     //specific texture
     } else {
         texture = this._textures[id];
@@ -4870,7 +4888,8 @@ ContextGL.prototype.hasTexture2d = function(id){
  */
 ContextGL.prototype.getTexture2d = function(textureUnit){
     textureUnit = textureUnit === undefined ? this._textureState.textureUnitActive : textureUnit;
-    return this._textureState.textureActive[textureUnit] || null;
+    const texture = this._textureState.textureActive[textureUnit];
+    return texture === this._texturesNull[textureUnit] ? null : texture;
 };
 
 /**
