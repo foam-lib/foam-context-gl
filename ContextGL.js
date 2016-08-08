@@ -4398,7 +4398,7 @@ ContextGL.prototype._deleteTexture = function(id){
 ContextGL.prototype._setTextureBindingState = function(state){
     const textureActive = state.textureActive;
     for(let i = 0; i < this.MAX_TEXTURE_IMAGE_UNITS; ++i){
-        this.setTexture2d(textureActive[i]);
+        this.setTexture2d(textureActive[i],i);
     }
     this._textureState.textureUnitActive = state.textureUnitActive;
 };
