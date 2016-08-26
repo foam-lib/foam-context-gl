@@ -42,9 +42,12 @@ const PROGRAM_DEFAULT_GLSL =
  
  uniform vec2 uTexCoordOffset;
  uniform vec2 uTexCoordScale;
+ 
+ uniform float uInvert;
 
  void main(){
-     gl_FragColor = vColor * (1.0 - uUseTexture) + texture2D(uTexture,uTexCoordOffset + vTexCoord * uTexCoordScale) * uUseTexture;
+     vec4 color = vColor * (1.0 - uUseTexture) + texture2D(uTexture,uTexCoordOffset + vTexCoord * uTexCoordScale) * uUseTexture;
+     gl_FragColor = mix(color,vec4(1.0 - color.r,1.0 - color.g,1.0 - color.b,color.a),uInvert);
  }
  #endif`;
 
