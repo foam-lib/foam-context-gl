@@ -649,6 +649,17 @@ function QuickDraw(ctx){
 
 /**
  * Use the default quickdraw stock program.
+ * @example
+ * this._quickdraw = new QuickDraw();
+ * this._quickdraw.useDefaultStockProgram();
+ * //uniform options
+ * this._ctx.setProgramUniform('uPointSize',1.0); //set default stock program point size
+ * this._ctx.setProgramUniform('uColor',1,1,1,1); //set default stock program color
+ * this._ctx.setProgramUniform('uUseTexture',1.0); //set default stock program texture usage enabled / disable
+ * this._ctx.setProgramUniform('uTexture',aTexture); //set default stock program texture
+ * this._ctx.setProgramUniform('uTexCoordOffset',0,0); //set default stock program texcoord origin offset
+ * this._ctx.setProgramUniform('uTexCoordScale',1,1); //set default stock program texcoord scaling
+ * this._ctx.setProgramUniform('uInvert',1.0); //set default stock program result color invert
  */
 QuickDraw.prototype.useDefaultStockProgram = function(){
     this._ctx.setProgram(this._defaultStockProgram);
