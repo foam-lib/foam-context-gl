@@ -2433,6 +2433,7 @@ QuickDraw.prototype.gridTextured = function(size,subdivs){
         this._ctx.setProgramUniform('uUseTexture',1.0);
         this.setRectTexCoord2(0,0, subdivs,0, subdivs,subdivs, 0,subdivs);
         this.rect();
+        this.resetRectTexCoord();
         this._ctx.setProgramUniform('uUseTexture',0.0);
     this._ctx.popModelMatrix();
     this._ctx.popTextureBinding();
