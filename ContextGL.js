@@ -5172,7 +5172,8 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                         const config_ = {
                             width : width,
                             height : height,
-                            minMagFilter : this._gl.NEAREST,
+                            minFilter : this._gl.NEAREST,
+                            magFilter : this._gl.NEAREST,
                             wrap : this._gl.CLAMP_TO_EDGE,
                             format : null,
                             dataType : null
@@ -5197,10 +5198,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
                         const texture = this._textures[textureId];
                         this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, attachmentPoint, this._gl.TEXTURE_2D,
                             texture.handle, 0);
-
-                        if(framebuffer.colorAttachments.length > 0){
-                            this._checkFramebufferStatus(framebuffer.handle);
-                        }
+                        this._checkFramebufferStatus(framebuffer.handle);
                         depthStencil_or_depthAttachment = textureId;
 
                     //Create auto depth,stencil attachments via renderbuffers
@@ -5487,7 +5485,7 @@ ContextGL.prototype.setFramebufferDepthAttachment = function(texture){
  * @returns {boolean}
  */
 ContextGL.prototype.getFramebufferDepthAttachment = function(framebuffer){
-    return this.getFramebufferInfo(framebuffer).stencilDepth_or_depthAttachment;
+    return this.getFramebufferInfo(framebuffer).depthAttachment;
 };
 
 /**
