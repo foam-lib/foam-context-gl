@@ -1842,7 +1842,7 @@ QuickDraw.prototype.cubeColored = function(scale){
 
     if(scale !== undefined){
         this._ctx.pushModelMatrix();
-        this._ctx.scale(scale);
+        this._ctx.scale1(scale);
         this._ctx.drawElements(this._ctx.TRIANGLES, 36);
         this._ctx.popModelMatrix();
     } else {
