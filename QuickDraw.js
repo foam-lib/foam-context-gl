@@ -105,12 +105,14 @@ function QuickDraw(ctx){
     console.assert(ctx.getGLError());
 
     // Points
+    this._dataPointsPosition = new Float32Array(0);
+    this._dataPointsColor = new Float32Array(0);
 
     this._bufferPointsPosition = ctx.createVertexBuffer(
-        new Float32Array(0), ctx.DYNAMIC_DRAW, true
+        this._dataPointsPosition , ctx.DYNAMIC_DRAW, false
     );
     this._bufferPointsColor = ctx.createVertexBuffer(
-        new Float32Array(0), ctx.DYNAMIC_DRAW, true
+        this._dataPointsColor, ctx.DYNAMIC_DRAW, false
     );
     this._vaoPoints = ctx.createVertexArray([
         {location: ctx.ATTRIB_LOCATION_POSITION, buffer: this._bufferPointsPosition, size: 3},
@@ -1048,6 +1050,27 @@ QuickDraw.prototype.point3 = function(x,y,z){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
+    this._ctx.setVertexArray(this._vaoPoint);
+
+    this._ctx.setVertexBuffer(this._bufferPointPosition);
+    const position = this._ctx.getVertexBufferData();
+    if(position[0] != x || position[1] != y || position[2] != z){
+        position[0] = x;
+        position[1] = y;
+        position[2] = z;
+        this._ctx.updateVertexBufferData();
+    }
+
+    if(this._ctx._programHasAttribColor){
+        this._ctx.setVertexBuffer(this._bufferPointColor);
+        const color = this._ctx.getVertexBufferData();
+        if(!Vec4.equals(color,this._drawState.color)){
+            ArrayUtil.fillv4(color,this._drawState.color);
+        }
+        this._ctx.updateVertexBufferData();
+    }
+
+    this._ctx.drawArrays(this._ctx.POINTS,0,1);
 };
 
 /**
@@ -1066,6 +1089,29 @@ QuickDraw.prototype.pointsFlat = function(points){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
+    this._ctx.setVertexArray(this._vaoPoints);
+
+    if(this._dataPointsPosition.length < points.length){
+        this._dataPointsPosition = new Float32Array(points.length);
+        this._dataPointsColor = new Float32Array(points.length / 3 * 4);
+    }
+
+    for(let i = 0; i < points.length; ++i){
+        this._dataPointsPosition[i] = points[i];
+    }
+
+    this._ctx.setVertexBuffer(this._bufferPointsPosition);
+    this._ctx.setVertexBufferData(this._dataPointsPosition);
+
+    if(this._ctx._programHasAttribColor){
+        this._ctx.setVertexBuffer(this._bufferPointsColor);
+        if(!Vec4.equals(this._dataPointsColor,this._drawState.color)){
+            ArrayUtil.fillv4(this._dataPointsColor,this._drawState.color);
+        }
+        this._ctx.setVertexBufferData(this._dataPointsColor);
+    }
+
+    this._ctx.drawArrays(this._ctx.POINTS,0,points.length / 3);
 };
 
 /**
