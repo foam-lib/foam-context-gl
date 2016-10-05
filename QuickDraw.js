@@ -2,9 +2,11 @@ import ContextGL, {UNIFORM_NAME_POINT_SIZE} from './ContextGL';
 import {DrawState} from './State';
 import * as ArrayUtil from 'foam-util/ArrayUtil';
 import * as Vec4 from 'foam-math/Vec4';
+import * as Mat44 from 'foam-math/Mat44';
 
 const VEC2_ZERO = [0,0];
 const VEC2_ONE = [1,1];
+const TEMP_MAT_44 = Mat44.create();
 
 const PROGRAM_DEFAULT_GLSL =
 `#ifdef VERTEX_SHADER
@@ -2093,6 +2095,76 @@ QuickDraw.prototype.spherePoints = function(scale){
     } else {
         this._ctx.drawArrays(this._ctx.POINTS,0,this._numElementsSphere);
     }
+};
+
+QuickDraw.prototype.spheresFlat = function(positions,scale_or_scales){
+    scale_or_scales = scale_or_scales === undefined ? 1.0 : scale_or_scales;
+
+    this._sphere();
+    const length = this._ctx.getIndexBufferDataLength();
+
+    this._ctx.pushModelMatrix();
+    if(scale_or_scales.length !== undefined){
+        const matrix = this._ctx.getModelMatrix();
+        for(let i = 0; i < positions.length; i+=3){
+            const scale = scale_or_scales[i/3];
+            this._ctx.setModelMatrix(
+                Mat44.scale3(Mat44.translate3(Mat44.set(TEMP_MAT_44,matrix),
+                    positions[i],positions[i+1],positions[i+2]),
+                    scale,scale,scale
+                )
+            );
+            this._ctx.drawElements(this._ctx.TRIANGLES,length);
+        }
+    } else {
+        const matrix = this._ctx.getModelMatrix();
+        for(let i = 0; i < positions.length; i+=3){
+            this._ctx.setModelMatrix(
+                Mat44.scale3(Mat44.translate3(Mat44.set(TEMP_MAT_44,matrix),
+                    positions[i],positions[i+1],positions[i+2]),
+                    scale_or_scales,scale_or_scales,scale_or_scales
+                )
+            );
+            this._ctx.drawElements(this._ctx.TRIANGLES,length);
+        }
+    }
+    this._ctx.popModelMatrix();
+};
+
+QuickDraw.prototype.spheres = function(positions,scale_or_scales){
+    scale_or_scales = scale_or_scales === undefined ? 1.0 : scale_or_scales;
+
+    this._sphere();
+    const length = this._ctx.getIndexBufferDataLength();
+
+    this._ctx.pushModelMatrix();
+    if(scale_or_scales.length !== undefined){
+        const matrix = this._ctx.getModelMatrix();
+        for(let i = 0; i < positions.length; ++i){
+            const scale = scale_or_scales[i];
+            const position = positions[i];
+            this._ctx.setModelMatrix(
+                Mat44.scale3(Mat44.translate3(Mat44.set(TEMP_MAT_44,matrix),
+                    position[0],position[1],position[2]),
+                    scale,scale,scale
+                )
+            );
+            this._ctx.drawElements(this._ctx.TRIANGLES,length);
+        }
+    } else {
+        const matrix = this._ctx.getModelMatrix();
+        for(let i = 0; i < positions.length; ++i){
+            const position = positions[i];
+            this._ctx.setModelMatrix(
+                Mat44.scale3(Mat44.translate3(Mat44.set(TEMP_MAT_44,matrix),
+                    position[0],position[1],position[2]),
+                    scale_or_scales,scale_or_scales,scale_or_scales
+                )
+            );
+            this._ctx.drawElements(this._ctx.TRIANGLES,length);
+        }
+    }
+    this._ctx.popModelMatrix();
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
