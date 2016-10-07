@@ -5909,7 +5909,7 @@ ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,srcBounds,dst
             dstBounds = dstBounds_or_mask_or_attachmentPoint;
         } else{
             dstBounds = srcBounds;
-            mask_or_attachmentPoint = 0;
+            mask_or_attachmentPoint = dstBounds_or_mask_or_attachmentPoint || 0;
         }
     }
     this.blitFramebufferToScreen2(
