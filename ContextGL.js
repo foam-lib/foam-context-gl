@@ -163,6 +163,9 @@ const MATRIX_VIEW_BIT = 1 << 28;
  */
 const MATRIX_MODEL_BIT = 1 << 29;
 
+//webgl 2
+const UNIFORM_BUFFER_BINDING_BIT = 1 << 14;
+
 const ALL_BIT = (1 << 30) - 1;
 
 // MATRIX
@@ -719,6 +722,17 @@ function ContextGL(canvas,options){
     this.MAX_VERTEX_TEXTURE_IMAGE_UNITS = this._gl.getParameter(this._gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
     this.MAX_VARYING_VECTORS = this._gl.getParameter(this._gl.MAX_VARYING_VECTORS);
     this.MAX_FRAGMENT_UNIFORM_VECTORS = this._gl.getParameter(this._gl.MAX_FRAGMENT_UNIFORM_VECTORS);
+
+    if(this._glVersion == WEBGL_2_VERSION){
+        this.MAX_VERTEX_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_VERTEX_UNIFORM_BLOCKS);
+        this.MAX_FRAGMENT_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_FRAGMENT_UNIFORM_BLOCKS);
+        this.MAX_COMBINED_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_COMBINED_UNIFORM_BLOCKS);
+        this.MAX_UNIFORM_BUFFER_BINDINGS = this._gl.getParameter(this._gl.MAX_UNIFORM_BUFFER_BINDINGS);
+        this.MAX_UNIFORM_BLOCK_SIZE = this._gl.getParameter(this._gl.MAX_UNIFORM_BLOCK_SIZE);
+        this.MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS = this._gl.getParameter(this._gl.MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS);
+        this.MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS = this._gl.getParameter(this._gl.MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS);
+    }
+
     console.assert(this.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -751,6 +765,31 @@ function ContextGL(canvas,options){
     this.INT = this._gl.INT;
     this.UNSIGNED_INT = this._gl.UNSIGNED_INT;
     this.FLOAT = this._gl.FLOAT;
+
+    if(this._glVersion == WEBGL_2_VERSION){
+        this.UNIFORM_BUFFER_BINDING_BIT = UNIFORM_BUFFER_BINDING_BIT;
+        this._buffers[this._gl.UNIFORM_BUFFER] = {};
+        this._bufferActive[this._gl.UNIFORM_BUFFER] = INVALID_ID;
+        this._bufferStack[this._gl.UNIFORM_BUFFER] = [];
+        //TODO: move to state
+        this._uniformBufferBindingActive = new Array(this.MAX_UNIFORM_BUFFER_BINDINGS);
+        for(let i = 0; i < this._uniformBufferBindingActive.length; ++i){
+            this._uniformBufferBindingActive[i] = INVALID_ID;
+        }
+    } else {
+        this.createUniformBuffer =
+        this.setUniformBuffer =
+        this.getUniformBuffer =
+        this.setUniformBufferData =
+        this.setUniformBufferSubData =
+        this.updateUniformBufferData =
+        this.setUniformBufferUsage =
+        this.getUniformBufferUsage =
+        this.getUniformBufferDataLength =
+        this.getUniformBufferDataByteLength
+        this.getUniformBufferInfo =
+        this.setProgramUniformBlock = this._uniformBuffersNotSupported;
+    }
 
     /*----------------------------------------------------------------------------------------------------------------*/
     // Vertex Arrays
@@ -2632,8 +2671,9 @@ ContextGL.prototype._compileShaderSource = function(type,source){
 };
 
 ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
-                                                  fragSrc_or_attribLocationBinding,
-                                                  attribLocationBinding){
+                                                  fragSrc_or_attribLocationBinding_or_uniformBlockNames,
+                                                  attribLocationBinding_or_uniformBlockBinding,
+                                                  uniformBlockBinding){
     const program = this._programs[id];
 
     if(program.handleVertexShader){
@@ -2650,28 +2690,42 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
 
     let vertSrc = vertSrc_or_vertAndFragSrc;
     let fragSrc;
-    let attribLocationBinding_;
+    let attribLocationBinding;
+    let uniformBlockBinding_;
 
     //vert and frag src in same string
-    if(fragSrc_or_attribLocationBinding === undefined ||
-       typeof fragSrc_or_attribLocationBinding === 'object'){
+    if(fragSrc_or_attribLocationBinding_or_uniformBlockNames === undefined ||
+       typeof fragSrc_or_attribLocationBinding_or_uniformBlockNames === 'object'){
         vertSrcPrefix = '#define VERTEX_SHADER\n';
         fragSrcPrefix = '#define FRAGMENT_SHADER\n';
         fragSrc = vertSrc;
-        attribLocationBinding_ = fragSrc_or_attribLocationBinding;
+        attribLocationBinding = fragSrc_or_attribLocationBinding_or_uniformBlockNames;
+        uniformBlockBinding_ = attribLocationBinding_or_uniformBlockBinding;
 
     //vert and frag src splitted
     } else {
         vertSrc = vertSrc_or_vertAndFragSrc;
-        fragSrc = fragSrc_or_attribLocationBinding;
-        attribLocationBinding_ = attribLocationBinding;
+        fragSrc = fragSrc_or_attribLocationBinding_or_uniformBlockNames;
+        attribLocationBinding = attribLocationBinding_or_uniformBlockBinding;
+        uniformBlockBinding_ = uniformBlockBinding;
+    }
+
+    //check of attribLocationBinding or uniformBlockNames passed
+    if(attribLocationBinding && !uniformBlockBinding_){
+        const front =  attribLocationBinding[0];
+        if(front.binding !== undefined){
+            uniformBlockBinding_ = attribLocationBinding;
+            attribLocationBinding = null;
+        } else if(front.location === undefined){
+            throw new ProgramError('Invalid attribute location or uniform block binding specification.');
+        }
     }
 
     //validate user bindings
-    if(attribLocationBinding_){
+    if(attribLocationBinding){
         const locations = [];
-        for(let i = 0; i < attribLocationBinding_.length; ++i){
-            const binding = attribLocationBinding_[i];
+        for(let i = 0; i < attribLocationBinding.length; ++i){
+            const binding = attribLocationBinding[i];
             if(binding.location === undefined){
                 throw new ProgramError(`Attribute binding at index ${i} has no location specified.`);
             }
@@ -2685,7 +2739,7 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
         }
     //use default bindings
     } else {
-        attribLocationBinding_ = ProgramDefaultAttribLocationBinding;
+        attribLocationBinding = ProgramDefaultAttribLocationBinding;
     }
 
     //compile and attach shaders
@@ -2697,8 +2751,8 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
 
     //track attribs bound by map
     let boundAttributeNames = [];
-    for(let i = 0; i < attribLocationBinding_.length; ++i){
-        const binding = attribLocationBinding_[i];
+    for(let i = 0; i < attribLocationBinding.length; ++i){
+        const binding = attribLocationBinding[i];
         this._gl.bindAttribLocation(
             program.handle,
             binding.location,
@@ -2743,17 +2797,17 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     }
 
     //validate user set attribLocationBinding map
-    if(attribLocationBinding_ !== ProgramDefaultAttribLocationBinding){
-        for(let i = 0; i < attribLocationBinding_.length; ++i){
-            const binding = attribLocationBinding_[i];
+    if(attribLocationBinding !== ProgramDefaultAttribLocationBinding){
+        for(let i = 0; i < attribLocationBinding.length; ++i){
+            const binding = attribLocationBinding[i];
             if(program.attributes[binding.name] === undefined){
                 throw new ProgramError(`Attribute with name '${binding.name}' and location ${binding.location} is not present in program.`);
             }
         }
     //remove non-existent default
     } else {
-        for(let i = 0; i < attribLocationBinding_.length; ++i){
-            const binding = attribLocationBinding_[i];
+        for(let i = 0; i < attribLocationBinding.length; ++i){
+            const binding = attribLocationBinding[i];
             if(program.attributes[binding.name]){
                 continue;
             }
@@ -2796,6 +2850,47 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
             //location
             location : this._gl.getUniformLocation(program.handle,name)
         };
+    }
+
+    //get uniform blocks
+    if(this._glVersion == WEBGL_2_VERSION){
+        program.uniformBlocks = {};
+        program.uniformBlocksPerBinding = {};
+
+        if(uniformBlockBinding_ !== undefined && uniformBlockBinding_.length){
+            for(let i = 0; i < uniformBlockBinding_.length; ++i){
+                const block = uniformBlockBinding_[i];
+                const name = block.name;
+                const binding = block.binding;
+                if(name === undefined){
+                    throw new ProgramError(`Block binding at index ${i} has no name specified.`);
+                }
+                if(binding === undefined){
+                    throw new ProgramError(`Block binding at index ${i} has no binding specified.`);
+                }
+                if(!!program.uniformBlocksPerBinding[binding]){
+                    throw new ProgramError(`Block with name ${name} bound to point already bound.`);
+                }
+                //index
+                const index = this._gl.getUniformBlockIndex(program.handle,name);
+                if(index == this._gl.INVALID_INDEX){
+                    throw new Error(`Uniform block "${name}" not active in program.`);
+                }
+                //validate max size
+                const dataSize = this._gl.getActiveUniformBlockParameter(program.handle,index,this._gl.UNIFORM_BLOCK_DATA_SIZE);
+                if(dataSize > this.MAX_UNIFORM_BLOCK_SIZE){
+                    throw new Error(`Uniform block "${name}" data size ${dataSize} exceeds max data size ${this.MAX_UNIFORM_BLOCK_SIZE}.`);
+                }
+                //referenced by
+                const shader = this._gl.getActiveUniformBlockParameter(program.handle,index,this._gl.UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER) ?
+                               'VERTEX_SHADER' : 'FRAGMENT_SHADER';
+                //bind
+                this._gl.uniformBlockBinding(program.handle,index,binding);
+
+                const info = {index,binding,dataSize,shader};
+                program.uniformBlocks[name] = program.uniformBlocksPerBinding[binding] = info;
+            }
+        }
     }
 
     //create uniform setter map
@@ -2968,13 +3063,14 @@ ContextGL.prototype.popProgramBinding = function(){
  * const program = ctx.createProgram(vertAndFragSrc);
  *
  * @param vertSrc_or_vertAndFragSrc
- * @param [fragSrc_or_attribLocationBinding]
- * @param [attribLocationBinding]
+ * @param [fragSrc_or_attribLocationBinding_or_uniformBlockNames]
+ * @param [attribuLocationBinding_or_uniformBlockNames]
  * @returns {number}
  */
 ContextGL.prototype.createProgram = function(vertSrc_or_vertAndFragSrc,
-                                             fragSrc_or_attribLocationBinding,
-                                             attribLocationBinding){
+                                             fragSrc_or_attribLocationBinding_or_uniformBlockNames,
+                                             attribuLocationBinding_or_uniformBlockNames,
+                                             uniformBlockNames){
     let id = this._uid++;
     this._programs[id] = {
         handle : this._gl.createProgram(),
@@ -2983,14 +3079,17 @@ ContextGL.prototype.createProgram = function(vertSrc_or_vertAndFragSrc,
         attributes : {},
         attributesPerLocation : {},
         uniforms : {},
-        uniformSetterMap : {}
+        uniformSetterMap : {},
+        uniformBlocks : {},
+        uniformBlocksPerBinding : {}
     };
     if(vertSrc_or_vertAndFragSrc){
         this._updateProgram(
             id,
             vertSrc_or_vertAndFragSrc,
-            fragSrc_or_attribLocationBinding,
-            attribLocationBinding
+            fragSrc_or_attribLocationBinding_or_uniformBlockNames,
+            attribuLocationBinding_or_uniformBlockNames,
+            uniformBlockNames
         );
     }
     return id;
@@ -3327,39 +3426,43 @@ ContextGL.prototype._setBufferData = function(target, id, size_or_data){
 
             //update data type
             const data_ctor = size_or_data.constructor;
-            if(target === this._gl.ARRAY_BUFFER){
-                switch(data_ctor){
-                    case Float32Array:
-                        buffer.dataType = this._gl.FLOAT;
-                        break;
-                    case Uint8Array:
-                        buffer.dataType = this._gl.UNSIGNED_BYTE;
-                        break;
-                    case Uint16Array:
-                        buffer.dataType = this._gl.UNSIGNED_SHORT;
-                        break;
-                    case Uint32Array:
-                        buffer.dataType = this._gl.UNSIGNED_INT;
-                        break;
-                    default:
-                        throw new TypeError(`Unsupported data type '${data_ctor}'.`);
-                        break;
-                }
-            } else {
-                switch(data_ctor){
-                    case Uint8Array:
-                        buffer.dataType = this._gl.UNSIGNED_BYTE;
-                        break;
-                    case Uint16Array:
-                        buffer.dataType = this._gl.UNSIGNED_SHORT;
-                        break;
-                    case Uint32Array:
-                        buffer.dataType = this._gl.UNSIGNED_INT;
-                        break;
-                    default:
-                        throw new TypeError(`Unsupported data type '${data_ctor}'.`);
-                        break;
-                }
+            switch(target){
+                case this._gl.ARRAY_BUFFER:
+                case this._gl.UNIFORM_BUFFER:
+                    switch(data_ctor){
+                        case Float32Array:
+                            buffer.dataType = this._gl.FLOAT;
+                            break;
+                        case Uint8Array:
+                            buffer.dataType = this._gl.UNSIGNED_BYTE;
+                            break;
+                        case Uint16Array:
+                            buffer.dataType = this._gl.UNSIGNED_SHORT;
+                            break;
+                        case Uint32Array:
+                            buffer.dataType = this._gl.UNSIGNED_INT;
+                            break;
+                        default:
+                            throw new TypeError(`Unsupported data type '${data_ctor}'.`);
+                            break;
+                    }
+                    break;
+                case this._gl.ELEMENT_ARRAY_BUFFER:
+                    switch(data_ctor){
+                        case Uint8Array:
+                            buffer.dataType = this._gl.UNSIGNED_BYTE;
+                            break;
+                        case Uint16Array:
+                            buffer.dataType = this._gl.UNSIGNED_SHORT;
+                            break;
+                        case Uint32Array:
+                            buffer.dataType = this._gl.UNSIGNED_INT;
+                            break;
+                        default:
+                            throw new TypeError(`Unsupported data type '${data_ctor}'.`);
+                            break;
+                    }
+                    break;
             }
             buffer.targetName   = GLEnumStringMap[buffer.target];
             buffer.usageName    = GLEnumStringMap[buffer.usage];
@@ -3396,6 +3499,32 @@ ContextGL.prototype._setBufferSubData = function(target, id, offset, data){
             buffer.data[offset] = data[i];
         }
     }
+};
+
+ContextGL.prototype._setBufferUsage = function(target,usage){
+    const id = this._bufferActive[target];
+    if(id === INVALID_ID){
+        throw new BufferError(strBufferErrorNothingBound(target));
+    }
+    this._buffers[target][id].usage = usage;
+};
+
+ContextGL.prototype._getBufferInfo = function(target,id){
+    let buffer;
+    //active buffer
+    if(id === undefined){
+        buffer = this._buffers[target][this._bufferActive[target]];
+        if(!buffer){
+            throw new BufferError(strBufferErrorNothingBound(target));
+        }
+    //specific buffer
+    } else {
+        buffer = this._buffers[target][id];
+        if(!buffer){
+            throw new BufferError(strBufferErrorInvalidId(id));
+        }
+    }
+    return buffer;
 };
 
 /**
@@ -3553,12 +3682,7 @@ ContextGL.prototype.getVertexBufferDataLength = function(id){
  * @param usage
  */
 ContextGL.prototype.setVertexBufferUsage = function(usage){
-    const target = this._gl.ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
-    }
-    this._buffers[target][id].usage = usage;
+    this._setBufferUsage(this._gl.ARRAY_BUFFER,usage);
 };
 
 /**
@@ -3578,22 +3702,7 @@ ContextGL.prototype.getVertexBufferUsage = function(id){
  * @returns {*}
  */
 ContextGL.prototype.getVertexBufferInfo = function(id){
-    const target = this._gl.ARRAY_BUFFER;
-    let buffer;
-    //active program
-    if(id === undefined){
-        buffer = this._buffers[target][this._bufferActive[target]];
-        if(!buffer){
-            throw new BufferError(strBufferErrorNothingBound(target));
-        }
-    //specific program
-    } else {
-        buffer = this._buffers[target][id];
-        if(!buffer){
-            throw new BufferError(strBufferErrorInvalidId(id));
-        }
-    }
-    return buffer;
+    return this._getBufferInfo(this._gl.ARRAY_BUFFER,id);
 };
 
 // INDEX BUFFER
@@ -3706,12 +3815,7 @@ ContextGL.prototype.getIndexBufferData = function(id){
  * @param usage
  */
 ContextGL.prototype.setIndexBufferUsage = function(usage){
-    const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    const id = this._bufferActive[target];
-    if(id === INVALID_ID){
-        throw new BufferError(strBufferErrorNothingBound(target));
-    }
-    this._buffers[target][id].usage = usage;
+    this._setBufferUsage(this._gl.ELEMENT_ARRAY_BUFFER,usage);
 };
 
 /**
@@ -3751,22 +3855,82 @@ ContextGL.prototype.getIndexBufferDataByteLength = function(id){
  * @returns {*}
  */
 ContextGL.prototype.getIndexBufferInfo = function(id){
-    const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    let buffer;
-    //active program
-    if(id === undefined){
-        buffer = this._buffers[target][this._bufferActive[target]];
-        if(!buffer){
-            throw new BufferError(strBufferErrorNothingBound(target));
-        }
-    //specific program
-    } else {
-        buffer = this._buffers[target][id];
-        if(!buffer){
-            throw new BufferError(strBufferErrorInvalidId(id));
-        }
+    return this._getBufferInfo(this._gl.ELEMENT_ARRAY_BUFFER,id);
+};
+
+//UNIFORM BUFFER
+
+ContextGL.prototype._uniformBuffersNotSupported = function(){
+    throw new Error('Uniform buffers not supported in WebGL 1.');
+};
+
+ContextGL.prototype.createUniformBuffer = function(size_or_data, usage, preserveData){
+    return this._createBuffer(this._gl.UNIFORM_BUFFER,size_or_data, usage, preserveData);
+};
+
+ContextGL.prototype.setUniformBuffer = function(id,bindingPoint){
+    this._setBuffer(this._gl.UNIFORM_BUFFER,id);
+    bindingPoint = bindingPoint || 0;
+    if(this._uniformBufferBindingActive[bindingPoint] === undefined){
+        throw new Error(`Invalid binding point ${bindingPoint}. Max bindings ${this.MAX_UNIFORM_BUFFER_BINDINGS}.`);
     }
-    return buffer;
+    //TODO: separate
+    const buffer = this._buffers[this._gl.UNIFORM_BUFFER][id];
+    if(this._uniformBufferBindingActive[bindingPoint] !== buffer){
+        this._gl.bindBufferBase(this._gl.UNIFORM_BUFFER,bindingPoint,buffer.handle);
+        this._uniformBufferBindingActive[bindingPoint] = id;
+    }
+};
+
+ContextGL.prototype.getUniformBuffer = function(bindingPoint){
+    bindingPoint = bindingPoint || 0;
+    return this._uniformBufferBindingActive[bindingPoint] || null;
+};
+
+ContextGL.prototype.setUniformBufferData = function(size_or_data){
+    const target = this._gl.UNIFORM_BUFFER;
+    const id = this._bufferActive[target];
+    if(id === INVALID_ID){
+        throw new BufferError(strBufferErrorNothingBound(target));
+    }
+    this._setBufferData(target,this._bufferActive[target],size_or_data);
+};
+
+ContextGL.prototype.updateUniformBufferData = function(){
+    this.setUniformBufferData();
+};
+
+ContextGL.prototype.setUniformBufferSubData = function(offset,data){
+    const target = this._gl.UNIFORM_BUFFER;
+    const id = this._bufferActive[target];
+    if(id === INVALID_ID){
+        throw new BufferError(strBufferErrorNothingBound(target));
+    }
+    this._setBufferSubData(target,id,offset,data);
+};
+
+ContextGL.prototype.getUniformBufferData = function(id){
+    return this.getUniformBufferInfo(id).data;
+};
+
+ContextGL.prototype.setUniformBufferUsage = function(usage){
+    this._setBufferUsage(this._gl.UNIFORM_BUFFER,usage);
+};
+
+ContextGL.prototype.getUniformBufferUsage = function(id){
+    return this.getUniformBufferInfo(id).usage;
+};
+
+ContextGL.prototype.getUniformBufferDataLength = function(id){
+    return this.getUniformBufferInfo(id).length;
+};
+
+ContextGL.prototype.getUniformBufferDataByteLength = function(id){
+    return this.getUniformBufferInfo(id).byteLength;
+};
+
+ContextGL.prototype.getUniformBufferInfo = function(id){
+    return this._getBufferInfo(this._gl.UNIFORM_BUFFER,id);
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -4413,7 +4577,7 @@ ContextGL.prototype._deleteTexture = function(id){
 ContextGL.prototype._setTextureBindingState = function(state){
     const textureActive = state.textureActive;
     for(let i = 0; i < this.MAX_TEXTURE_IMAGE_UNITS; ++i){
-        this.setTexture2d(textureActive[i],i);
+        this.setTexture2d(textureActive[i]);
     }
     this._textureState.textureUnitActive = state.textureUnitActive;
 };
