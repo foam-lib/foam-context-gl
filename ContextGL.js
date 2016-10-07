@@ -2685,9 +2685,6 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
         program.handleFragmentShader = null;
     }
 
-    let vertSrcPrefix = '';
-    let fragSrcPrefix = '';
-
     let vertSrc = vertSrc_or_vertAndFragSrc;
     let fragSrc;
     let attribLocationBinding;
@@ -2696,9 +2693,21 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     //vert and frag src in same string
     if(fragSrc_or_attribLocationBinding_or_uniformBlockNames === undefined ||
        typeof fragSrc_or_attribLocationBinding_or_uniformBlockNames === 'object'){
-        vertSrcPrefix = '#define VERTEX_SHADER\n';
-        fragSrcPrefix = '#define FRAGMENT_SHADER\n';
-        fragSrc = vertSrc;
+        let vertSrcPrefix = '#define VERTEX_SHADER\n';
+        let fragSrcPrefix = '#define FRAGMENT_SHADER\n';
+
+        //prepend glsl version
+        if(vertSrc.indexOf('#version') == 0){
+            vertSrc = vertSrc.split('\n');
+            let versionPrefix = vertSrc.splice(0,1);
+            vertSrc = vertSrc.join('\n');
+            vertSrcPrefix = versionPrefix + '\n' + vertSrcPrefix;
+            fragSrcPrefix = versionPrefix + '\n' + fragSrcPrefix;
+        }
+
+        fragSrc = fragSrcPrefix + vertSrc;
+        vertSrc = vertSrcPrefix + vertSrc;
+
         attribLocationBinding = fragSrc_or_attribLocationBinding_or_uniformBlockNames;
         uniformBlockBinding_ = attribLocationBinding_or_uniformBlockBinding;
 
@@ -2743,8 +2752,8 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     }
 
     //compile and attach shaders
-    program.handleVertexShader   = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrcPrefix + vertSrc);
-    program.handleFragmentShader = this._compileShaderSource(this._gl.FRAGMENT_SHADER,fragSrcPrefix + fragSrc);
+    program.handleVertexShader   = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrc);
+    program.handleFragmentShader = this._compileShaderSource(this._gl.FRAGMENT_SHADER,fragSrc);
 
     this._gl.attachShader(program.handle,program.handleVertexShader);
     this._gl.attachShader(program.handle,program.handleFragmentShader);
