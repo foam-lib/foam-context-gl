@@ -864,7 +864,9 @@ function ContextGL(canvas,options){
     this.ALPHA = this._gl.ALPHA;
     this.RGB = this._gl.RGB;
     this.RGBA = this._gl.RGBA;
-    
+    this.LUMINANCE = this._gl.LUMINANCE;
+    this.LUMINANCE_ALPHA = this._gl.LUMINANCE_ALPHA;
+
     console.assert(this.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
