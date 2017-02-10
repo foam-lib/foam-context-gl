@@ -778,6 +778,7 @@ function ContextGL(canvas,options){
         }
     } else {
         this.createUniformBuffer =
+        this.deleteUniformBuffer =
         this.setUniformBuffer =
         this.getUniformBuffer =
         this.setUniformBufferData =
@@ -786,7 +787,7 @@ function ContextGL(canvas,options){
         this.setUniformBufferUsage =
         this.getUniformBufferUsage =
         this.getUniformBufferDataLength =
-        this.getUniformBufferDataByteLength
+        this.getUniformBufferDataByteLength =
         this.getUniformBufferInfo =
         this.setProgramUniformBlock = this._uniformBuffersNotSupported;
     }
@@ -3877,6 +3878,10 @@ ContextGL.prototype._uniformBuffersNotSupported = function(){
 
 ContextGL.prototype.createUniformBuffer = function(size_or_data, usage, preserveData){
     return this._createBuffer(this._gl.UNIFORM_BUFFER,size_or_data, usage, preserveData);
+};
+
+ContextGL.prototype.deleteUniformBuffer = function(id){
+    this._deleteBuffer(this._gl.UNIFORM_BUFFER,id);
 };
 
 ContextGL.prototype.setUniformBuffer = function(id,bindingPoint){
