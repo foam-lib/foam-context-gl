@@ -1,4 +1,5 @@
 import {glEnumToString} from './ContextGL';
+import {glObjToArray} from './Util';
 
 const EnumStringMap = {};
 for(let key in WebGLRenderingContext){
@@ -45,6 +46,15 @@ ViewportState.prototype.getDescription = function(){
 };
 
 /**
+ * Returns viewport state from WebGLRenderingContext.
+ * @param gl
+ * @return {ViewportState}
+ */
+ViewportState.createFromGL = function(gl){
+    return new ViewportState(glObjToArray(gl.getParameter(gl.VIEWPORT)).slice(0,4));
+};
+
+/**
  * GL culling state representation.
  * @param cullFace
  * @param cullFaceMode
@@ -75,6 +85,18 @@ CullingState.prototype.getDescription = function(){
 };
 
 /**
+ * Returns culling state from WebGLRenderingContext.
+ * @param gl
+ * @return {CullingState}
+ */
+CullingState.createFromGL = function(gl){
+    return new CullingState(
+        gl.getParameter(gl.CULL_FACE),
+        gl.getParameter(gl.CULL_FACE_MODE)
+    )
+};
+
+/**
  * GL scissor state representation.
  * @param scissorTest
  * @param scissorBox
@@ -91,6 +113,18 @@ export function ScissorState(scissorTest,scissorBox){
  */
 ScissorState.prototype.copy = function(){
     return new ScissorState(this.scissorTest,this.scissorBox)
+};
+
+/**
+ * Returns scissor state from WebGLRenderingContext.
+ * @param gl
+ * @return {ScissorState}
+ */
+ScissorState.createFromGL = function(gl){
+    return new ScissorState(
+        gl.getParameter(gl.SCISSOR_TEST),
+        glObjToArray(gl.getParameter(gl.SCISSOR_BOX)).slice(0,4)
+    );
 };
 
 /**
@@ -145,6 +179,34 @@ StencilState.prototype.getDescription = function(){
 };
 
 /**
+ * Creates stencil state from WebGLRenderingContext.
+ * @param gl
+ * @return {StencilState}
+ */
+StencilState.createFromGL = function(gl){
+    return new StencilState(     
+        gl.getParameter(gl.STENCIL_TEST),[
+        //front
+        gl.getParameter(gl.STENCIL_FUNC),
+        gl.getParameter(gl.STENCIL_REF),
+        gl.getParameter(gl.STENCIL_VALUE_MASK),
+        //back
+        gl.getParameter(gl.STENCIL_FUNC),
+        gl.getParameter(gl.STENCIL_REF),
+        gl.getParameter(gl.STENCIL_VALUE_MASK)
+    ],[
+        //front
+        gl.getParameter(gl.STENCIL_FAIL),
+        gl.getParameter(gl.STENCIL_PASS_DEPTH_FAIL),
+        gl.getParameter(gl.STENCIL_PASS_DEPTH_PASS),
+        //back
+        gl.getParameter(gl.STENCIL_FAIL),
+        gl.getParameter(gl.STENCIL_PASS_DEPTH_FAIL),
+        gl.getParameter(gl.STENCIL_PASS_DEPTH_PASS)
+    ]);
+};
+
+/**
  * GL depth state representation.
  * @param depthTest
  * @param depthMask
@@ -194,6 +256,24 @@ DepthState.prototype.getDescription = function(){
 };
 
 /**
+ * Returns depth state from WebGLRenderingContext.
+ * @param gl
+ * @return {DepthState}
+ */
+DepthState.createFromGL = function(gl){
+    return new DepthState(
+        gl.getParameter(gl.DEPTH_TEST),
+        gl.getParameter(gl.DEPTH_WRITEMASK),
+        gl.getParameter(gl.DEPTH_FUNC),
+        gl.getParameter(gl.DEPTH_CLEAR_VALUE),
+        glObjToArray(gl.getParameter(gl.DEPTH_RANGE)).slice(0,2),[
+            gl.getParameter(gl.POLYGON_OFFSET_FACTOR),
+            gl.getParameter(gl.POLYGON_OFFSET_UNITS)
+        ]
+    );
+};
+
+/**
  * GL color state representation.
  * @param clearColor
  * @param colorMask
@@ -224,6 +304,18 @@ ColorState.prototype.getDescription = function(){
 };
 
 /**
+ * Returns color state from WebGLRenderingContext.
+ * @param gl
+ * @return {ColorState}
+ */
+ColorState.createFromGL = function(gl){
+    return new ColorState(
+        glObjToArray(gl.getParameter(gl.COLOR_CLEAR_VALUE)),
+        glObjToArray(gl.getParameter(gl.COLOR_WRITEMASK))
+    );
+};
+
+/**
  * GL linewidth representation.
  * @param lineWidth
  * @constructor
@@ -249,6 +341,15 @@ LineWidthState.prototype.getDescription = function(){
         lineWidth : this.lineWidth
     };
 };
+
+/**
+ * Returns line width state from WebGLRenderingContext.
+ * @param gl
+ */
+LineWidthState.createFromGL = function(gl){
+    return new LineWidthState(gl.getParameter(gl.LINE_WIDTH));
+};
+
 
 /**
  * GL blend state representation.
@@ -289,6 +390,26 @@ BlendState.prototype.getDescription = function(){
         blendEquationSeparate : arrEnumStr(this.blendEquationSeparate),
         blendFuncSeparate : arrEnumStr(this.blendFuncSeparate)
     };
+};
+
+/**
+ * Returns blend state from WebGLRenderingContext.
+ * @param gl
+ * @return {BlendState}
+ */
+BlendState.createFromGL = function(gl){
+    return new BlendState(
+        gl.getParameter(gl.BLEND),
+        glObjToArray(gl.getParameter(gl.BLEND_COLOR)).slice(0,4),[
+            gl.getParameter(gl.BLEND_EQUATION_RGB),
+            gl.getParameter(gl.BLEND_EQUATION_ALPHA)
+        ],[
+            gl.getParameter(gl.BLEND_SRC_RGB),
+            gl.getParameter(gl.BLEND_DST_RGB),
+            gl.getParameter(gl.BLEND_SRC_ALPHA),
+            gl.getParameter(gl.BLEND_DST_ALPHA)
+        ]
+    );
 };
 
 /**
