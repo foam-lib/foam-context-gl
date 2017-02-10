@@ -789,7 +789,9 @@ function ContextGL(canvas,options){
         this.getUniformBufferDataLength =
         this.getUniformBufferDataByteLength =
         this.getUniformBufferInfo =
-        this.setProgramUniformBlock = this._uniformBuffersNotSupported;
+        this.setProgramUniformBlock = ()=>{
+            throw new Error('Uniform buffers not supported in WebGL 1.');
+        };
     }
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -3871,10 +3873,6 @@ ContextGL.prototype.getIndexBufferInfo = function(id){
 };
 
 //UNIFORM BUFFER
-
-ContextGL.prototype._uniformBuffersNotSupported = function(){
-    throw new Error('Uniform buffers not supported in WebGL 1.');
-};
 
 ContextGL.prototype.createUniformBuffer = function(size_or_data, usage, preserveData){
     return this._createBuffer(this._gl.UNIFORM_BUFFER,size_or_data, usage, preserveData);
