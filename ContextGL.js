@@ -63,8 +63,8 @@ const INVALID_ID = null;
 export const DefaultConfig = Object.freeze({
     //ContextGL specific
     warn : true,
-    version: 1,
-    fallback: true,
+    version : 2,
+    fallback : true,
     //WebGLRenderingContext specific
     alpha : true,
     depth : true,
@@ -219,10 +219,10 @@ const ATTRIB_NAME_TEX_COORD = 'aTexCoord';
 const ATTRIB_NAME_NORMAL = 'aNormal;';
 
 export const ProgramDefaultAttribLocationBinding = [
-    {name:ATTRIB_NAME_POSITION, location:ATTRIB_LOCATION_POSITION},
-    {name:ATTRIB_NAME_COLOR, location:ATTRIB_LOCATION_COLOR},
-    {name:ATTRIB_NAME_TEX_COORD, location:ATTRIB_LOCATION_TEX_COORD},
-    {name:ATTRIB_NAME_NORMAL, location:ATTRIB_LOCATION_NORMAL}
+    {name : ATTRIB_NAME_POSITION,location : ATTRIB_LOCATION_POSITION},
+    {name : ATTRIB_NAME_COLOR,location : ATTRIB_LOCATION_COLOR},
+    {name : ATTRIB_NAME_TEX_COORD,location : ATTRIB_LOCATION_TEX_COORD},
+    {name : ATTRIB_NAME_NORMAL,location : ATTRIB_LOCATION_NORMAL}
 ];
 
 export const ProgramDefaultAttributeByLocationMap = {};
@@ -270,7 +270,7 @@ void main(){
 // UTILS & TEMPS
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-function strWrongNumArgs(has,expectedMust, expectedOpt){
+function strWrongNumArgs(has,expectedMust,expectedOpt){
     return `Wrong number of arguments. Expected ${expectedMust + expectedOpt === undefined ? ' or ' + expectedOpt : ''}, has ${has}.`;
 }
 
@@ -331,7 +331,7 @@ function ContextGL(canvas,options){
     options = validateOption(options,DefaultConfig);
 
     if(options.version !== WEBGL_1_VERSION &&
-       options.version !== WEBGL_2_VERSION){
+        options.version !== WEBGL_2_VERSION){
         throw new Error(`Invalid context version ${options.version}.`);
     }
 
@@ -342,42 +342,23 @@ function ContextGL(canvas,options){
     this._glVersion = -1;
     this._gl = null;
 
-    //capabiliies for context version
-    let glCapabilities;
-
-    //WebGLRenderingContext
-    if(options.version === WEBGL_1_VERSION){
-        glCapabilities = {
-            INSTANCED_ARRAYS : false,
-            VERTEX_ARRAYS : false,
-            ELEMENT_INDEX_UINT : false,
-            DRAW_BUFFERS:  false,
-            DEPTH_TEXTURE : false,
-            FLOAT_TEXTURE : false,
-            HALF_FLOAT: false,
-            FLOAT_TEXTURE_LINEAR: false,
-            HALF_FLOAT_TEXTURE_LINEAR : false
-        };
-        this._glVersion = options.version;
-        this._gl = getWebGLRenderingContext(canvas,WEBGL_1_CONTEXT_IDS,options);
-
-    //WebGL2RenderingContext
-    } else {
-        glCapabilities = {
-            DEPTH_TEXTURE : false,
-            FLOAT_TEXTURE : false,
-            HALF_FLOAT : false,
-            FLOAT_TEXTURE_LINEAR : false,
-            HALF_FLOAT_TEXTURE_LINEAR : false
-        };
-        this._glVersion = options.version;
-        this._gl = getWebGLRenderingContext(canvas,WEBGL_2_CONTEXT_IDS,options);
-
-        //not available, use allowed fallback version
-        if(!this._gl && options.fallback){
+    //WebGLRenderingContext create
+    switch(options.version){
+        case WEBGL_2_VERSION:
+            this._glVersion = WEBGL_2_VERSION;
+            this._gl = getWebGLRenderingContext(canvas,WEBGL_2_CONTEXT_IDS,options);
+            if(!this._gl && options.fallback){
+                this._glVersion = WEBGL_1_VERSION;
+                this._gl = getWebGLRenderingContext(canvas,WEBGL_1_CONTEXT_IDS,options);
+            }
+            break;
+        case WEBGL_1_VERSION:
             this._glVersion = WEBGL_1_VERSION;
             this._gl = getWebGLRenderingContext(canvas,WEBGL_1_CONTEXT_IDS,options);
-        }
+            break;
+        default:
+            throw new Error(`Invalid webgl version ${options.version}.`);
+            break;
     }
 
     //WebGLRenderingContext creation failed
@@ -404,109 +385,181 @@ function ContextGL(canvas,options){
         }
     }
 
-    // EXTENSIONS
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // gl capabilities
+    /*----------------------------------------------------------------------------------------------------------------*/
 
-    // instanced arrays
-    if(!this._gl.drawElementsInstanced){
-        const ext = this._gl.getExtension('ANGLE_instanced_arrays');
-        if(!ext){
-            this._gl.drawElementsInstanced =
-            this._gl.drawArraysInstanced =
-            this._gl.vertexAttribDivisor = function(){
-                throw new Error('ANGLE_instanced_arrays not supported.');
-            };
-        } else {
-            this._gl.drawElementsInstanced = ext.drawElementsInstancedANGLE.bind(ext);
-            this._gl.drawArraysInstanced = ext.drawArraysInstancedANGLE.bind(ext);
-            this._gl.vertexAttribDivisor = ext.vertexAttribDivisorANGLE.bind(ext);
-            glCapabilities.INSTANCED_ARRAYS = true;
+    let glCapabilities;
+
+    //webgl 2
+    if(this._glVersion == WEBGL_2_VERSION){
+        glCapabilities = {
+            LOSE_CONTEXT : false,
+            TEXTURE_FILTER_ANISOTROPIC : false,
+            TEXTURE_FLOAT_LINEAR : false
+        };
+    }
+    //webgl 1
+    else{
+        glCapabilities = {
+            TEXTURE_FLOAT : false,
+            TEXTURE_HALF_FLOAT : false,
+            LOSE_CONTEXT : false,
+            STANDARD_DERIVATIVES : false,
+            VERTEX_ARRAYS : false,
+            DEPTH_TEXTURE : false,
+            ELEMENT_INDEX_UINT : false,
+            TEXTURE_FILTER_ANISOTROPIC : false,
+            FRAG_DEPTH : false,
+            DRAW_BUFFER : false,
+            INSTANCED_ARRAYS : false,
+            TEXTURE_FLOAT_LINEAR : false,
+            TEXTURE_HALF_FLOAT_LINEAR : false,
+            BLEND_MINMAX : false,
+            SHADER_TEXTURE_LOD : false
+        };
+        //ext texture float
+        //https://www.khronos.org/registry/webgl/extensions/OES_texture_float/
+        {
+            const ext = this._gl.getExtension('OES_texture_float');
+            glCapabilities.FLOAT_TEXTURE = !!ext;
+        }
+        //ext texture half float
+        //https://www.khronos.org/registry/webgl/extensions/OES_texture_half_float/
+        {
+            const ext = this._gl.getExtension('OES_texture_half_float');
+            if(ext){
+                this.HALF_FLOAT = ext.HALF_FLOAT_OES;
+                glCapabilities.TEXTURE_HALF_FLOAT = true;
+            }
+        }
+        //ext standard derivatives
+        //https://www.khronos.org/registry/webgl/extensions/OES_standard_derivatives/
+        {
+            const ext = this._gl.getExtension('OES_standard_derivatives');
+            glCapabilities.STANDARD_DERIVATIVES = !!ext;
+        }
+        //ext vertex array
+        //https://www.khronos.org/registry/webgl/extensions/OES_vertex_array_object/
+        {
+            const ext = this._gl.getExtension('OES_vertex_array_object');
+            if(ext){
+                this._gl.VERTEX_ARRAY_BINDING = ext.VERTEX_ARRAY_BINDING_OES;
+                this._gl.createVertexArray = ext.createVertexArrayOES.bind(ext);
+                this._gl.deleteVertexArray = ext.deleteVertexArrayOES.bind(ext);
+                this._gl.bindVertexArray = ext.bindVertexArrayOES.bind(ext);
+                glCapabilities.VERTEX_ARRAYS = true;
+            } else {
+                this.createVertexArray = this._createVertexArrayShim;
+                this.deleteVertexArray = this._deleteVertexArrayShim;
+                this.setVertexArray = this._setVertexArrayShim;
+                this.invalidateVertexArray = this._invalidateVertexArrayShim;
+            }
+        }
+        //ext depth texture
+        //https://www.khronos.org/registry/webgl/extensions/WEBGL_depth_texture/
+        {
+            const ext = this._gl.getExtension('WEBGL_depth_texture');
+            if(ext){
+                this.UNSIGNED_INT_24_8 = ext.UNSIGNED_INT_24_8_WEBGL;
+                glCapabilities.DEPTH_TEXTURE = true;
+            }
+        }
+        //ext element index uint
+        //https://www.khronos.org/registry/webgl/extensions/OES_element_index_uint/
+        {
+            const ext = this._gl.getExtension('OES_element_index_uint');
+            glCapabilities.ELEMENT_INDEX_UINT = !!ext;
+        }
+        //ext frag depth
+        //https://www.khronos.org/registry/webgl/extensions/EXT_frag_depth/
+        {
+            const ext = this._gl.getExtension('EXT_frag_depth');
+            glCapabilities.FRAG_DEPTH = !!ext;
+        }
+        //ext draw buffers
+        //https://www.khronos.org/registry/webgl/extensions/WEBGL_draw_buffers/
+        {
+            const ext = this._gl.getExtension('WEBGL_draw_buffers');
+            let maxDrawBuffers = 1;
+            let maxColorAttachments = 1;
+            if(ext){
+                maxDrawBuffers = this._gl.getParameter(ext.MAX_DRAW_BUFFERS_WEBGL);
+                maxColorAttachments = this._gl.getParameter(ext.MAX_COLOR_ATTACHMENTS_WEBGL);
+                this._gl.drawBuffers = ext.drawBuffersWEBGL.bind(ext);
+                this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
+                glCapabilities.DRAW_BUFFERS = true;
+            }else{
+                this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersNotSupported;
+                this.drawBuffers = function(){
+                    throw new Error('WebGL drawBuffers not supported.');
+                };
+            }
+            this.MAX_DRAW_BUFFERS = maxDrawBuffers;
+            this.MAX_COLOR_ATTACHMENTS = maxColorAttachments;
+        }
+        //ext instanced arrays
+        //https://www.khronos.org/registry/webgl/extensions/ANGLE_instanced_arrays/
+        {
+            const ext = this._gl.getExtension('ANGLE_instanced_arrays');
+            if(ext){
+                this._gl.drawElementsInstanced = ext.drawElementsInstancedANGLE.bind(ext);
+                this._gl.drawArraysInstanced = ext.drawArraysInstancedANGLE.bind(ext);
+                this._gl.vertexAttribDivisor = ext.vertexAttribDivisorANGLE.bind(ext);
+                glCapabilities.INSTANCED_ARRAYS = true;
+            } else {
+                this._gl.drawElementsInstanced =
+                this._gl.drawArraysInstanced =
+                this._gl.vertexAttribDivisor = function(){
+                    throw new Error('ANGLE_instanced_arrays not supported.');
+                };
+            }
+        }
+        //ext texture half float linear
+        //https://www.khronos.org/registry/webgl/extensions/OES_texture_half_float/
+        {
+            const ext = this._gl.getExtension('OES_texture_half_float_linear');
+            glCapabilities.TEXTURE_HALF_FLOAT_LINEAR = !!ext;
+        }
+        //ext blend minmax
+        //https://www.khronos.org/registry/webgl/extensions/EXT_blend_minmax/
+        {
+            const ext = this._gl.getExtension('EXT_blend_minmax');
+            if(ext){
+                this.MIN_EXT = ext.MIN_EXT;
+                this.MAX_EXT = ext.MAX_EXT;
+                glCapabilities.BLEND_MINMAX = true;
+            }
+        }
+        //ext shader texture lod
+        //https://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
+        {
+            const ext = this._gl.getExtension('EXT_shader_texture_lod');
+            glCapabilities.SHADER_TEXTURE_LOD = !!ext;
         }
     }
-
-    //vertex arrays
-    if(!this._gl.createVertexArray){
-        const ext = this._gl.getExtension('OES_vertex_array_object');
-        if(!ext){
-            this.createVertexArray = this._createVertexArrayShim;
-            this.deleteVertexArray = this._deleteVertexArrayShim;
-            this.setVertexArray = this._setVertexArrayShim;
-            this.invalidateVertexArray = this._invalidateVertexArrayShim;
-        } else {
-            this._gl.VERTEX_ARRAY_BINDING = ext.VERTEX_ARRAY_BINDING_OES;
-            this._gl.createVertexArray = ext.createVertexArrayOES.bind(ext);
-            this._gl.deleteVertexArray = ext.deleteVertexArrayOES.bind(ext);
-            this._gl.bindVertexArray = ext.bindVertexArrayOES.bind(ext);
-            this.createVertexArray = this._createVertexArrayNative;
-            this.deleteVertexArray = this._deleteVertexArrayNative;
-            this.setVertexArray = this._setVertexArrayNative;
-            this.invalidateVertexArray = this._invalidateVertexArrayNative;
-            glCapabilities.VERTEX_ARRAYS = true;
-        }
-    } else {
-        this.createVertexArray = this._createVertexArrayNative;
-        this.deleteVertexArray = this._deleteVertexArrayNative;
-        this.setVertexArray = this._setVertexArrayNative;
-        this.invalidateVertexArray = this._invalidateVertexArrayNative;
+    //ext shared lose context
+    //https://www.khronos.org/registry/webgl/extensions/WEBGL_lose_context/
+    {
+        const ext = this._gl.getExtension('WEBGL_lose_context');
+        glCapabilities.LOSE_CONTEXT = !!ext;
     }
-
-    //draw buffers, no shim
-    if(!this._gl.drawBuffers){
-        const ext = this._gl.getExtension('WEBGL_draw_buffers');
-        let maxDrawBuffers = 1;
-        let maxColorAttachments = 1;
+    //ext shared texture filter anisotropic
+    //https://www.khronos.org/registry/webgl/extensions/EXT_texture_filter_anisotropic/
+    {
+        const ext = this._gl.getExtension('EXT_texture_filter_anisotropic');
         if(ext){
-            maxDrawBuffers = this._gl.getParameter(ext.MAX_DRAW_BUFFERS_WEBGL);
-            maxColorAttachments = this._gl.getParameter(ext.MAX_COLOR_ATTACHMENTS_WEBGL);
-            this._gl.drawBuffers = ext.drawBuffersWEBGL.bind(ext);
-            this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
-            this.drawBuffers = this._drawBuffersSupported;
-            glCapabilities.DRAW_BUFFERS = true;
-        } else {
-            this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersNotSupported;
-            this.drawBuffers = this._drawBuffersNotSupported;
+            this.TEXTURE_MAX_ANISOTROPY = ext.TEXTURE_MAX_ANISOTROPY_EXT;
+            this.MAX_TEXTURE_MAX_ANISOTROPY = ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT;
         }
-        this.MAX_DRAW_BUFFERS = maxDrawBuffers;
-        this.MAX_COLOR_ATTACHMENTS = maxColorAttachments;
-    } else {
-        this.MAX_DRAW_BUFFERS = this._gl.MAX_DRAW_BUFFERS;
-        this.MAX_COLOR_ATTACHMENTS = this._gl.MAX_COLOR_ATTACHMENTS;
-        this._setFramebufferColorAttachment = this._setFramebufferColorAttachmentDrawBuffersSupported;
-        this.drawBuffers = this._drawBuffersSupported;
+    }
+    //ext shared texture float linear
+    //https://www.khronos.org/registry/webgl/extensions/OES_texture_float_linear/
+    {
+        const ext = this._gl.getExtension('OES_texture_float_linear');
+        glCapabilities.TEXTURE_FLOAT_LINEAR = !!ext;
     }
 
-    //depth texture, no shim
-    //TODO: angle?
-    const extDepthTexture = this._gl.getExtension('WEBGL_depth_texture');
-    if(extDepthTexture){
-        this.UNSIGNED_INT_24_8 = extDepthTexture.UNSIGNED_INT_24_8_WEBGL;
-    }
-    glCapabilities.DEPTH_TEXTURE = !!extDepthTexture;
-
-    //float texture
-    const extFloatTexture = this._gl.getExtension('OES_texture_float');
-    glCapabilities.FLOAT_TEXTURE = !!extFloatTexture;
-
-    //half float texture
-    if(!this._gl.HALF_FLOAT){
-        const ext = this._gl.getExtension('OES_texture_half_float');
-        if(ext){
-            this.HALF_FLOAT = ext.HALF_FLOAT_OES;
-        }
-        glCapabilities.HALF_FLOAT = !!ext;
-    } else {
-        this.HALF_FLOAT = this._gl.HALF_FLOAT;
-    }
-
-    //float texture linear
-    const extFloatTextureLinear = this._gl.getExtension('OES_texture_float_linear');
-    glCapabilities.FLOAT_TEXTURE_LINEAR = !!extFloatTextureLinear;
-
-    //half float texture linear
-    const extHalfFloatTextureLinear = this._gl.getExtension('OES_texture_half_float_linear');
-    glCapabilities.HALF_FLOAT_TEXTURE_LINEAR = !!extHalfFloatTextureLinear;
-
-    //anisotropy
-    glCapabilities.ELEMENT_INDEX_UINT = !!this._gl.getExtension('OES_element_index_uint');
     this._glCapabilites = Object.freeze(glCapabilities);
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -536,7 +589,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.VIEWPORT_BIT = VIEWPORT_BIT;
-    this._viewportState = new ViewportState(glObjToArray(this._gl.getParameter(this._gl.VIEWPORT)).slice(0, 4));
+    this._viewportState = new ViewportState(glObjToArray(this._gl.getParameter(this._gl.VIEWPORT)).slice(0,4));
     this._viewportStack = [];
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -562,7 +615,7 @@ function ContextGL(canvas,options){
     this.SCISSOR_BIT = SCISSOR_BIT;
     this._scissorState = new ScissorState(
         this._gl.getParameter(this._gl.SCISSOR_TEST),
-        glObjToArray(this._gl.getParameter(this._gl.SCISSOR_BOX)).slice(0, 4)
+        glObjToArray(this._gl.getParameter(this._gl.SCISSOR_BOX)).slice(0,4)
     );
     this._scissorStateDefault = this._scissorState.copy();
     this._scissorStack = [];
@@ -582,7 +635,7 @@ function ContextGL(canvas,options){
             this._gl.getParameter(this._gl.STENCIL_FUNC),
             this._gl.getParameter(this._gl.STENCIL_REF),
             this._gl.getParameter(this._gl.STENCIL_VALUE_MASK)
-        ], [
+        ],[
             //front
             this._gl.getParameter(this._gl.STENCIL_FAIL),
             this._gl.getParameter(this._gl.STENCIL_PASS_DEPTH_FAIL),
@@ -624,7 +677,7 @@ function ContextGL(canvas,options){
         this._gl.getParameter(this._gl.DEPTH_WRITEMASK),
         this._gl.getParameter(this._gl.DEPTH_FUNC),
         this._gl.getParameter(this._gl.DEPTH_CLEAR_VALUE),
-        glObjToArray(this._gl.getParameter(this._gl.DEPTH_RANGE)).slice(0, 2),[
+        glObjToArray(this._gl.getParameter(this._gl.DEPTH_RANGE)).slice(0,2),[
             this._gl.getParameter(this._gl.POLYGON_OFFSET_FACTOR),
             this._gl.getParameter(this._gl.POLYGON_OFFSET_UNITS)
         ]
@@ -660,7 +713,7 @@ function ContextGL(canvas,options){
     this.BLEND_BIT = BLEND_BIT;
     this._blendState = new BlendState(
         this._blend = this._gl.getParameter(this._gl.BLEND),
-        glObjToArray(this._gl.getParameter(this._gl.BLEND_COLOR)).slice(0, 4),[
+        glObjToArray(this._gl.getParameter(this._gl.BLEND_COLOR)).slice(0,4),[
             this._gl.getParameter(this._gl.BLEND_EQUATION_RGB),
             this._gl.getParameter(this._gl.BLEND_EQUATION_ALPHA)
         ],[
@@ -707,7 +760,7 @@ function ContextGL(canvas,options){
     this.UNIFORM_NORMAL_MATRIX = ProgramMatrixUniform.NORMAL_MATRIX;
     this.UNIFORM_INVERSE_VIEW_MATRIX = ProgramMatrixUniform.INVERSE_VIEW_MATRIX;
 
-    this.ATTRIB_LOCATION_POSITION =  ATTRIB_LOCATION_POSITION;
+    this.ATTRIB_LOCATION_POSITION = ATTRIB_LOCATION_POSITION;
     this.ATTRIB_LOCATION_COLOR = ATTRIB_LOCATION_COLOR;
     this.ATTRIB_LOCATION_TEX_COORD = ATTRIB_LOCATION_TEX_COORD;
     this.ATTRIB_LOCATION_NORMAL = ATTRIB_LOCATION_NORMAL;
@@ -776,22 +829,22 @@ function ContextGL(canvas,options){
         for(let i = 0; i < this._uniformBufferBindingActive.length; ++i){
             this._uniformBufferBindingActive[i] = INVALID_ID;
         }
-    } else {
+    }else{
         this.createUniformBuffer =
-        this.deleteUniformBuffer =
-        this.setUniformBuffer =
-        this.getUniformBuffer =
-        this.setUniformBufferData =
-        this.setUniformBufferSubData =
-        this.updateUniformBufferData =
-        this.setUniformBufferUsage =
-        this.getUniformBufferUsage =
-        this.getUniformBufferDataLength =
-        this.getUniformBufferDataByteLength =
-        this.getUniformBufferInfo =
-        this.setProgramUniformBlock = ()=>{
-            throw new Error('Uniform buffers not supported in WebGL 1.');
-        };
+            this.deleteUniformBuffer =
+                this.setUniformBuffer =
+                    this.getUniformBuffer =
+                        this.setUniformBufferData =
+                            this.setUniformBufferSubData =
+                                this.updateUniformBufferData =
+                                    this.setUniformBufferUsage =
+                                        this.getUniformBufferUsage =
+                                            this.getUniformBufferDataLength =
+                                                this.getUniformBufferDataByteLength =
+                                                    this.getUniformBufferInfo =
+                                                        this.setProgramUniformBlock = ()=>{
+                                                            throw new Error('Uniform buffers not supported in WebGL 1.');
+                                                        };
     }
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -820,7 +873,7 @@ function ContextGL(canvas,options){
     this._textureStack = [];
 
     //bind empty texture
-    const textureNullConfig = validateOption({width:1,height:1},DefaultConfigTexture2d);
+    const textureNullConfig = validateOption({width : 1,height : 1},DefaultConfigTexture2d);
     const textureNullDataConfig = {};
     for(const key in DefaultConfigTexture2dData){
         textureNullDataConfig[key] = textureNullConfig[key];
@@ -863,7 +916,7 @@ function ContextGL(canvas,options){
     this.MAX_TEXTURE_SIZE = this._gl.getParameter(this._gl.MAX_TEXTURE_SIZE);
     this.MAX_CUBE_MAP_TEXTURE_SIZE = this._gl.getParameter(this._gl.MAX_CUBE_MAP_TEXTURE_SIZE);
     this.MAX_COMBINED_TEXTURE_IMAGE_UNITS = this._gl.getParameter(this._gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
-    
+
     this.ALPHA = this._gl.ALPHA;
     this.RGB = this._gl.RGB;
     this.RGBA = this._gl.RGBA;
@@ -939,9 +992,9 @@ function ContextGL(canvas,options){
 
     this._matrixTempByTypeMap = {};
     this._matrixTempByTypeMap[MATRIX_PROJECTION] =
-    this._matrixTempByTypeMap[MATRIX_VIEW] =
-    this._matrixTempByTypeMap[MATRIX_MODEL] =
-    this._matrixTempByTypeMap[MATRIX_INVERSE_VIEW] = this._matrix44TempF32;
+        this._matrixTempByTypeMap[MATRIX_VIEW] =
+            this._matrixTempByTypeMap[MATRIX_MODEL] =
+                this._matrixTempByTypeMap[MATRIX_INVERSE_VIEW] = this._matrix44TempF32;
     this._matrixTempByTypeMap[MATRIX_NORMAL] = this._matrix33TempF32;
 
     this._matrixSend = {};
@@ -987,21 +1040,21 @@ function ContextGL(canvas,options){
 
     //blit
     this._bufferBlitRectPosition = this.createVertexBuffer(
-        new Float32Array([0,0, 1,0, 1,1, 0,1]),this.STATIC_DRAW,false
+        new Float32Array([0,0,1,0,1,1,0,1]),this.STATIC_DRAW,false
     );
     this._bufferBlitRectTexCoord = this.createVertexBuffer(
-        new Float32Array([0,0, 1,0, 1,1, 0,1]),this.DYNAMIC_DRAW,true
+        new Float32Array([0,0,1,0,1,1,0,1]),this.DYNAMIC_DRAW,true
     );
     this._vertexArrayBlitRect = this.createVertexArray([
-        {location: this.ATTRIB_LOCATION_POSITION, buffer: this._bufferBlitRectPosition, size: this.SIZE_VEC2},
-        {location: this.ATTRIB_LOCATION_TEX_COORD, buffer: this._bufferBlitRectTexCoord, size: this.SIZE_VEC2}
+        {location : this.ATTRIB_LOCATION_POSITION,buffer : this._bufferBlitRectPosition,size : this.SIZE_VEC2},
+        {location : this.ATTRIB_LOCATION_TEX_COORD,buffer : this._bufferBlitRectTexCoord,size : this.SIZE_VEC2}
     ]);
 
     this._programBlit = this.createProgram(glslBlitScreen);
     this.pushProgramBinding();
-        this.setProgram(this._programBlit);
-        this.setProgramUniform('uTexture',0);
-        this.setProgramUniform('uOffsetScale',0,0,1,1);
+    this.setProgram(this._programBlit);
+    this.setProgramUniform('uTexture',0);
+    this.setProgramUniform('uOffsetScale',0,0,1,1);
     this.popProgramBinding();
 }
 
@@ -1072,7 +1125,7 @@ ContextGL.prototype.getGLCapabilities = function(){
  * @returns {*}
  */
 ContextGL.prototype.getDrawingbufferSize = function(out){
-    return Vec2.set2(out || Vec2.create(), this._gl.drawingBufferWidth,this._gl.drawingBufferHeight);
+    return Vec2.set2(out || Vec2.create(),this._gl.drawingBufferWidth,this._gl.drawingBufferHeight);
 };
 
 /**
@@ -1296,7 +1349,7 @@ ContextGL.prototype.setCullFace = function(cullFace){
     }
     if(cullFace){
         this._gl.enable(this._gl.CULL_FACE);
-    } else {
+    }else{
         this._gl.disable(this._gl.CULL_FACE);
     }
     this._cullingState.cullFace = cullFace;
@@ -1417,7 +1470,7 @@ ContextGL.prototype.setScissorTest = function(scissor){
     }
     if(scissor){
         this._gl.enable(this._gl.SCISSOR_TEST)
-    } else {
+    }else{
         this._gl.disable(this._gl.SCISSOR_TEST);
     }
     this._scissorState.scissorTest = scissor;
@@ -1464,7 +1517,7 @@ ContextGL.prototype.setScissor4 = function(x,y,w,h){
  * @returns {Array}
  */
 ContextGL.prototype.getScissor = function(out){
-    return Vec4.set(out || Vec4.create(), this._scissorState.scissorBox);
+    return Vec4.set(out || Vec4.create(),this._scissorState.scissorBox);
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -1618,7 +1671,7 @@ ContextGL.prototype.setStencilTest = function(stencilTest){
     }
     if(stencilTest){
         this._gl.enable(this._gl.STENCIL_TEST);
-    } else{
+    }else{
         this._gl.disable(this._gl.STENCIL_TEST);
     }
     this._stencilState.stencilTest = stencilTest;
@@ -1643,11 +1696,11 @@ ContextGL.prototype.getStencilTest = function(){
 ContextGL.prototype.setStencilFunc = function(func,ref,mask){
     const stencilFuncSeparate = this._stencilState.stencilFuncSeparate;
     if(stencilFuncSeparate[0] === func &&
-       stencilFuncSeparate[1] === ref &&
-       stencilFuncSeparate[2] === mask &&
-       stencilFuncSeparate[3] === func &&
-       stencilFuncSeparate[4] === ref &&
-       stencilFuncSeparate[5] === mask){
+        stencilFuncSeparate[1] === ref &&
+        stencilFuncSeparate[2] === mask &&
+        stencilFuncSeparate[3] === func &&
+        stencilFuncSeparate[4] === ref &&
+        stencilFuncSeparate[5] === mask){
         return;
     }
     this._gl.stencilFunc(func,ref,mask);
@@ -1689,18 +1742,18 @@ ContextGL.prototype.getStencilFunc = function(out){
  * @param {Number} ref - The reference value for the stencil test
  * @param {Number} mask - A mask that is ANDed with both the reference value and the stored stencil value whe the test is done
  */
-ContextGL.prototype.setStencilFuncSeparate = function(face, func, ref, mask){
+ContextGL.prototype.setStencilFuncSeparate = function(face,func,ref,mask){
     const stencilFuncSeparate = this._stencilState.stencilFuncSeparate;
     if(face === this._gl.FRONT){
         if(stencilFuncSeparate[0] === func &&
-           stencilFuncSeparate[1] === ref &&
-           stencilFuncSeparate[2] === mask){
+            stencilFuncSeparate[1] === ref &&
+            stencilFuncSeparate[2] === mask){
             return;
         }
-    } else {
+    }else{
         if(stencilFuncSeparate[3] === func &&
-           stencilFuncSeparate[4] === ref &&
-           stencilFuncSeparate[5] === mask){
+            stencilFuncSeparate[4] === ref &&
+            stencilFuncSeparate[5] === mask){
             return;
         }
     }
@@ -1711,7 +1764,7 @@ ContextGL.prototype.setStencilFuncSeparate = function(face, func, ref, mask){
         stencilFuncSeparate[1] = ref;
         stencilFuncSeparate[2] = mask;
         //back
-    } else {
+    }else{
         stencilFuncSeparate[3] = func;
         stencilFuncSeparate[4] = ref;
         stencilFuncSeparate[5] = mask;
@@ -1728,9 +1781,9 @@ ContextGL.prototype.getStencilFuncSeparate = function(face,out){
     let index = face === this._gl.FRONT ? 0 : 3;
     const stencilFuncSeparate = this._stencilState.stencilFuncSeparate;
     return Vec3.set3(out || Vec3.create(),
-        stencilFuncSeparate[index  ],
-        stencilFuncSeparate[index+1],
-        stencilFuncSeparate[index+2]
+        stencilFuncSeparate[index],
+        stencilFuncSeparate[index + 1],
+        stencilFuncSeparate[index + 2]
     );
 };
 
@@ -1744,11 +1797,11 @@ ContextGL.prototype.getStencilFuncSeparate = function(face,out){
 ContextGL.prototype.setStencilOp = function(fail,zfail,zpass){
     const stencilOpSeparate = this._stencilState.stencilOpSeparate;
     if(stencilOpSeparate[0] === fail &&
-       stencilOpSeparate[1] === zfail &&
-       stencilOpSeparate[2] === zpass &&
-       stencilOpSeparate[3] === fail &&
-       stencilOpSeparate[4] === zfail &&
-       stencilOpSeparate[5] === zpass){
+        stencilOpSeparate[1] === zfail &&
+        stencilOpSeparate[2] === zpass &&
+        stencilOpSeparate[3] === fail &&
+        stencilOpSeparate[4] === zfail &&
+        stencilOpSeparate[5] === zpass){
         return;
     }
     this._gl.stencilOp(fail,zfail,zpass);
@@ -1794,14 +1847,14 @@ ContextGL.prototype.setStencilOpSeparate = function(face,fail,zfail,zpass){
     const stencilOpSeparate = this._stencilState.stencilOpSeparate;
     if(face === this._gl.FRONT){
         if(stencilOpSeparate[0] === fail &&
-           stencilOpSeparate[1] === zfail &&
-           stencilOpSeparate[2] === zpass){
+            stencilOpSeparate[1] === zfail &&
+            stencilOpSeparate[2] === zpass){
             return;
         }
-    } else {
+    }else{
         if(stencilOpSeparate[3] === fail &&
-           stencilOpSeparate[4] === zfail &&
-           stencilOpSeparate[5] === zpass){
+            stencilOpSeparate[4] === zfail &&
+            stencilOpSeparate[5] === zpass){
             return;
         }
     }
@@ -1811,8 +1864,8 @@ ContextGL.prototype.setStencilOpSeparate = function(face,fail,zfail,zpass){
         stencilOpSeparate[0] = fail;
         stencilOpSeparate[1] = zfail;
         stencilOpSeparate[2] = zpass;
-    //back
-    } else {
+        //back
+    }else{
         stencilOpSeparate[3] = fail;
         stencilOpSeparate[4] = zfail;
         stencilOpSeparate[5] = zpass;
@@ -1830,9 +1883,9 @@ ContextGL.prototype.getStencilOpSeparate = function(face,out){
     let index = face === this._gl.FRONT ? 0 : 3;
     const stencilOpSeparate = this._stencilState.stencilOpSeparate;
     return Vec3.set3(out || Vec3.create(),
-        stencilOpSeparate[index  ],
-        stencilOpSeparate[index+1],
-        stencilOpSeparate[index+2]
+        stencilOpSeparate[index],
+        stencilOpSeparate[index + 1],
+        stencilOpSeparate[index + 2]
     );
 };
 
@@ -1946,7 +1999,7 @@ ContextGL.prototype.setDepthTest = function(depthTest){
     }
     if(depthTest){
         this._gl.enable(this._gl.DEPTH_TEST);
-    } else {
+    }else{
         this._gl.disable(this._gl.DEPTH_TEST);
     }
     this._depthState.depthTest = depthTest;
@@ -2050,7 +2103,7 @@ ContextGL.prototype.setDepthRange = function(znear,zfar){
  * @returns {Array}
  */
 ContextGL.prototype.getDepthRange = function(out){
-    return Vec2.set(out || Vec2.create(), this._depthState.depthRange);
+    return Vec2.set(out || Vec2.create(),this._depthState.depthRange);
 };
 
 /**
@@ -2060,7 +2113,7 @@ ContextGL.prototype.getDepthRange = function(out){
  * @param {Number} units
  */
 ContextGL.prototype.setPolygonOffset = function(factor,units){
-    const polygonOffset= this._depthState.polygonOffset;
+    const polygonOffset = this._depthState.polygonOffset;
     if(Vec2.equals(polygonOffset,factor,units)){
         return;
     }
@@ -2438,7 +2491,7 @@ ContextGL.prototype.setBlend = function(blend){
     }
     if(blend){
         this._gl.enable(this._gl.BLEND);
-    } else {
+    }else{
         this._gl.disable(this._gl.BLEND);
     }
     this._blendState.blend = blend;
@@ -2526,7 +2579,7 @@ ContextGL.prototype.getBlendColor = function(out){
 ContextGL.prototype.setBlendEquation = function(mode){
     const blendEquationSeparate = this._blendState.blendEquationSeparate;
     if(mode == blendEquationSeparate[0] &&
-       mode == blendEquationSeparate[1]){
+        mode == blendEquationSeparate[1]){
         return;
     }
     this._gl.blendEquation(mode);
@@ -2549,7 +2602,7 @@ ContextGL.prototype.getBlendEquation = function(){
  * @param {Number} modeRGB
  * @param {Number} modeAlpha
  */
-ContextGL.prototype.setBlendEquationSeparate = function(modeRGB, modeAlpha){
+ContextGL.prototype.setBlendEquationSeparate = function(modeRGB,modeAlpha){
     const blendEquationSeparate = this._blendState.blendEquationSeparate;
     if(Vec2.equals2(blendEquationSeparate,modeRGB,modeAlpha)){
         return;
@@ -2565,7 +2618,7 @@ ContextGL.prototype.setBlendEquationSeparate = function(modeRGB, modeAlpha){
  * @returns {Array}
  */
 ContextGL.prototype.getBlendEquationSeparate = function(out){
-    return Vec2.set(out || Vec2.create(), this._blendState.blendEquationSeparate);
+    return Vec2.set(out || Vec2.create(),this._blendState.blendEquationSeparate);
 };
 
 /**
@@ -2577,9 +2630,9 @@ ContextGL.prototype.getBlendEquationSeparate = function(out){
 ContextGL.prototype.setBlendFunc = function(sfactor,dfactor){
     const blendFuncSeparate = this._blendState.blendFuncSeparate;
     if(blendFuncSeparate[0] === sfactor &&
-       blendFuncSeparate[1] === sfactor &&
-       blendFuncSeparate[2] === dfactor &&
-       blendFuncSeparate[3] === dfactor){
+        blendFuncSeparate[1] === sfactor &&
+        blendFuncSeparate[2] === dfactor &&
+        blendFuncSeparate[3] === dfactor){
         return;
     }
     this._gl.blendFunc(sfactor,dfactor);
@@ -2629,7 +2682,7 @@ ContextGL.prototype.setBlendFuncSeparate = function(srcRGB,dstRGB,srcAlpha,dstAl
  * @returns {Array}
  */
 ContextGL.prototype.getBlendFuncSeparate = function(out){
-    return Vec4.set(out || Vec4.create(), this._blendState.blendFuncSeparate);
+    return Vec4.set(out || Vec4.create(),this._blendState.blendFuncSeparate);
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -2640,7 +2693,7 @@ ContextGL.prototype.getBlendFuncSeparate = function(out){
  * Program error representation.
  * @category Program
  */
-export class ProgramError extends Error{
+export class ProgramError extends Error {
     constructor(msg){
         super(msg);
         this.name = 'ProgramError';
@@ -2675,10 +2728,10 @@ ContextGL.prototype._compileShaderSource = function(type,source){
     return shader;
 };
 
-ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
-                                                  fragSrc_or_attribLocationBinding_or_uniformBlockNames,
-                                                  attribLocationBinding_or_uniformBlockBinding,
-                                                  uniformBlockBinding){
+ContextGL.prototype._updateProgram = function(id,vertSrc_or_vertAndFragSrc,
+                                              fragSrc_or_attribLocationBinding_or_uniformBlockNames,
+                                              attribLocationBinding_or_uniformBlockBinding,
+                                              uniformBlockBinding){
     const program = this._programs[id];
 
     if(program.handleVertexShader){
@@ -2697,7 +2750,7 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
 
     //vert and frag src in same string
     if(fragSrc_or_attribLocationBinding_or_uniformBlockNames === undefined ||
-       typeof fragSrc_or_attribLocationBinding_or_uniformBlockNames === 'object'){
+        typeof fragSrc_or_attribLocationBinding_or_uniformBlockNames === 'object'){
         let vertSrcPrefix = '#define VERTEX_SHADER\n';
         let fragSrcPrefix = '#define FRAGMENT_SHADER\n';
 
@@ -2716,8 +2769,8 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
         attribLocationBinding = fragSrc_or_attribLocationBinding_or_uniformBlockNames;
         uniformBlockBinding_ = attribLocationBinding_or_uniformBlockBinding;
 
-    //vert and frag src splitted
-    } else {
+        //vert and frag src splitted
+    }else{
         vertSrc = vertSrc_or_vertAndFragSrc;
         fragSrc = fragSrc_or_attribLocationBinding_or_uniformBlockNames;
         attribLocationBinding = attribLocationBinding_or_uniformBlockBinding;
@@ -2726,11 +2779,11 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
 
     //check of attribLocationBinding or uniformBlockNames passed
     if(attribLocationBinding && !uniformBlockBinding_){
-        const front =  attribLocationBinding[0];
+        const front = attribLocationBinding[0];
         if(front.binding !== undefined){
             uniformBlockBinding_ = attribLocationBinding;
             attribLocationBinding = null;
-        } else if(front.location === undefined){
+        }else if(front.location === undefined){
             throw new ProgramError('Invalid attribute location or uniform block binding specification.');
         }
     }
@@ -2751,13 +2804,13 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
             }
             locations.push(binding.location);
         }
-    //use default bindings
-    } else {
+        //use default bindings
+    }else{
         attribLocationBinding = ProgramDefaultAttribLocationBinding;
     }
 
     //compile and attach shaders
-    program.handleVertexShader   = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrc);
+    program.handleVertexShader = this._compileShaderSource(this._gl.VERTEX_SHADER,vertSrc);
     program.handleFragmentShader = this._compileShaderSource(this._gl.FRAGMENT_SHADER,fragSrc);
 
     this._gl.attachShader(program.handle,program.handleVertexShader);
@@ -2791,7 +2844,7 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     program.attributesPerLocation = {};
 
     for(let i = 0; i < numAttributes; ++i){
-        const info = this._gl.getActiveAttrib(program.handle, i);
+        const info = this._gl.getActiveAttrib(program.handle,i);
         const name = info.name;
         const attrib = program.attributes[name] = {
             //type value
@@ -2818,8 +2871,8 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
                 throw new ProgramError(`Attribute with name '${binding.name}' and location ${binding.location} is not present in program.`);
             }
         }
-    //remove non-existent default
-    } else {
+        //remove non-existent default
+    }else{
         for(let i = 0; i < attribLocationBinding.length; ++i){
             const binding = attribLocationBinding[i];
             if(program.attributes[binding.name]){
@@ -2832,7 +2885,7 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     //check for unbound attributes
     for(const name in program.attributes){
         if(program.attributes[name].bindingDefined){
-           continue;
+            continue;
         }
         //check if default binding available
         let defaultBinding = null;
@@ -2913,7 +2966,7 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
     for(let entry in program.uniforms){
         const type = program.uniforms[entry].type;
         if(program.uniformSetterMap[type] === undefined){
-            switch (type){
+            switch(type){
                 case this._gl.INT:
                 case this._gl.BOOL:
                 case this._gl.SAMPLER_2D:
@@ -2984,7 +3037,7 @@ ContextGL.prototype._updateProgram = function(id, vertSrc_or_vertAndFragSrc,
                 case this._gl.FLOAT_MAT2:
                     program.uniformSetterMap[type] =
                         function setUniform_FLOAT_MAT2(location,x,y,z,w){
-                            if(x === undefined || y!== undefined){
+                            if(x === undefined || y !== undefined){
                                 throw new ProgramError(strWrongNumArgs(arguments.length,2));
                             }
                             gl.uniformMatrix2fv(location,false,x);
@@ -3157,10 +3210,10 @@ ContextGL.prototype.setProgram = function(id){
     this._programActive = id;
 
     //reset matrix send state
-    this._matrixSend[MATRIX_PROJECTION]   = false;
-    this._matrixSend[MATRIX_VIEW]         = false;
-    this._matrixSend[MATRIX_MODEL]        = false;
-    this._matrixSend[MATRIX_NORMAL]       = false;
+    this._matrixSend[MATRIX_PROJECTION] = false;
+    this._matrixSend[MATRIX_VIEW] = false;
+    this._matrixSend[MATRIX_MODEL] = false;
+    this._matrixSend[MATRIX_NORMAL] = false;
     this._matrixSend[MATRIX_INVERSE_VIEW] = false;
 
     //extract all matrices in program
@@ -3227,8 +3280,8 @@ ContextGL.prototype.getProgramInfo = function(id){
             throw new ProgramError(STR_PROGRAM_ERROR_NOTHING_BOUND)
         }
         program = this._programs[this._programActive];
-    //specific program
-    } else {
+        //specific program
+    }else{
         program = this._programs[id];
         if(!program){
             throw new ProgramError(strProgramErrorInvalidId(id));
@@ -3293,7 +3346,7 @@ ContextGL.prototype.hasProgramAttributeLocation = function(name){
  * @param z
  * @param w
  */
-ContextGL.prototype.setProgramUniform = function(name, x, y, z, w){
+ContextGL.prototype.setProgramUniform = function(name,x,y,z,w){
     if(this._programActive === INVALID_ID){
         throw new ProgramError(STR_PROGRAM_ERROR_NOTHING_BOUND);
     }
@@ -3329,7 +3382,7 @@ ContextGL.prototype.setProgramUniformGroup = function(group){
  * Buffer error representation.
  * @category Buffer
  */
-export class BufferError extends Error{
+export class BufferError extends Error {
     constructor(msg){
         super(msg);
         this.name = 'BufferError';
@@ -3357,14 +3410,14 @@ ContextGL.prototype._invalidateBuffer = function(target){
 
 ContextGL.prototype._createBuffer = function(target,size_or_data,usage,preserveData){
     target = target === undefined ? this._gl.ARRAY_BUFFER : target;
-    usage  = usage  === undefined ? this._gl.STATIC_DRAW : usage;
+    usage = usage === undefined ? this._gl.STATIC_DRAW : usage;
     preserveData = preserveData === undefined ? false : preserveData;
 
     let id = this._uid++;
     this._buffers[target][id] = {
         handle : this._gl.createBuffer(),
         target : target,
-        usage  : usage,
+        usage : usage,
         usageName : null,
         length : 0,
         byteLength : 0,
@@ -3381,7 +3434,7 @@ ContextGL.prototype._createBuffer = function(target,size_or_data,usage,preserveD
         this._setBufferData(target,id,size_or_data);
         if(prevId === INVALID_ID){
             this._invalidateBuffer(target);
-        } else {
+        }else{
             this._setBuffer(target,prevId);
         }
     }
@@ -3401,7 +3454,7 @@ ContextGL.prototype._deleteBuffer = function(target,id){
     }
 };
 
-ContextGL.prototype._setBuffer = function(target, id){
+ContextGL.prototype._setBuffer = function(target,id){
     if(id === this._bufferActive[target]){
         return;
     }
@@ -3417,7 +3470,7 @@ ContextGL.prototype._setBuffer = function(target, id){
     this._bufferActive[target] = id;
 };
 
-ContextGL.prototype._setBufferData = function(target, id, size_or_data){
+ContextGL.prototype._setBufferData = function(target,id,size_or_data){
     const buffer = this._buffers[target][id];
 
     if(size_or_data === undefined){
@@ -3478,8 +3531,8 @@ ContextGL.prototype._setBufferData = function(target, id, size_or_data){
                     }
                     break;
             }
-            buffer.targetName   = GLEnumStringMap[buffer.target];
-            buffer.usageName    = GLEnumStringMap[buffer.usage];
+            buffer.targetName = GLEnumStringMap[buffer.target];
+            buffer.usageName = GLEnumStringMap[buffer.usage];
             buffer.dataTypeName = GLEnumStringMap[buffer.dataType];
 
             //update with new preserved data
@@ -3487,13 +3540,13 @@ ContextGL.prototype._setBufferData = function(target, id, size_or_data){
                 //new data is same length
                 if(buffer.data !== null && buffer.data.length == size_or_data.length){
                     buffer.data.set(size_or_data);
-                //new data has new length
-                } else {
+                    //new data has new length
+                }else{
                     buffer.data = new data_ctor(size_or_data);
                 }
             }
-        //no data, reset and set length
-        } else {
+            //no data, reset and set length
+        }else{
             buffer.length = size_or_data;
             buffer.byteLength = null;
             buffer.dataType = null;
@@ -3503,13 +3556,13 @@ ContextGL.prototype._setBufferData = function(target, id, size_or_data){
     this._gl.bufferData(target,size_or_data,buffer.usage);
 };
 
-ContextGL.prototype._setBufferSubData = function(target, id, offset, data){
+ContextGL.prototype._setBufferSubData = function(target,id,offset,data){
     let buffer = this._buffers[target][id];
     this._gl.bufferSubData(target,offset,data);
 
     if(buffer.preserveData && data !== buffer.data){
         offset = offset / buffer.data.BYTES_PER_ELEMENT;
-        for(let i = 0; offset < buffer.data.length; ++i, offset+=1){
+        for(let i = 0; offset < buffer.data.length; ++i, offset += 1){
             buffer.data[offset] = data[i];
         }
     }
@@ -3531,8 +3584,8 @@ ContextGL.prototype._getBufferInfo = function(target,id){
         if(!buffer){
             throw new BufferError(strBufferErrorNothingBound(target));
         }
-    //specific buffer
-    } else {
+        //specific buffer
+    }else{
         buffer = this._buffers[target][id];
         if(!buffer){
             throw new BufferError(strBufferErrorInvalidId(id));
@@ -3565,7 +3618,7 @@ ContextGL.prototype.pushBufferBinding = function(newState){
  */
 ContextGL.prototype.popBufferBinding = function(){
     if(this._bufferStack[this._gl.ARRAY_BUFFER].length === 0 ||
-       this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER].length === 0){
+        this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER].length === 0){
         throw new Error(STR_ERROR_INVALID_STACK_POP);
     }
     this.setVertexBuffer(this._bufferStack[this._gl.ARRAY_BUFFER].pop());
@@ -3581,7 +3634,7 @@ ContextGL.prototype.popBufferBinding = function(){
  * @param usage
  * @param preserveData
  */
-ContextGL.prototype.createVertexBuffer = function(size_or_data, usage, preserveData){
+ContextGL.prototype.createVertexBuffer = function(size_or_data,usage,preserveData){
     return this._createBuffer(this._gl.ARRAY_BUFFER,size_or_data,usage,preserveData);
 };
 
@@ -3651,7 +3704,7 @@ ContextGL.prototype.updateVertexBufferData = function(){
  * @param {Number} offset - The offset into the buffers data store where the data replacement will begin, measure in bytes
  * @param {Uint8Array|Uint16Array|Uint32Array|Float32Array} data - The new data that will be copied into the data store
  */
-ContextGL.prototype.setVertexBufferSubData = function(offset, data){
+ContextGL.prototype.setVertexBufferSubData = function(offset,data){
     const target = this._gl.ARRAY_BUFFER;
     const id = this._bufferActive[target];
     if(id === INVALID_ID){
@@ -3728,7 +3781,7 @@ ContextGL.prototype.getVertexBufferInfo = function(id){
  * @param usage
  * @param preserveData
  */
-ContextGL.prototype.createIndexBuffer = function(size_or_data, usage, preserveData){
+ContextGL.prototype.createIndexBuffer = function(size_or_data,usage,preserveData){
     return this._createBuffer(this._gl.ELEMENT_ARRAY_BUFFER,size_or_data,usage,preserveData);
 };
 
@@ -3874,8 +3927,8 @@ ContextGL.prototype.getIndexBufferInfo = function(id){
 
 //UNIFORM BUFFER
 
-ContextGL.prototype.createUniformBuffer = function(size_or_data, usage, preserveData){
-    return this._createBuffer(this._gl.UNIFORM_BUFFER,size_or_data, usage, preserveData);
+ContextGL.prototype.createUniformBuffer = function(size_or_data,usage,preserveData){
+    return this._createBuffer(this._gl.UNIFORM_BUFFER,size_or_data,usage,preserveData);
 };
 
 ContextGL.prototype.deleteUniformBuffer = function(id){
@@ -3955,7 +4008,7 @@ ContextGL.prototype.getUniformBufferInfo = function(id){
  * Vertex error representation.
  * @category Vertex Array
  */
-export class VertexArrayError extends Error{
+export class VertexArrayError extends Error {
     constructor(msg){
         super(msg);
         this.name = 'VertexArrayError';
@@ -4061,7 +4114,7 @@ ContextGL.prototype._vertexArraySetupBuffers = function(vertexArray){
         this.setVertexBuffer(vertexArray.vertexBuffers[i]);
         for(let j = 0; j < bufferAttributes.length; ++j){
             const attribute = bufferAttributes[j];
-            const location  = attribute.location;
+            const location = attribute.location;
 
             if(!attribute.enabled){
                 this._gl.disableVertexAttribArray(location);
@@ -4086,7 +4139,7 @@ ContextGL.prototype._vertexArraySetupBuffers = function(vertexArray){
     }
 
     if(vertexArray.indexBuffer){
-        this._setBuffer(this._gl.ELEMENT_ARRAY_BUFFER, vertexArray.indexBuffer);
+        this._setBuffer(this._gl.ELEMENT_ARRAY_BUFFER,vertexArray.indexBuffer);
     }
 };
 
@@ -4135,7 +4188,7 @@ ContextGL.prototype._vertexArrayAddBuffers = function(vertexArray,attributes,ind
 ContextGL.prototype._createVertexArrayShim = function(attributes,indexBuffer){
     if(!attributes){
         throw new ProgramError('No attributes passed.');
-    } else if(!Array.isArray(attributes)){
+    }else if(!Array.isArray(attributes)){
         throw new ProgramError('Attribute argument type passed is not of type Array.')
     }
 
@@ -4154,17 +4207,18 @@ ContextGL.prototype._createVertexArrayShim = function(attributes,indexBuffer){
 
     this.pushBufferBinding();
     this.pushVertexArrayBinding();
-        this._vertexArrayState.binding = id;
-        this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
-        this._vertexArraySetupBuffers(vertexArray);
-        console.assert(this.getGLError());
+    this._vertexArrayState.binding = id;
+    this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
+    this._vertexArraySetupBuffers(vertexArray);
+    console.assert(this.getGLError());
     this.popVertexArrayBinding();
     this.popBufferBinding();
 
     return id;
 };
 
-ContextGL.prototype._deleteVertexArrayShim = function(id){};
+ContextGL.prototype._deleteVertexArrayShim = function(id){
+};
 
 /**
  * Rebinds all shim buffers and resetups all locations.
@@ -4195,104 +4249,7 @@ ContextGL.prototype._setVertexArrayShim = function(id){
     this._vertexArrayHasDivisor = vertexArray.hasDivisor;
 };
 
-ContextGL.prototype._invalidateVertexArrayShim = function(){};
-
-// native
-
-/**
- * Creates a native vertex array and setup all the buffer attributes + index buffer bindings.
- * @param attributes
- * @param indexBuffer
- * @returns {number}
- * @private
- */
-ContextGL.prototype._createVertexArrayNative = function(attributes,indexBuffer){
-    if(!attributes){
-        throw new ProgramError('No attributes passed.');
-    } else if(!Array.isArray(attributes)){
-        throw new ProgramError('Attribute argument type passed is not of type Array.')
-    }
-
-    const id = this._uid++;
-    const vertexArray = this._vertexArrays[id] = {
-        //webgl handle
-        handle : this._gl.createVertexArray(),
-        //attributes sorted by vertex buffer
-        attributesPerBuffer : {},
-        //attributes sorted by location
-        attributesPerLocation : {},
-        //vertexBuffer ids
-        vertexBuffers : [],
-        //indexBuffer id
-        indexBuffer : null,
-        hasDivisor : false
-    };
-
-    this.pushBufferBinding();
-    this.pushVertexArrayBinding();
-        this._vertexArrayState.binding = id;
-        this._gl.bindVertexArray(vertexArray.handle);
-        this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
-        this._vertexArraySetupBuffers(vertexArray);
-        console.assert(this.getGLError());
-    this.popVertexArrayBinding();
-    this.popBufferBinding();
-
-    return id;
-};
-
-ContextGL.prototype._deleteVertexArrayNative = function(id){
-    let vertexArray = this._vertexArrays[id];
-    if(!vertexArray){
-        throw new VertexArrayError(strVertexArrayErrorInvalidId(id));
-    }
-    this._gl.deleteVertexArray(vertexArray.handle);
-    delete this._vertexArrays[id];
-
-    if(this._vertexArrayState.binding === id){
-        this._invalidateVertexArrayNative();
-    }
-};
-
-/**
- * Binds a native vertex array.
- * @param id
- * @private
- */
-ContextGL.prototype._setVertexArrayNative = function(id){
-    if(id === this._vertexArrayState.binding){
-        return;
-    }
-    if(id === null){
-        this._invalidateVertexArrayNative();
-        return;
-    }
-    const vertexArray = this._vertexArrays[id];
-    if(!vertexArray){
-        throw new VertexArrayError(strVertexArrayErrorInvalidId(id));
-    }
-    this._gl.bindVertexArray(vertexArray.handle);
-    this._vertexArrayState.binding = id;
-
-    this._vertexArrayHasIndexBuffer = !!vertexArray.indexBuffer;
-    this._vertexArrayIndexBufferDataType =
-        this._vertexArrayHasIndexBuffer ?
-        this._buffers[this._gl.ELEMENT_ARRAY_BUFFER][vertexArray.indexBuffer].dataType :
-        null;
-    this._vertexArrayHasDivisor = vertexArray.hasDivisor;
-    //sync internal vertex array representation
-    this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER] = vertexArray.indexBuffer || null;
-};
-
-ContextGL.prototype._invalidateVertexArrayNative = function(){
-    if(this._vertexArrayState.binding === null){
-        return;
-    }
-    this._gl.bindVertexArray(null);
-    this._vertexArrayState.binding = null;
-    this._vertexArrayHasIndexBuffer = false;
-    this._vertexArrayIndexBufferDataType = null;
-    this._vertexArrayHasDivisor = false;
+ContextGL.prototype._invalidateVertexArrayShim = function(){
 };
 
 /**
@@ -4357,7 +4314,38 @@ ContextGL.prototype.getVertexArrayBindingState = function(){
  * @param indexBuffer
  */
 ContextGL.prototype.createVertexArray = function(attributes,indexBuffer){
-    // set depending on webgl capabilities on init
+    if(!attributes){
+        throw new ProgramError('No attributes passed.');
+    }else if(!Array.isArray(attributes)){
+        throw new ProgramError('Attribute argument type passed is not of type Array.')
+    }
+
+    const id = this._uid++;
+    const vertexArray = this._vertexArrays[id] = {
+        //webgl handle
+        handle : this._gl.createVertexArray(),
+        //attributes sorted by vertex buffer
+        attributesPerBuffer : {},
+        //attributes sorted by location
+        attributesPerLocation : {},
+        //vertexBuffer ids
+        vertexBuffers : [],
+        //indexBuffer id
+        indexBuffer : null,
+        hasDivisor : false
+    };
+
+    this.pushBufferBinding();
+    this.pushVertexArrayBinding();
+    this._vertexArrayState.binding = id;
+    this._gl.bindVertexArray(vertexArray.handle);
+    this._vertexArrayAddBuffers(vertexArray,attributes,indexBuffer);
+    this._vertexArraySetupBuffers(vertexArray);
+    console.assert(this.getGLError());
+    this.popVertexArrayBinding();
+    this.popBufferBinding();
+
+    return id;
 };
 
 /**
@@ -4366,7 +4354,16 @@ ContextGL.prototype.createVertexArray = function(attributes,indexBuffer){
  * @param id
  */
 ContextGL.prototype.deleteVertexArray = function(id){
-    // set depending on webgl capabilities on init
+    let vertexArray = this._vertexArrays[id];
+    if(!vertexArray){
+        throw new VertexArrayError(strVertexArrayErrorInvalidId(id));
+    }
+    this._gl.deleteVertexArray(vertexArray.handle);
+    delete this._vertexArrays[id];
+
+    if(this._vertexArrayState.binding === id){
+        this.invalidateVertexArray();
+    }
 };
 
 /**
@@ -4375,7 +4372,28 @@ ContextGL.prototype.deleteVertexArray = function(id){
  * @param id
  */
 ContextGL.prototype.setVertexArray = function(id){
-    // set depending on webgl capabilities on init
+    if(id === this._vertexArrayState.binding){
+        return;
+    }
+    if(id === null){
+        this.invalidateVertexArray();
+        return;
+    }
+    const vertexArray = this._vertexArrays[id];
+    if(!vertexArray){
+        throw new VertexArrayError(strVertexArrayErrorInvalidId(id));
+    }
+    this._gl.bindVertexArray(vertexArray.handle);
+    this._vertexArrayState.binding = id;
+
+    this._vertexArrayHasIndexBuffer = !!vertexArray.indexBuffer;
+    this._vertexArrayIndexBufferDataType =
+        this._vertexArrayHasIndexBuffer ?
+        this._buffers[this._gl.ELEMENT_ARRAY_BUFFER][vertexArray.indexBuffer].dataType :
+        null;
+    this._vertexArrayHasDivisor = vertexArray.hasDivisor;
+    //sync internal vertex array representation
+    this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER] = vertexArray.indexBuffer || null;
 };
 
 /**
@@ -4383,7 +4401,14 @@ ContextGL.prototype.setVertexArray = function(id){
  * @category Vertex Array
  */
 ContextGL.prototype.invalidateVertexArray = function(){
-    // set depending on webgl capabilities on init
+    if(this._vertexArrayState.binding === null){
+        return;
+    }
+    this._gl.bindVertexArray(null);
+    this._vertexArrayState.binding = null;
+    this._vertexArrayHasIndexBuffer = false;
+    this._vertexArrayIndexBufferDataType = null;
+    this._vertexArrayHasDivisor = false;
 };
 
 /**
@@ -4419,8 +4444,8 @@ ContextGL.prototype.getVertexArrayInfo = function(id){
             throw new VertexArrayError(STR_VERTEX_ARRAY_ERROR_NOTHING_BOUND);
         }
         vertexArray = this._vertexArrays[bindingActive];
-    //specific vertex array
-    } else {
+        //specific vertex array
+    }else{
         vertexArray = this._vertexArrays[id];
         if(!vertexArray){
             throw new VertexArrayError(strVertexArrayErrorInvalidId(id));
@@ -4473,7 +4498,7 @@ ContextGL.prototype.vertexArrayHasDivisor = function(){
  * Texture error representation
  * @category Texture
  */
-export class TextureError extends Error{
+export class TextureError extends Error {
     constructor(msg){
         super(msg);
         this.name = 'TextureError';
@@ -4497,7 +4522,7 @@ function isSupportedTextureData(data){
         return false;
     }
     return data instanceof Image || data instanceof ImageData ||
-           data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement;
+        data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement;
 }
 
 const STR_TEXTURE_ERROR_NOTHING_BOUND = 'No texture active.';
@@ -4507,20 +4532,20 @@ const DefaultConfigTexture2d = Object.freeze({
     //is the nth mipmap reduction level
     level : 0,
     //data width/height
-    width: null,
-    height: null,
+    width : null,
+    height : null,
     //ignored
-    border: false,
-    borderWidth: 0,
+    border : false,
+    borderWidth : 0,
     //shared wrap t/s
-    wrap :  WebGLStaticConstants.REPEAT,
+    wrap : WebGLStaticConstants.REPEAT,
     //wrap parameter for s
     wrapS : null,
     //wrap parameter for t
     wrapT : null,
     //A GLint specifying the color components in the texture
-    format: WebGLStaticConstants.RGBA,
-    internalFormat: null,
+    format : WebGLStaticConstants.RGBA,
+    internalFormat : null,
     //type of the texel data
     dataType : WebGLStaticConstants.UNSIGNED_BYTE,
     //shared min mag filter
@@ -4536,8 +4561,8 @@ const DefaultConfigTexture2d = Object.freeze({
 });
 
 const DefaultConfigTexture2dData = Object.freeze({
-    width: null,
-    height: null,
+    width : null,
+    height : null,
     wrap : DefaultConfigTexture2d.wrap,
     wrapS : null,
     wrapT : null,
@@ -4557,24 +4582,24 @@ ContextGL.prototype._createTexture = function(target){
     this._textures[id] = {
         handle : this._gl.createTexture(),
         target : target,
-        unit: -1,
+        unit : -1,
         width : null,
-        height: null,
-        level: 0,
-        border: false,
-        borderWidth: 0,
-        internalFormat: null,
-        format: null,
+        height : null,
+        level : 0,
+        border : false,
+        borderWidth : 0,
+        internalFormat : null,
+        format : null,
         internalFormatName : '',
         formatName : '',
-        dataType: null,
-        dataTypeName: '',
-        wrapS: null,
-        wrapT: null,
+        dataType : null,
+        dataTypeName : '',
+        wrapS : null,
+        wrapT : null,
         wrapSName : '',
         wrapTName : '',
-        minFilter: null,
-        magFilter: null,
+        minFilter : null,
+        magFilter : null,
         minFilterName : '',
         magFilterName : '',
         mipmap : false
@@ -4669,12 +4694,12 @@ ContextGL.prototype.createTexture2d = function(data_or_config,config){
         //only data passed
         if(isSupportedTextureData(data_or_config)){
             data = data_or_config;
-        //assuming only config passed
-        } else {
+            //assuming only config passed
+        }else{
             config = data_or_config;
         }
-    //data and config passed
-    } else {
+        //data and config passed
+    }else{
         data = data_or_config;
     }
     config = validateOption(config,DefaultConfigTexture2d);
@@ -4688,11 +4713,11 @@ ContextGL.prototype.createTexture2d = function(data_or_config,config){
     }
 
     this.pushTextureBinding();
-        this.setTexture2d(id);
-        this.setTexture2dData(data,dataConfig);
-        ////TODO: compressed texture
-        ////TODO: mipmap
-        console.assert(this.getGLError());
+    this.setTexture2d(id);
+    this.setTexture2dData(data,dataConfig);
+    ////TODO: compressed texture
+    ////TODO: mipmap
+    console.assert(this.getGLError());
     this.popTextureBinding();
 
     return id;
@@ -4708,7 +4733,7 @@ ContextGL.prototype.setTexture2d = function(id,textureUnit){
     textureUnit = textureUnit || 0;
     if(id === this._textureState.textureActive[textureUnit]){
         return;
-    } else if(id === null || id === undefined){
+    }else if(id === null || id === undefined){
         this.invalidateTexture2d(textureUnit);
         return;
     }
@@ -4722,7 +4747,7 @@ ContextGL.prototype.setTexture2d = function(id,textureUnit){
         this._textureState.textureUnitActive = textureUnit;
     }
     //bind
-    this._gl.bindTexture(this._gl.TEXTURE_2D, texture.handle);
+    this._gl.bindTexture(this._gl.TEXTURE_2D,texture.handle);
     this._textureState.textureActive[textureUnit] = id;
     texture.unit = textureUnit;
 };
@@ -4749,12 +4774,12 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     const wrapT = config.wrapT || wrap;
     const wrapS = config.wrapS || wrap;
     if(texture.wrapS !== wrapS){
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_S, wrapS);
+        this._gl.texParameteri(this._gl.TEXTURE_2D,this._gl.TEXTURE_WRAP_S,wrapS);
         texture.wrapS = wrapS;
         texture.wrapSName = glEnumToString(wrapS);
     }
     if(texture.wrapT !== wrapT){
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_WRAP_T, wrapT);
+        this._gl.texParameteri(this._gl.TEXTURE_2D,this._gl.TEXTURE_WRAP_T,wrapT);
         texture.wrapT = wrapT;
         texture.wrapTName = glEnumToString(wrapT);
     }
@@ -4766,24 +4791,24 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     //validate filter set for mipmap
     if(config.mipmap){
         if(filterMin && filterMin !== this._gl.NEAREST_MIPMAP_LINEAR &&
-                        filterMin !== this._gl.NEAREST_MIPMAP_NEAREST &&
-                        filterMin !== this._gl.LINEAR_MIPMAP_LINEAR){
+            filterMin !== this._gl.NEAREST_MIPMAP_NEAREST &&
+            filterMin !== this._gl.LINEAR_MIPMAP_LINEAR){
             throw new TextureError(`Invalid mipmap minFilter '${glEnumToString(filterMin)}'`);
-        } else {
+        }else{
             filterMin = filterMin || this._gl.NEAREST_MIPMAP_LINEAR;
         }
-    } else {
+    }else{
         filterMin = filterMin || filter;
     }
     texture.mipmap = config.mipmap;
 
     if(texture.minFilter !== filterMin){
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MIN_FILTER, filterMin);
+        this._gl.texParameteri(this._gl.TEXTURE_2D,this._gl.TEXTURE_MIN_FILTER,filterMin);
         texture.minFilter = filterMin;
         texture.minFilterName = glEnumToString(filterMin);
     }
     if(texture.magFilter !== filterMag){
-        this._gl.texParameteri(this._gl.TEXTURE_2D, this._gl.TEXTURE_MAG_FILTER, filterMag);
+        this._gl.texParameteri(this._gl.TEXTURE_2D,this._gl.TEXTURE_MAG_FILTER,filterMag);
         texture.magFilter = filterMag;
         texture.magFilterName = glEnumToString(filterMag);
     }
@@ -4803,7 +4828,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
         texture.internalFormat = formatInternal;
         texture.internalFormatName = glEnumToString(format);
     }
-    
+
     //flip
     texture.flipY = config.flipY;
 
@@ -4815,34 +4840,34 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     }
 
     //data size
-    let width  = config.width || 0;
+    let width = config.width || 0;
     let height = config.height || 0;
 
     //data from Image, ImageData, Video, Canvas
     if(isSupportedTextureData(data)){
-        width  = !width  ? (data.width || data.videoWidth || 0) : width;
+        width = !width ? (data.width || data.videoWidth || 0) : width;
         height = !height ? (data.height || data.videoHeight || 0) : height;
 
         if(!width || !height){
             throw new TextureError(strTextureInvalidSize(width,height));
         }
-        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, texture.flipY);
+        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL,texture.flipY);
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
-            texture.level, texture.internalFormat, texture.format,
-            texture.dataType, data
+            texture.level,texture.internalFormat,texture.format,
+            texture.dataType,data
         );
 
-    //create texture with size, empty or with data
-    } else {
+        //create texture with size, empty or with data
+    }else{
         if(!width || !height){
             throw new TextureError(strTextureInvalidSize(width,height));
         }
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
-            texture.level, texture.internalFormat,
-            width, height,
-            0, texture.format, texture.dataType, data || null
+            texture.level,texture.internalFormat,
+            width,height,
+            0,texture.format,texture.dataType,data || null
         );
     }
 
@@ -4889,9 +4914,9 @@ ContextGL.prototype.setTexture2dSize2 = function(width,height){
 
     this._gl.texImage2D(
         this._gl.TEXTURE_2D,
-        texture.level, texture.internalFormat,
-        width, height,
-        0, texture.format, texture.dataType, null
+        texture.level,texture.internalFormat,
+        width,height,
+        0,texture.format,texture.dataType,null
     );
 
     texture.width = width;
@@ -4904,7 +4929,7 @@ ContextGL.prototype.setTexture2dSize2 = function(width,height){
  * @param min_or_minMagFilter
  * @param magFilter
  */
-ContextGL.prototype.setTexture2dFilter = function(min_or_minMagFilter, magFilter){
+ContextGL.prototype.setTexture2dFilter = function(min_or_minMagFilter,magFilter){
     const id = this._textureState.textureActive[this._textureState.textureUnitActive];
     if(!id){
         throw new TextureError(strTextureNotActive(id,this._textureState.textureUnitActive));
@@ -4916,11 +4941,11 @@ ContextGL.prototype.setTexture2dFilter = function(min_or_minMagFilter, magFilter
     magFilter = magFilter === undefined ? min_or_minMagFilter : magFilter;
 
     if(texture.minFilter !== min_or_minMagFilter){
-        this._gl.texParameteri(texture.target, this._gl.TEXTURE_MIN_FILTER, min_or_minMagFilter);
+        this._gl.texParameteri(texture.target,this._gl.TEXTURE_MIN_FILTER,min_or_minMagFilter);
         texture.minFilter = min_or_minMagFilter;
     }
     if(texture.magFilter !== magFilter){
-        this._gl.texParameteri(texture.target, this._gl.TEXTURE_MAG_FILTER, magFilter);
+        this._gl.texParameteri(texture.target,this._gl.TEXTURE_MAG_FILTER,magFilter);
         texture.magFilter = magFilter;
     }
 };
@@ -4941,7 +4966,7 @@ ContextGL.prototype.updateTexture2dData = function(data){
     }
 
     if(data instanceof Image || data instanceof ImageData ||
-       data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement){
+        data instanceof HTMLVideoElement || data instanceof HTMLCanvasElement){
         const width = data.width || data.videoWidth;
         const height = data.height || data.videoHeight;
 
@@ -4949,21 +4974,21 @@ ContextGL.prototype.updateTexture2dData = function(data){
             throw new TextureError(strTextureInvalidSize(width,height));
         }
 
-        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL, texture.flipY);
+        this._gl.pixelStorei(this._gl.UNPACK_FLIP_Y_WEBGL,texture.flipY);
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
-            texture.level, texture.internalFormat, texture.format,
-            texture.dataType, data
+            texture.level,texture.internalFormat,texture.format,
+            texture.dataType,data
         );
         texture.width = width;
         texture.height = height;
 
-    } else {
+    }else{
         this._gl.texImage2D(
             this._gl.TEXTURE_2D,
-            texture.level, texture.internalFormat,
-            texture.width, texture.height,
-            0, texture.format, texture.dataType, data || null
+            texture.level,texture.internalFormat,
+            texture.width,texture.height,
+            0,texture.format,texture.dataType,data || null
         );
     }
 };
@@ -5006,8 +5031,8 @@ ContextGL.prototype.getTexture2dInfo = function(id){
             throw new TextureError(STR_TEXTURE_ERROR_NOTHING_BOUND);
         }
         texture = this._textures[textureId];
-    //specific texture
-    } else {
+        //specific texture
+    }else{
         texture = this._textures[id];
         if(!texture){
             throw new TextureError(strTextureErrorInvalidId(id));
@@ -5102,7 +5127,7 @@ ContextGL.prototype._deleteRenderbufferRAW = function(id){
  * Framebuffer error representation
  * @category Framebuffer
  */
-export class FramebufferError extends Error{
+export class FramebufferError extends Error {
     constructor(msg){
         super(msg);
         this.name = 'FramebufferError';
@@ -5120,76 +5145,76 @@ function strFrambufferInvalidAttachmentPoint(attachmentPoint){
 const STR_FRAME_BUFFER_ERROR_NOTHING_BOUND = 'No framebuffer active.';
 
 const DefaultConfigFramebufferColorAttachment = Object.freeze({
-    minMagFilter: WebGLStaticConstants.NEAREST,
-    wrap: WebGLStaticConstants.CLAMP_TO_EDGE
+    minMagFilter : WebGLStaticConstants.NEAREST,
+    wrap : WebGLStaticConstants.CLAMP_TO_EDGE
 });
 
 const DefaultConfigFramebufferDepthAttachment = Object.freeze({
-    minMagFilter: DefaultConfigFramebufferColorAttachment.minMagFilter,
+    minMagFilter : DefaultConfigFramebufferColorAttachment.minMagFilter,
     wrap : DefaultConfigFramebufferColorAttachment.wrap,
     format : WebGLStaticConstants.DEPTH_STENCIL,
-    dataType: WebGLStaticConstants.UNSIGNED_INT
+    dataType : WebGLStaticConstants.UNSIGNED_INT
 });
 
 const DefaultConfigFramebufferDepthStencilAttachment = Object.freeze({
-    minMagFilter: DefaultConfigFramebufferColorAttachment.minMagFilter,
-    wrap: DefaultConfigFramebufferColorAttachment.wrap,
-    format: WebGLStaticConstants.DEPTH_COMPONENT
+    minMagFilter : DefaultConfigFramebufferColorAttachment.minMagFilter,
+    wrap : DefaultConfigFramebufferColorAttachment.wrap,
+    format : WebGLStaticConstants.DEPTH_COMPONENT
     //dataType from capabilities
 });
 
 const DefaultConfigFramebuffer = Object.freeze({
     //optional width - default: drawingBufferWidth
-    width: null,
+    width : null,
     //optional height - default: drawingBufferHeight
-    height: null,
+    height : null,
     //creates a single default color attachment
-    colorAttachments: true,
+    colorAttachments : true,
     //if default or no specific color texture source used
-    colorAttachmentDataType: null,
+    colorAttachmentDataType : null,
     //number of auto color attachments
-    numColorAttachments: 1,
+    numColorAttachments : 1,
     //creates a default depth attachment
-    depthAttachment: true,
+    depthAttachment : true,
     //data type for depth only attachment, UNSIGNED_SHORT || UNSIGNED_INT
-    depthAttachmentDataType: WebGLStaticConstants.UNSIGNED_INT,
+    depthAttachmentDataType : WebGLStaticConstants.UNSIGNED_INT,
     //creates a default depth stencil attachment
-    depthStencilAttachment: false,
+    depthStencilAttachment : false,
     //if true all attachments will be deleted if the framebuffer gets disposed
     deleteAttachments : true,
     //if true, renderbuffers will be used as depth and stencil attachmnents
-    forceFallbackDepthStencilAttachment: false
+    forceFallbackDepthStencilAttachment : false
 });
 
 //set on draw buffers extension check or webgl2
 ContextGL.prototype._setFramebufferColorAttachment = null;
 
 //not webgl2 or drawbuffers extension not supported
-ContextGL.prototype._setFramebufferColorAttachmentDrawBuffersNotSupported = function(texture, attachmentPoint, mipmapLevel){
+ContextGL.prototype._setFramebufferColorAttachmentDrawBuffersNotSupported = function(texture,attachmentPoint,mipmapLevel){
     attachmentPoint = attachmentPoint || 0;
     if(attachmentPoint > 0){
         throw new FramebufferError('Draw buffers extension not supported. Only 1 attachment point available.');
     }
-    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.COLOR_ATTACHMENT0,
-        texture.target, texture.handle,
+    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER,this._gl.COLOR_ATTACHMENT0,
+        texture.target,texture.handle,
         mipmapLevel || 0
     );
 };
 
 //webgl2 or drawbuffers extension supported
-ContextGL.prototype._setFramebufferColorAttachmentDrawBuffersSupported = function(texture, attachmentPoint, mipmapLevel){
+ContextGL.prototype._setFramebufferColorAttachmentDrawBuffersSupported = function(texture,attachmentPoint,mipmapLevel){
     attachmentPoint = attachmentPoint || 0;
     if((attachmentPoint + 1) > this.MAX_COLOR_ATTACHMENTS){
         throw new FramebufferError(`Invalid attachment point ${attachmentPoint}. Max attachment points supported: ${this.MAX_COLOR_ATTACHMENTS}.`);
     }
-    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.COLOR_ATTACHMENT0 + attachmentPoint,
-        texture.target, texture.handle,
+    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER,this._gl.COLOR_ATTACHMENT0 + attachmentPoint,
+        texture.target,texture.handle,
         mipmapLevel || 0
     );
 };
 
 ContextGL.prototype._checkFramebufferStatus = function(framebuffer){
-    if (!this._gl.isFramebuffer(framebuffer)) {
+    if(!this._gl.isFramebuffer(framebuffer)){
         throw new FramebufferError("Invalid framebuffer.");
     }
     const status = this._gl.checkFramebufferStatus(this._gl.FRAMEBUFFER);
@@ -5279,14 +5304,14 @@ ContextGL.prototype.popFramebufferBinding = function(){
 ContextGL.prototype.createFramebuffer = function(attachments_or_config){
     const id = this._uid++;
     const framebuffer = this._framebuffers[id] = {
-        handle: this._gl.createFramebuffer(),
+        handle : this._gl.createFramebuffer(),
         //color attachment textures or texture
         colorAttachments : [],
         attachmentPoints : [],
         //stencilDepth texture or renderbuffer
-        depthStencilAttachment: null,
+        depthStencilAttachment : null,
         //depth attachment texture or renderbuffer
-        depthAttachment: null,
+        depthAttachment : null,
         //delete attachments on dispose
         deleteAttachments : true
     };
@@ -5294,180 +5319,180 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
     attachments_or_config = attachments_or_config || Object.assign({},DefaultConfigFramebuffer);
 
     this.pushFramebufferBinding();
-        this.setFramebuffer(id);
+    this.setFramebuffer(id);
 
-        //CREATE FROM CONFIG
-        let width;
-        let height;
+    //CREATE FROM CONFIG
+    let width;
+    let height;
 
-        if(!Array.isArray(attachments_or_config)){
-            const config = validateOption(attachments_or_config,DefaultConfigFramebuffer);
+    if(!Array.isArray(attachments_or_config)){
+        const config = validateOption(attachments_or_config,DefaultConfigFramebuffer);
 
-            config.depthAttachmentFormat = config.depthAttachmentFormat || this.UNSIGNED_INT_24_8;
+        config.depthAttachmentFormat = config.depthAttachmentFormat || this.UNSIGNED_INT_24_8;
 
-            width = config.width === null ? this._gl.drawingBufferWidth : config.width;
-            height = config.height === null ? this._gl.drawingBufferHeight : config.height;
+        width = config.width === null ? this._gl.drawingBufferWidth : config.width;
+        height = config.height === null ? this._gl.drawingBufferHeight : config.height;
 
-            //Generate auto attachments
-            if(config.colorAttachments ||
-               config.depthAttachment ||
-               config.depthStencilAttachment){
-                //validate width
-                if(width <= 0 || height <= 0){
-                    throw new FramebufferError(`Invalid size ${width},${height}.`);
+        //Generate auto attachments
+        if(config.colorAttachments ||
+            config.depthAttachment ||
+            config.depthStencilAttachment){
+            //validate width
+            if(width <= 0 || height <= 0){
+                throw new FramebufferError(`Invalid size ${width},${height}.`);
+            }
+
+            //TODO add max attachments check
+            //Create auto color attachments
+            if(config.colorAttachments && config.numColorAttachments > 0){
+                const numAttachments = config.numColorAttachments === undefined ? 1 : config.numColorAttachments;
+                const config_ = {
+                    width : width,
+                    height : height,
+                    minMagFilter : this._gl.NEAREST,
+                    wrap : this._gl.CLAMP_TO_EDGE
+                    //format: null, //to be set
+                    //dataType : null //to be set
+                };
+                for(let i = 0; i < numAttachments; ++i){
+                    const textureId = this.createTexture2d(config_);
+                    const texture = this._textures[textureId];
+                    //throws if above MAX_COLOR_ATTACHMENTS
+                    this._setFramebufferColorAttachment(texture,i,0);
+                    framebuffer.colorAttachments.push(textureId);
+                    framebuffer.attachmentPoints.push(this._gl.COLOR_ATTACHMENT0 + i);
                 }
+                this._gl.drawBuffers(framebuffer.attachmentPoints);
+                this._checkFramebufferStatus(framebuffer.handle);
+            }
 
-                //TODO add max attachments check
-                //Create auto color attachments
-                if(config.colorAttachments && config.numColorAttachments > 0){
-                    const numAttachments = config.numColorAttachments === undefined ? 1 : config.numColorAttachments;
+            //Create auto depth attachments
+            if(config.depthAttachment || config.depthStencilAttachment){
+                let depthStencil_or_depthAttachment;
+
+                //create auto depth,stencil attachments via texture
+                if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DEPTH_TEXTURE){
                     const config_ = {
                         width : width,
                         height : height,
-                        minMagFilter : this._gl.NEAREST,
-                        wrap : this._gl.CLAMP_TO_EDGE
-                        //format: null, //to be set
-                        //dataType : null //to be set
+                        minFilter : this._gl.NEAREST,
+                        magFilter : this._gl.NEAREST,
+                        wrap : this._gl.CLAMP_TO_EDGE,
+                        format : null,
+                        dataType : null
                     };
-                    for(let i = 0; i < numAttachments; ++i){
-                        const textureId = this.createTexture2d(config_);
-                        const texture = this._textures[textureId];
-                        //throws if above MAX_COLOR_ATTACHMENTS
-                        this._setFramebufferColorAttachment(texture, i, 0);
-                        framebuffer.colorAttachments.push(textureId);
-                        framebuffer.attachmentPoints.push(this._gl.COLOR_ATTACHMENT0 + i);
-                    }
-                    this._gl.drawBuffers(framebuffer.attachmentPoints);
-                    this._checkFramebufferStatus(framebuffer.handle);
-                }
 
-                //Create auto depth attachments
-                if(config.depthAttachment || config.depthStencilAttachment){
-                    let depthStencil_or_depthAttachment;
-
-                    //create auto depth,stencil attachments via texture
-                    if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DEPTH_TEXTURE){
-                        const config_ = {
-                            width : width,
-                            height : height,
-                            minFilter : this._gl.NEAREST,
-                            magFilter : this._gl.NEAREST,
-                            wrap : this._gl.CLAMP_TO_EDGE,
-                            format : null,
-                            dataType : null
-                        };
-
-                        let attachmentPoint;
-                        //depth stencil attachment
-                        if(config.depthStencilAttachment){
-                            config_.format = this._gl.DEPTH_STENCIL;
-                            //depth bits >= 24, stencil bits >= 8
-                            config_.dataType = this.UNSIGNED_INT_24_8;
-                            attachmentPoint = this._gl.DEPTH_STENCIL_ATTACHMENT;
+                    let attachmentPoint;
+                    //depth stencil attachment
+                    if(config.depthStencilAttachment){
+                        config_.format = this._gl.DEPTH_STENCIL;
+                        //depth bits >= 24, stencil bits >= 8
+                        config_.dataType = this.UNSIGNED_INT_24_8;
+                        attachmentPoint = this._gl.DEPTH_STENCIL_ATTACHMENT;
                         //only only depth attachment
-                        }else{
-                            config_.format = this._gl.DEPTH_COMPONENT;
-                            //depth bits >= 16
-                            config_.dataType = config.depthAttachmentDataType || this._gl.UNSIGNED_INT;
-                            attachmentPoint = this._gl.DEPTH_ATTACHMENT;
-                        }
-                        //create and attach texture to framebuffer
-                        const textureId = this.createTexture2d(config_);
-                        const texture = this._textures[textureId];
-                        this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, attachmentPoint, this._gl.TEXTURE_2D,
-                            texture.handle, 0);
-                        this._checkFramebufferStatus(framebuffer.handle);
-                        depthStencil_or_depthAttachment = textureId;
+                    }else{
+                        config_.format = this._gl.DEPTH_COMPONENT;
+                        //depth bits >= 16
+                        config_.dataType = config.depthAttachmentDataType || this._gl.UNSIGNED_INT;
+                        attachmentPoint = this._gl.DEPTH_ATTACHMENT;
+                    }
+                    //create and attach texture to framebuffer
+                    const textureId = this.createTexture2d(config_);
+                    const texture = this._textures[textureId];
+                    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER,attachmentPoint,this._gl.TEXTURE_2D,
+                        texture.handle,0);
+                    this._checkFramebufferStatus(framebuffer.handle);
+                    depthStencil_or_depthAttachment = textureId;
 
                     //Create auto depth,stencil attachments via renderbuffers
-                    }else{
-                        //render buffer binding currently not managed,
-                        const renderbufferPrev = this._gl.getParameter(this._gl.RENDERBUFFER);
-                        const renderbufferId = this._createRenderbufferRAW();
-                        const renderbuffer = this._renderbuffers[renderbufferId];
+                }else{
+                    //render buffer binding currently not managed,
+                    const renderbufferPrev = this._gl.getParameter(this._gl.RENDERBUFFER);
+                    const renderbufferId = this._createRenderbufferRAW();
+                    const renderbuffer = this._renderbuffers[renderbufferId];
 
-                        let internalFormat;
-                        let attachmentPoint;
+                    let internalFormat;
+                    let attachmentPoint;
 
-                        //depth stencil attachment
-                        if(config.depthStencilAttachment){
-                            internalFormat = this._gl.DEPTH_STENCIL;
-                            attachmentPoint = this._gl.DEPTH_STENCIL_ATTACHMENT;
-                        //only depth attachment
-                        }else{
-                            internalFormat = this._gl.DEPTH_COMPONENT16;
-                            attachmentPoint = this._gl.DEPTH_ATTACHMENT;
-                        }
-
-                        this._gl.bindRenderbuffer(this._gl.RENDERBUFFER, renderbuffer);
-                        this._gl.renderbufferStorage(this._gl.RENDERBUFFER, internalFormat, width, height);
-                        this._gl.bindRenderbuffer(this._gl.RENDERBUFFER, renderbufferPrev);
-
-                        this._gl.framebufferRenderbuffer(this._gl.FRAMEBUFFER, attachmentPoint, this._gl.RENDERBUFFER, renderbuffer)
-
-                        this._checkFramebufferStatus(framebuffer.handle);
-                        depthStencil_or_depthAttachment = renderbufferId;
-                    }
-
+                    //depth stencil attachment
                     if(config.depthStencilAttachment){
-                        framebuffer.depthStencilAttachment = depthStencil_or_depthAttachment;
-                    } else {
-                        framebuffer.depthAttachment = depthStencil_or_depthAttachment;
+                        internalFormat = this._gl.DEPTH_STENCIL;
+                        attachmentPoint = this._gl.DEPTH_STENCIL_ATTACHMENT;
+                        //only depth attachment
+                    }else{
+                        internalFormat = this._gl.DEPTH_COMPONENT16;
+                        attachmentPoint = this._gl.DEPTH_ATTACHMENT;
                     }
+
+                    this._gl.bindRenderbuffer(this._gl.RENDERBUFFER,renderbuffer);
+                    this._gl.renderbufferStorage(this._gl.RENDERBUFFER,internalFormat,width,height);
+                    this._gl.bindRenderbuffer(this._gl.RENDERBUFFER,renderbufferPrev);
+
+                    this._gl.framebufferRenderbuffer(this._gl.FRAMEBUFFER,attachmentPoint,this._gl.RENDERBUFFER,renderbuffer)
+
+                    this._checkFramebufferStatus(framebuffer.handle);
+                    depthStencil_or_depthAttachment = renderbufferId;
+                }
+
+                if(config.depthStencilAttachment){
+                    framebuffer.depthStencilAttachment = depthStencil_or_depthAttachment;
+                }else{
+                    framebuffer.depthAttachment = depthStencil_or_depthAttachment;
                 }
             }
-            framebuffer.width = width;
-            framebuffer.height = height;
-            framebuffer.deleteAttachments = config.deleteAttachments;
+        }
+        framebuffer.width = width;
+        framebuffer.height = height;
+        framebuffer.deleteAttachments = config.deleteAttachments;
 
         //CREATE FROM SPECIFIC ATTACHMENTS
-        } else {
-            const attachments = attachments_or_config;
+    }else{
+        const attachments = attachments_or_config;
 
-            width = Number.MAX_VALUE;
-            height = Number.MAX_VALUE;
-            for(let i = 0;i < attachments.length; ++i){
-                const attachment = attachments[i];
+        width = Number.MAX_VALUE;
+        height = Number.MAX_VALUE;
+        for(let i = 0; i < attachments.length; ++i){
+            const attachment = attachments[i];
 
-                //validate attachment config
-                for(let key in attachment){
-                    if(key !== 'attachmentPoint' && key !== 'texture'){
-                        throw new FramebufferError(`Invalid attachment config key '${key}'.`);
-                    }
+            //validate attachment config
+            for(let key in attachment){
+                if(key !== 'attachmentPoint' && key !== 'texture'){
+                    throw new FramebufferError(`Invalid attachment config key '${key}'.`);
                 }
-
-                //texture missing
-                if(attachment.texture === undefined){
-                    throw new FramebufferError(`No attachment source defined at attachment index ${i}.`);
-                }
-                const textureId = attachment.texture;
-                const texture = this._textures[textureId];
-
-                //texture not existing
-                if(!texture){
-                    throw new FramebufferError(`Invalid texture passed`);
-                }
-                const attachmentPoint = attachment.attachmentPoint || 0;
-                const glAttachmentPoint = this._gl.COLOR_ATTACHMENT0 + attachmentPoint;
-
-                //attachmentPoint already taken, only validated with createFramebuffer
-                if(framebuffer.attachmentPoints.indexOf(glAttachmentPoint) !== -1){
-                    throw new FramebufferError(`Duplicate attachment point ${attachmentPoint} at attachment index ${i}.`)
-                }
-                //add attachment
-                this._setFramebufferColorAttachment(texture,attachmentPoint);
-                framebuffer.colorAttachments.push(textureId);
-                framebuffer.attachmentPoints.push(glAttachmentPoint);
-
-                //update fbo size
-                width  = Math.min(texture.width,width);
-                height = Math.min(texture.height,height);
             }
-            this._gl.drawBuffers(framebuffer.attachmentPoints);
-            this._checkFramebufferStatus(framebuffer.handle);
-            framebuffer.width = width;
-            framebuffer.height = height;
+
+            //texture missing
+            if(attachment.texture === undefined){
+                throw new FramebufferError(`No attachment source defined at attachment index ${i}.`);
+            }
+            const textureId = attachment.texture;
+            const texture = this._textures[textureId];
+
+            //texture not existing
+            if(!texture){
+                throw new FramebufferError(`Invalid texture passed`);
+            }
+            const attachmentPoint = attachment.attachmentPoint || 0;
+            const glAttachmentPoint = this._gl.COLOR_ATTACHMENT0 + attachmentPoint;
+
+            //attachmentPoint already taken, only validated with createFramebuffer
+            if(framebuffer.attachmentPoints.indexOf(glAttachmentPoint) !== -1){
+                throw new FramebufferError(`Duplicate attachment point ${attachmentPoint} at attachment index ${i}.`)
+            }
+            //add attachment
+            this._setFramebufferColorAttachment(texture,attachmentPoint);
+            framebuffer.colorAttachments.push(textureId);
+            framebuffer.attachmentPoints.push(glAttachmentPoint);
+
+            //update fbo size
+            width = Math.min(texture.width,width);
+            height = Math.min(texture.height,height);
         }
+        this._gl.drawBuffers(framebuffer.attachmentPoints);
+        this._checkFramebufferStatus(framebuffer.handle);
+        framebuffer.width = width;
+        framebuffer.height = height;
+    }
     this.popFramebufferBinding();
     return id;
 };
@@ -5480,7 +5505,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
 ContextGL.prototype.setFramebuffer = function(id){
     if(id === this._framebufferActive){
         return;
-    } else if(id === null || id === undefined){
+    }else if(id === null || id === undefined){
         this.invalidateFramebuffer();
         return;
     }
@@ -5488,7 +5513,7 @@ ContextGL.prototype.setFramebuffer = function(id){
     if(!framebuffer){
         throw new FramebufferError(strFramebufferInvalidId(id));
     }
-    this._gl.bindFramebuffer(this._gl.FRAMEBUFFER, framebuffer.handle);
+    this._gl.bindFramebuffer(this._gl.FRAMEBUFFER,framebuffer.handle);
     this._framebufferActive = id;
 };
 
@@ -5536,7 +5561,7 @@ ContextGL.prototype.setFramebufferSize2 = function(width,height){
         if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DEPTH_TEXTURE){
             this.setTexture2d(depth_or_depthStencil_attachment);
             this.setTexture2dSize2(width,height);
-        } else {
+        }else{
             //TODO: Add renderbuffer resize
         }
     }
@@ -5560,7 +5585,7 @@ ContextGL.prototype.setFramebufferSize2 = function(width,height){
  * @param attachmentPoint
  */
 //TODO: What happens to existing attachments?
-ContextGL.prototype.setFramebufferColorAttachment = function(texture, attachmentPoint){
+ContextGL.prototype.setFramebufferColorAttachment = function(texture,attachmentPoint){
     if(this._framebufferActive === null){
         throw new FramebufferError(STR_FRAME_BUFFER_ERROR_NOTHING_BOUND);
     }
@@ -5602,8 +5627,8 @@ ContextGL.prototype.getFramebufferColorAttachment = function(framebuffer_or_atta
         if(framebuffer){
             return this._getFramebufferAttachment(framebuffer);
 
-        //return active framebuffer color attachment selected
-        } else {
+            //return active framebuffer color attachment selected
+        }else{
             framebuffer = this._framebuffers[this._framebufferActive];
             if(!framebuffer){
                 throw new FramebufferError(STR_FRAME_BUFFER_ERROR_NOTHING_BOUND);
@@ -5638,16 +5663,16 @@ ContextGL.prototype.setFramebufferDepthAttachment = function(texture){
     const texture_ = this.getTexture2dInfo(texture);
     //validate data type
     if(texture_.dataType !== this._gl.UNSIGNED_SHORT &&
-       texture_.dataType !== this._gl.UNSIGNED_INT){
+        texture_.dataType !== this._gl.UNSIGNED_INT){
         throw new FramebufferError(`Unsupported depth texture data type '${glEnumToString(texture_.dataType)}'. Supported data types are ${glEnumToString(this._gl.UNSIGNED_SHORT)}, ${glEnumToString(this._gl.UNSIGNED_INT)}.`);
     }
     //validate format
     if(texture_.format !== this._gl.DEPTH_COMPONENT &&
-       texture_.internalFormat !== this._gl.DEPTH_COMPONENT){
+        texture_.internalFormat !== this._gl.DEPTH_COMPONENT){
         throw new FramebufferError(`Unsupported format '${glEnumToString(texture_.format)}','${glEnumToString(texture_.internalFormat)}'. Supported data format is ${glEnumToString(this._gl.DEPTH_COMPONENT)}`);
     }
     //attach
-    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.DEPTH_ATTACHMENT, this._gl.TEXTURE_2D,texture_.handle, 0);
+    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER,this._gl.DEPTH_ATTACHMENT,this._gl.TEXTURE_2D,texture_.handle,0);
     framebuffer.depthAttachment = texture;
 
     if(framebuffer.colorAttachments.length === 0){
@@ -5682,7 +5707,7 @@ ContextGL.prototype.setFramebufferDepthStencilAttachment = function(texture){
     }
     const framebuffer = this._framebuffers[this._framebufferActive];
     const texture_ = this.getTexture2dInfo(texture);
-    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER, this._gl.DEPTH_STENCIL_ATTACHMENT, this._gl.TEXTURE_2D,texture_.handle, 0);
+    this._gl.framebufferTexture2D(this._gl.FRAMEBUFFER,this._gl.DEPTH_STENCIL_ATTACHMENT,this._gl.TEXTURE_2D,texture_.handle,0);
     framebuffer.depthAttachment = texture;
 
     if(framebuffer.colorAttachments.length === 0){
@@ -5710,10 +5735,10 @@ ContextGL.prototype.getFramebufferDepthStencilAttachment = function(framebuffer)
 ContextGL.prototype.getFramebufferSize = function(id_or_out,out){
     if(id_or_out === undefined || Array.isArray(id_or_out)){
         const framebuffer = this.getFramebufferInfo(id_or_out);
-        return Vec2.set2(id_or_out || Vec2.create(), framebuffer.width, framebuffer.height);
+        return Vec2.set2(id_or_out || Vec2.create(),framebuffer.width,framebuffer.height);
     }
     const framebuffer = this.getFramebufferInfo(id_or_out);
-    return Vec2.set2(out || Vec2.create(), framebuffer.width, framebuffer.height);
+    return Vec2.set2(out || Vec2.create(),framebuffer.width,framebuffer.height);
 };
 
 /**
@@ -5752,7 +5777,7 @@ ContextGL.prototype.deleteFramebuffer = function(id){
         if(depthStencil_or_depthAttachment){
             if(this._glVersion === WEBGL_2_VERSION || this._glCapabilites.DEPTH_TEXTURE){
                 this._deleteTexture(depthStencil_or_depthAttachment)
-            } else {
+            }else{
                 this._deleteRenderbufferRAW(depthStencil_or_depthAttachment);
             }
         }
@@ -5790,8 +5815,8 @@ ContextGL.prototype.getFramebufferInfo = function(id){
         if(!framebuffer){
             throw new FramebufferError(STR_FRAME_BUFFER_ERROR_NOTHING_BOUND);
         }
-    //specific framebuffer
-    } else {
+        //specific framebuffer
+    }else{
         framebuffer = this._framebuffers[id];
         if(!framebuffer){
             throw new FramebufferError(strFramebufferInvalidId(id));
@@ -5806,7 +5831,7 @@ ContextGL.prototype.getFramebufferInfo = function(id){
 
 // internal
 
-ContextGL.prototype._getBlitFramebufferInfo = function(framebuffer, mask_or_attachmentPoint, out){
+ContextGL.prototype._getBlitFramebufferInfo = function(framebuffer,mask_or_attachmentPoint,out){
     if(framebuffer === undefined){
         throw new Error('No framebuffer specified.');
     }
@@ -5847,10 +5872,8 @@ ContextGL.prototype._getBlitFramebufferInfo = function(framebuffer, mask_or_atta
     return out;
 };
 
-ContextGL.prototype._blitFramebufferAttachmentToScreen = function(
-    attachment,
-    srcOffsetx,srcOffsety,srcScalex,srcScaley,dstx,dsty,dstWidth,dstHeight
-){
+ContextGL.prototype._blitFramebufferAttachmentToScreen = function(attachment,
+                                                                  srcOffsetx,srcOffsety,srcScalex,srcScaley,dstx,dsty,dstWidth,dstHeight){
     const state =
         this.VERTEX_ARRAY_BINDING_BIT |
         this.ARRAY_BUFFER_BINDING_BIT |
@@ -5861,13 +5884,13 @@ ContextGL.prototype._blitFramebufferAttachmentToScreen = function(
         this.VIEWPORT_BIT;
 
     this.pushState(state);
-        this.setProgram(this._programBlit);
-        this.setProgramUniform('uOffsetScale',srcOffsetx,srcOffsety,srcScalex,srcScaley);
-        this.setDepthTest(false);
-        this.setViewport4(dstx,dsty,dstWidth,dstHeight);
-        this.setTexture2d(attachment);
-        this.setVertexArray(this._vertexArrayBlitRect);
-        this.drawArrays(this._gl.TRIANGLE_FAN,0,4);
+    this.setProgram(this._programBlit);
+    this.setProgramUniform('uOffsetScale',srcOffsetx,srcOffsety,srcScalex,srcScaley);
+    this.setDepthTest(false);
+    this.setViewport4(dstx,dsty,dstWidth,dstHeight);
+    this.setTexture2d(attachment);
+    this.setVertexArray(this._vertexArrayBlitRect);
+    this.drawArrays(this._gl.TRIANGLE_FAN,0,4);
     this.popState(state);
 };
 
@@ -5912,15 +5935,15 @@ ContextGL.prototype.blitFramebufferToScreen = function(framebuffer,srcBounds,dst
     if(mask_or_attachmentPoint === undefined){
         if(Array.isArray(dstBounds_or_mask_or_attachmentPoint)){
             dstBounds = dstBounds_or_mask_or_attachmentPoint;
-        } else{
+        }else{
             dstBounds = srcBounds;
             mask_or_attachmentPoint = dstBounds_or_mask_or_attachmentPoint || 0;
         }
     }
     this.blitFramebufferToScreen2(
         framebuffer,
-        srcBounds[0], srcBounds[1], srcBounds[0] + srcBounds[2], srcBounds[1] + srcBounds[3],
-        dstBounds[0], dstBounds[1], dstBounds[0] + dstBounds[2], dstBounds[1] + dstBounds[3],
+        srcBounds[0],srcBounds[1],srcBounds[0] + srcBounds[2],srcBounds[1] + srcBounds[3],
+        dstBounds[0],dstBounds[1],dstBounds[0] + dstBounds[2],dstBounds[1] + dstBounds[3],
         mask_or_attachmentPoint
     );
 };
@@ -5954,8 +5977,8 @@ ContextGL.prototype.blitFramebufferToScreen2 = function(framebuffer,srcx0,srcy0,
 
     const srcOffsetx = srcx0 / width;
     const srcOffsety = srcy0 / height;
-    const srcScalex  = srcWidth / width;
-    const srcScaley  = srcHeight / height;
+    const srcScalex = srcWidth / width;
+    const srcScaley = srcHeight / height;
 
     this._blitFramebufferAttachmentToScreen(
         attachment,
@@ -5968,20 +5991,14 @@ ContextGL.prototype.blitFramebufferToScreen2 = function(framebuffer,srcx0,srcy0,
 // DRAW BUFFERS
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-ContextGL.prototype._drawBuffersSupported = function(buffers){
-    this._gl.drawBuffers(buffers);
-};
-
-ContextGL.prototype._drawBuffersNotSupported = function(buffers){
-    throw new Error('WebGL drawBuffers not supported.');
-};
-
 /**
  * Defines an array of buffers into which outputs from the fragment shader data will be written.
  * @category Framebuffer
  * @param buffers
  */
-ContextGL.prototype.drawBuffers = function(buffers){};
+ContextGL.prototype.drawBuffers = function(buffers){
+    this._gl.drawBuffers(buffers);
+};
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // MATRIX STACK
@@ -6030,7 +6047,7 @@ ContextGL.prototype.getProjectionMatrixStack = function(out){
  * @param [out]
  */
 ContextGL.prototype.getViewMatrixStack = function(out){
-    return this._getMatrixStack(MATRIX_VIEW_BIT, out || []);
+    return this._getMatrixStack(MATRIX_VIEW_BIT,out || []);
 };
 
 /**
@@ -6064,7 +6081,7 @@ ContextGL.prototype.setWindowMatrices2 = function(width,height,topleft){
     this.loadIdentities();
     if(topleft){
         Mat44.ortho(this._matrix[MATRIX_PROJECTION],0,width,height,0,-1,1);
-    } else {
+    }else{
         Mat44.ortho(this._matrix[MATRIX_PROJECTION],0,width,0,height,-1,1);
     }
 };
@@ -6373,10 +6390,10 @@ ContextGL.prototype.setAutoUploadModelMatrix = function(enable){
 ContextGL.prototype._updateMatrixUniforms = function(){
     //update normal matrix from view and model matrix
     if(this._matrixTypesByUniformInProgramToUpdate[ProgramMatrixUniform.NORMAL_MATRIX] !== undefined &&
-       (!this._matrixSend[MATRIX_VIEW] || !this._matrixSend[MATRIX_MODEL])){
+        (!this._matrixSend[MATRIX_VIEW] || !this._matrixSend[MATRIX_MODEL])){
 
         const matrix44Temp = Mat44.set(this._matrix44Temp,this._matrix[MATRIX_VIEW]);
-        Mat44.mult(matrix44Temp, this._matrix[MATRIX_MODEL]);
+        Mat44.mult(matrix44Temp,this._matrix[MATRIX_MODEL]);
 
         Mat44.invert(matrix44Temp);
         Mat44.transpose(matrix44Temp);
@@ -6386,9 +6403,9 @@ ContextGL.prototype._updateMatrixUniforms = function(){
     }
 
     //update inverse view matrix from view matrix
-    if (this._matrixTypesByUniformInProgramToUpdate[ProgramMatrixUniform.INVERSE_VIEW_MATRIX] !== undefined &&
-        (!this._matrixSend[MATRIX_VIEW])) {
-        Mat44.invert(Mat44.set(this._matrix[MATRIX_INVERSE_VIEW], this._matrix[MATRIX_VIEW]));
+    if(this._matrixTypesByUniformInProgramToUpdate[ProgramMatrixUniform.INVERSE_VIEW_MATRIX] !== undefined &&
+        (!this._matrixSend[MATRIX_VIEW])){
+        Mat44.invert(Mat44.set(this._matrix[MATRIX_INVERSE_VIEW],this._matrix[MATRIX_VIEW]));
         //flag to send
         this._matrixSend[MATRIX_INVERSE_VIEW] = false;
     }
@@ -6399,7 +6416,7 @@ ContextGL.prototype._updateMatrixUniforms = function(){
         if(!this._matrixSend[matrixType]){
             //convert Mat44 to Float32Array depending on type 4x4 or 3x3 matrix
             let matrix44TempF32 = this._matrixTempByTypeMap[matrixType];
-                matrix44TempF32.set(this._matrix[matrixType]);
+            matrix44TempF32.set(this._matrix[matrixType]);
 
             //update program uniform
             this._setProgramUniform(uniformName,matrix44TempF32);
@@ -6441,9 +6458,9 @@ ContextGL.prototype.drawArraysInstanced = function(mode,first,count,primcount){
  * @param count
  * @param offset
  */
-ContextGL.prototype.drawElements = function(mode, count, offset){
+ContextGL.prototype.drawElements = function(mode,count,offset){
     this._updateMatrixUniforms();
-    this._gl.drawElements(mode, count, this._vertexArrayIndexBufferDataType, offset);
+    this._gl.drawElements(mode,count,this._vertexArrayIndexBufferDataType,offset);
 };
 
 /**
@@ -6456,7 +6473,7 @@ ContextGL.prototype.drawElements = function(mode, count, offset){
  */
 ContextGL.prototype.drawElementsInstanced = function(mode,count,offset,primcount){
     this._updateMatrixUniforms();
-    this._gl.drawElementsInstanced(mode, count, this._vertexArrayIndexBufferDataType, offset, primcount)
+    this._gl.drawElementsInstanced(mode,count,this._vertexArrayIndexBufferDataType,offset,primcount)
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
@@ -6480,7 +6497,8 @@ ContextGL.prototype.clear = function(mask){
  * Returns a copy of the overall initial default state.
  * @category State Stack
  */
-ContextGL.prototype.getDefaultState = function(){};
+ContextGL.prototype.getDefaultState = function(){
+};
 
 /**
  * Saves all or a selection of states.
@@ -6728,16 +6746,16 @@ ContextGL.prototype.getStateDescription = function(mask){
     let state = this.getState(mask);
     for(let p in state){
         if(p === 'programBinding' ||
-           p === 'vertexBufferBinding' ||
-           p === 'indexBufferBinding' ||
-           p === 'vertexArrayBinding' ||
-           p === 'textureBinding' ||
-           p === 'framebufferBinding'){
+            p === 'vertexBufferBinding' ||
+            p === 'indexBufferBinding' ||
+            p === 'vertexArrayBinding' ||
+            p === 'textureBinding' ||
+            p === 'framebufferBinding'){
             continue;
         }
         if(p === 'matrixProjection' ||
-           p === 'matrixView' ||
-           p === 'matrixModel'){
+            p === 'matrixView' ||
+            p === 'matrixModel'){
             const item = state[p];
             state[p] = (item && typeof item === 'object') ? '[' + item.toString() + ']' : item;
             continue;
