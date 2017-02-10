@@ -712,7 +712,7 @@ function ContextGL(canvas,options){
 
     this.BLEND_BIT = BLEND_BIT;
     this._blendState = new BlendState(
-        this._blend = this._gl.getParameter(this._gl.BLEND),
+        this._gl.getParameter(this._gl.BLEND),
         glObjToArray(this._gl.getParameter(this._gl.BLEND_COLOR)).slice(0,4),[
             this._gl.getParameter(this._gl.BLEND_EQUATION_RGB),
             this._gl.getParameter(this._gl.BLEND_EQUATION_ALPHA)
