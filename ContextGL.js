@@ -3664,15 +3664,6 @@ ContextGL.prototype.getVertexBufferDataLength = function(id){
 };
 
 /**
- * Sets the usage pattern of the vertex buffer data store.
- * @category Buffer
- * @param usage
- */
-ContextGL.prototype.setVertexBufferUsage = function(usage){
-    this._setBufferUsage(this._gl.ARRAY_BUFFER,usage);
-};
-
-/**
  * Returns the usage pattern of the vertex data store set.
  * @category Buffer
  * @params {Number} [id] - Optional specific vertex buffer
