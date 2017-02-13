@@ -440,6 +440,10 @@ BlendState.createFromGL = function(gl){
     );
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
+// TEXTURE STATE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
 /**
  * Texture binding representation
  * @param textureActive
@@ -450,10 +454,6 @@ export function TextureState(textureActive,textureUnitActive){
     this.textureActive = textureActive.slice(0);
     this.textureUnitActive = textureUnitActive;
 }
-
-/*--------------------------------------------------------------------------------------------------------------------*/
-// TEXTURE STATE
-/*--------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * Returns a copy of the state.
@@ -471,6 +471,37 @@ TextureState.prototype.getDescription = function(){
     return {
         textureActive : arrStr(this.textureActive),
         textureUnitActive : this.textureUnitActive
+    };
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
+// BUFFER BINDING STATE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+/**
+ * Buffer binding representation.
+ * @param binding
+ * @constructor
+ */
+export function BufferBindingState(binding){
+    this.binding = binding;
+}
+
+/**
+ * Returns a copy of the state.
+ * @return {BufferBindingState}
+ */
+BufferBindingState.prototype.copy = function(){
+    return new BufferBindingState(this.binding);
+};
+
+/**
+ * Returns a string description of the state.
+ * @return {string}
+ */
+BufferBindingState.prototype.getDescription = function(){
+    return {
+        binding : this.binding
     };
 };
 
