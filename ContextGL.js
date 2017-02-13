@@ -3883,10 +3883,6 @@ ContextGL.prototype.getUniformBufferData = function(id){
     return this.getUniformBufferInfo(id).data;
 };
 
-ContextGL.prototype.setUniformBufferUsage = function(usage){
-    this._setBufferUsage(this._gl.UNIFORM_BUFFER,usage);
-};
-
 ContextGL.prototype.getUniformBufferUsage = function(id){
     return this.getUniformBufferInfo(id).usage;
 };
