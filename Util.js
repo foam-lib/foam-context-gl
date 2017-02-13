@@ -1,3 +1,8 @@
+//Safari does not expose static WebGLRenderingContext constants
+//TODO: remove and get internally needed static constants from instance,
+//this should not be managed manually
+import * as WebGLStaticConstants from  './Constants';
+
 /**
  * Converts a GL parameter array object to a js array.
  * @param obj
@@ -28,4 +33,9 @@ export function getWebGLRenderingContext(canvas,version,options){
         }
     }
     return null;
+}
+
+export const GLEnumStringMap = {};
+for(let key in WebGLStaticConstants){
+    GLEnumStringMap[WebGLStaticConstants[key]] = key;
 }
