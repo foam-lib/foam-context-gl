@@ -3293,7 +3293,7 @@ ContextGL.prototype.setProgramUniformGroup = function(group){
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-// BUFFER
+// BUFFER - SHARED
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 // ERROR
@@ -3545,7 +3545,9 @@ ContextGL.prototype.popBufferBinding = function(){
     this.setIndexBuffer(this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER].pop());
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
 // VERTEX BUFFER
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * Creates a new vertex buffer.
@@ -3683,7 +3685,9 @@ ContextGL.prototype.getVertexBufferInfo = function(id){
     return this._getBufferInfo(this._gl.ARRAY_BUFFER,id);
 };
 
+/*--------------------------------------------------------------------------------------------------------------------*/
 // INDEX BUFFER
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 /**
  * Creates a new index buffer.
@@ -3828,7 +3832,9 @@ ContextGL.prototype.getIndexBufferInfo = function(id){
     return this._getBufferInfo(this._gl.ELEMENT_ARRAY_BUFFER,id);
 };
 
-//UNIFORM BUFFER
+/*--------------------------------------------------------------------------------------------------------------------*/
+// UNIFROM BUFFER
+/*--------------------------------------------------------------------------------------------------------------------*/
 
 ContextGL.prototype.createUniformBuffer = function(size_or_data,usage,preserveData){
     return this._createBuffer(this._gl.UNIFORM_BUFFER,size_or_data,usage,preserveData);
