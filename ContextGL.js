@@ -25,34 +25,18 @@ import {
     VertexArrayBindingState
 } from './State';
 
-//Safari does not expose static WebGLRenderingContext constants
-//TODO: remove and get internally needed static constants from instance,
-//this should not be managed manually
-import * as WebGLStaticConstants from  './Constants';
+import {
+    glObjToArray,
+    getWebGLRenderingContext,
+    GLEnumStringMap
+} from './Util';
 
 /*--------------------------------------------------------------------------------------------------------------------*/
 // DEFINES
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-const WEBGL_1_CONTEXT_IDS = ['webkit-3d','webgl','experimental-webgl'];
-const WEBGL_2_CONTEXT_IDS = ['webgl2'];
 const WEBGL_1_VERSION = 1;
 const WEBGL_2_VERSION = 2;
-
-function getWebGLRenderingContext(canvas,contextIds,options){
-    for(let i = 0; i < contextIds.length; ++i){
-        const gl = canvas.getContext(contextIds[i],options);
-        if(gl){
-            return gl;
-        }
-    }
-    return null;
-}
-
-const GLEnumStringMap = {};
-for(let key in WebGLStaticConstants){
-    GLEnumStringMap[WebGLStaticConstants[key]] = key;
-}
 
 const INVALID_ID = null;
 
@@ -274,21 +258,6 @@ function strWrongNumArgs(has,expectedMust,expectedOpt){
     return `Wrong number of arguments. Expected ${expectedMust + expectedOpt === undefined ? ' or ' + expectedOpt : ''}, has ${has}.`;
 }
 
-/**
- * Converts a GL parameter array object to a js array.
- * @param obj
- * @returns {*}
- */
-export function glObjToArray(obj){
-    if(Array.isArray(obj)){
-        return obj;
-    }
-    var out = new Array(Object.keys(obj).length);
-    for(var entry in obj){
-        out[+entry] = obj[entry];
-    }
-    return out;
-}
 
 /**
  * Returns a string representation of a gl constant / enum.
@@ -346,15 +315,15 @@ function ContextGL(canvas,options){
     switch(options.version){
         case WEBGL_2_VERSION:
             this._glVersion = WEBGL_2_VERSION;
-            this._gl = getWebGLRenderingContext(canvas,WEBGL_2_CONTEXT_IDS,options);
+            this._gl = getWebGLRenderingContext(canvas,this._glVersion,options);
             if(!this._gl && options.fallback){
                 this._glVersion = WEBGL_1_VERSION;
-                this._gl = getWebGLRenderingContext(canvas,WEBGL_1_CONTEXT_IDS,options);
+                this._gl = getWebGLRenderingContext(canvas,this._glVersion,options);
             }
             break;
         case WEBGL_1_VERSION:
             this._glVersion = WEBGL_1_VERSION;
-            this._gl = getWebGLRenderingContext(canvas,WEBGL_1_CONTEXT_IDS,options);
+            this._gl = getWebGLRenderingContext(canvas,this._glVersion,options);
             break;
         default:
             throw new Error(`Invalid webgl version ${options.version}.`);
@@ -589,7 +558,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.VIEWPORT_BIT = VIEWPORT_BIT;
-    this._viewportState = new ViewportState(glObjToArray(this._gl.getParameter(this._gl.VIEWPORT)).slice(0,4));
+    this._viewportState = ViewportState.createFromGL(this._gl);
     this._viewportStack = [];
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -597,10 +566,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.CULLING_BIT = CULLING_BIT;
-    this._cullingState = new CullingState(
-        this._gl.getParameter(this._gl.CULL_FACE),
-        this._gl.getParameter(this._gl.CULL_FACE_MODE)
-    );
+    this._cullingState = CullingState.createFromGL(this._gl);
     this._cullingStateDefault = this._cullingState.copy();
     this._cullStack = [];
 
@@ -613,10 +579,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.SCISSOR_BIT = SCISSOR_BIT;
-    this._scissorState = new ScissorState(
-        this._gl.getParameter(this._gl.SCISSOR_TEST),
-        glObjToArray(this._gl.getParameter(this._gl.SCISSOR_BOX)).slice(0,4)
-    );
+    this._scissorState = ScissorState.createFromGL(this._gl);
     this._scissorStateDefault = this._scissorState.copy();
     this._scissorStack = [];
 
@@ -625,27 +588,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.STENCIL_BIT = STENCIL_BIT;
-    this._stencilState = new StencilState(
-        this._gl.getParameter(this._gl.STENCIL_TEST),[
-            //front
-            this._gl.getParameter(this._gl.STENCIL_FUNC),
-            this._gl.getParameter(this._gl.STENCIL_REF),
-            this._gl.getParameter(this._gl.STENCIL_VALUE_MASK),
-            //back
-            this._gl.getParameter(this._gl.STENCIL_FUNC),
-            this._gl.getParameter(this._gl.STENCIL_REF),
-            this._gl.getParameter(this._gl.STENCIL_VALUE_MASK)
-        ],[
-            //front
-            this._gl.getParameter(this._gl.STENCIL_FAIL),
-            this._gl.getParameter(this._gl.STENCIL_PASS_DEPTH_FAIL),
-            this._gl.getParameter(this._gl.STENCIL_PASS_DEPTH_PASS),
-            //back
-            this._gl.getParameter(this._gl.STENCIL_FAIL),
-            this._gl.getParameter(this._gl.STENCIL_PASS_DEPTH_FAIL),
-            this._gl.getParameter(this._gl.STENCIL_PASS_DEPTH_PASS)
-        ]
-    );
+    this._stencilState = StencilState.createFromGL(this._gl);
     this._stencilStateDefault = this._stencilState.copy();
     this._stencilStack = [];
 
@@ -672,16 +615,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.DEPTH_BIT = DEPTH_BIT;
-    this._depthState = new DepthState(
-        this._gl.getParameter(this._gl.DEPTH_TEST),
-        this._gl.getParameter(this._gl.DEPTH_WRITEMASK),
-        this._gl.getParameter(this._gl.DEPTH_FUNC),
-        this._gl.getParameter(this._gl.DEPTH_CLEAR_VALUE),
-        glObjToArray(this._gl.getParameter(this._gl.DEPTH_RANGE)).slice(0,2),[
-            this._gl.getParameter(this._gl.POLYGON_OFFSET_FACTOR),
-            this._gl.getParameter(this._gl.POLYGON_OFFSET_UNITS)
-        ]
-    );
+    this._depthState = DepthState.createFromGL(this._gl);
     this._depthStateDefault = this._depthState.copy();
     this._depthStack = [];
 
@@ -690,10 +624,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.COLOR_BIT = COLOR_BIT;
-    this._colorState = new ColorState(
-        glObjToArray(this._gl.getParameter(this._gl.COLOR_CLEAR_VALUE)),
-        glObjToArray(this._gl.getParameter(this._gl.COLOR_WRITEMASK))
-    );
+    this._colorState = ColorState.createFromGL(this._gl);
     this._colorStateDefault = this._colorState.copy();
     this._colorStack = [];
 
@@ -702,7 +633,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.LINE_WIDTH_BIT = LINE_WIDTH_BIT;
-    this._lineWidthState = new LineWidthState(this._gl.getParameter(this._gl.LINE_WIDTH));
+    this._lineWidthState = LineWidthState.createFromGL(this._gl);
     this._lineWidthStateDefault = this._lineWidthState.copy();
     this._lineWidthStack = [];
 
@@ -711,18 +642,7 @@ function ContextGL(canvas,options){
     /*----------------------------------------------------------------------------------------------------------------*/
 
     this.BLEND_BIT = BLEND_BIT;
-    this._blendState = new BlendState(
-        this._gl.getParameter(this._gl.BLEND),
-        glObjToArray(this._gl.getParameter(this._gl.BLEND_COLOR)).slice(0,4),[
-            this._gl.getParameter(this._gl.BLEND_EQUATION_RGB),
-            this._gl.getParameter(this._gl.BLEND_EQUATION_ALPHA)
-        ],[
-            this._gl.getParameter(this._gl.BLEND_SRC_RGB),
-            this._gl.getParameter(this._gl.BLEND_DST_RGB),
-            this._gl.getParameter(this._gl.BLEND_SRC_ALPHA),
-            this._gl.getParameter(this._gl.BLEND_DST_ALPHA)
-        ]
-    );
+    this._blendState = BlendState.createFromGL(this._gl);
     this._blendStateDefault = this._blendState.copy();
     this._blendStack = [];
 
