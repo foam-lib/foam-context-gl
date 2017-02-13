@@ -506,6 +506,26 @@ BufferBindingState.prototype.getDescription = function(){
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
+// UNIFORM BUFFER BINDING STATE
+/*--------------------------------------------------------------------------------------------------------------------*/
+
+export function UniformBufferBindingState(bindings,unitActive){
+    this.bindings = bindings.slice(0);
+    this.unitActive = unitActive;
+}
+
+UniformBufferBindingState.prototype.copy = function(){
+    return new UniformBufferBindingState(this.bindings,this.unitActive);
+};
+
+UniformBufferBindingState.prototype.getDescription = function(){
+    return {
+        bindings : arrStr(this.bindings),
+        unitActive : this.unitActive
+    };
+};
+
+/*--------------------------------------------------------------------------------------------------------------------*/
 // VERTEX ARRAY BINDING STATE
 /*--------------------------------------------------------------------------------------------------------------------*/
 
