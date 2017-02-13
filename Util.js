@@ -13,3 +13,19 @@ export function glObjToArray(obj){
     }
     return out;
 }
+
+const WEBGL_CONTEXT_IDS = [
+    ['webkit-3d','webgl','experimental-webgl'],
+    ['webgl2']
+];
+
+export function getWebGLRenderingContext(canvas,version,options){
+    const ids = WEBGL_CONTEXT_IDS[version-1];
+    for(let i = 0; i < ids.length; ++i){
+        const gl = canvas.getContext(ids[i],options);
+        if(gl){
+            return gl;
+        }
+    }
+    return null;
+}
