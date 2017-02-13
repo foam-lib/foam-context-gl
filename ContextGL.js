@@ -3787,14 +3787,6 @@ ContextGL.prototype.getIndexBufferData = function(id){
     return this.getIndexBufferInfo(id).data;
 };
 
-/**
- * Sets the usage pattern of the index buffer data store.
- * @category Buffer
- * @param usage
- */
-ContextGL.prototype.setIndexBufferUsage = function(usage){
-    this._setBufferUsage(this._gl.ELEMENT_ARRAY_BUFFER,usage);
-};
 
 /**
  * Returns the usage pattern of the index data store set.
