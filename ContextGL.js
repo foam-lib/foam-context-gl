@@ -23,6 +23,7 @@ import {
     DrawState,
     TextureState,
     BufferBindingState,
+    UniformBufferBindingState,
     VertexArrayBindingState
 } from './State';
 
@@ -690,16 +691,6 @@ function ContextGL(canvas,config){
     this.MAX_VARYING_VECTORS = this._gl.getParameter(this._gl.MAX_VARYING_VECTORS);
     this.MAX_FRAGMENT_UNIFORM_VECTORS = this._gl.getParameter(this._gl.MAX_FRAGMENT_UNIFORM_VECTORS);
 
-    if(this._glVersion == WEBGL_2_VERSION){
-        this.MAX_VERTEX_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_VERTEX_UNIFORM_BLOCKS);
-        this.MAX_FRAGMENT_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_FRAGMENT_UNIFORM_BLOCKS);
-        this.MAX_COMBINED_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_COMBINED_UNIFORM_BLOCKS);
-        this.MAX_UNIFORM_BUFFER_BINDINGS = this._gl.getParameter(this._gl.MAX_UNIFORM_BUFFER_BINDINGS);
-        this.MAX_UNIFORM_BLOCK_SIZE = this._gl.getParameter(this._gl.MAX_UNIFORM_BLOCK_SIZE);
-        this.MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS = this._gl.getParameter(this._gl.MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS);
-        this.MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS = this._gl.getParameter(this._gl.MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS);
-    }
-
     console.assert(this.getGLError());
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -708,22 +699,25 @@ function ContextGL(canvas,config){
 
     this.ARRAY_BUFFER_BINDING_BIT = ARRAY_BUFFER_BINDING_BIT;
     this.ELEMENT_ARRAY_BUFFER_BINDING_BIT = ELEMENT_ARRAY_BUFFER_BINDING_BIT;
+
+    this.ARRAY_BUFFER = this._gl.ARRAY_BUFFER;
+    this.ELEMENT_ARRAY_BUFFER = this._gl.ELEMENT_ARRAY_BUFFER;
+
     this._buffers = {};
-    this._buffers[this._gl.ARRAY_BUFFER] = {};
-    this._buffers[this._gl.ELEMENT_ARRAY_BUFFER] = {};
     this._bufferStack = {};
-    this._bufferStack[this._gl.ARRAY_BUFFER] = [];
-    this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER] = [];
     this._bufferState = {};
+
+    this._buffers[this._gl.ARRAY_BUFFER] = {};
+    this._bufferStack[this._gl.ARRAY_BUFFER] = [];
     this._bufferState[this._gl.ARRAY_BUFFER] = new BufferBindingState(INVALID_ID);
+
+    this._buffers[this._gl.ELEMENT_ARRAY_BUFFER] = {};
+    this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER] = [];
     this._bufferState[this._gl.ELEMENT_ARRAY_BUFFER] = new BufferBindingState(INVALID_ID);
 
     this.STATIC_DRAW = this._gl.STATIC_DRAW;
     this.DYNAMIC_DRAW = this._gl.DYNAMIC_DRAW;
     this.STREAM_DRAW = this._gl.STREAM_DRAW;
-
-    this.ARRAY_BUFFER = this._gl.ARRAY_BUFFER;
-    this.ELEMENT_ARRAY_BUFFER = this._gl.ELEMENT_ARRAY_BUFFER;
 
     this.BYTE = this._gl.BYTE;
     this.UNSIGNED_BYTE = this._gl.UNSIGNED_BYTE;
@@ -733,32 +727,47 @@ function ContextGL(canvas,config){
     this.UNSIGNED_INT = this._gl.UNSIGNED_INT;
     this.FLOAT = this._gl.FLOAT;
 
+    /*----------------------------------------------------------------------------------------------------------------*/
+    // Uniform Buffers
+    /*----------------------------------------------------------------------------------------------------------------*/
+
     if(this._glVersion == WEBGL_2_VERSION){
         this.UNIFORM_BUFFER_BINDING_BIT = UNIFORM_BUFFER_BINDING_BIT;
+        this.UNIFORM_BUFFER = this._gl.UNIFORM_BUFFER;
+
+        this.MAX_VERTEX_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_VERTEX_UNIFORM_BLOCKS);
+        this.MAX_FRAGMENT_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_FRAGMENT_UNIFORM_BLOCKS);
+        this.MAX_COMBINED_UNIFORM_BLOCKS = this._gl.getParameter(this._gl.MAX_COMBINED_UNIFORM_BLOCKS);
+        this.MAX_UNIFORM_BUFFER_BINDINGS = this._gl.getParameter(this._gl.MAX_UNIFORM_BUFFER_BINDINGS);
+        this.MAX_UNIFORM_BLOCK_SIZE = this._gl.getParameter(this._gl.MAX_UNIFORM_BLOCK_SIZE);
+        this.MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS = this._gl.getParameter(this._gl.MAX_COMBINED_VERTEX_UNIFORM_COMPONENTS);
+        this.MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS = this._gl.getParameter(this._gl.MAX_COMBINED_FRAGMENT_UNIFORM_COMPONENTS);
+
         this._buffers[this._gl.UNIFORM_BUFFER] = {};
-        this._bufferState[this._gl.UNIFORM_BUFFER] = new BufferBindingState();
         this._bufferStack[this._gl.UNIFORM_BUFFER] = [];
-        //TODO: move to state
-        this._uniformBufferBindingActive = new Array(this.MAX_UNIFORM_BUFFER_BINDINGS);
-        for(let i = 0; i < this._uniformBufferBindingActive.length; ++i){
-            this._uniformBufferBindingActive[i] = INVALID_ID;
-        }
-    }else{
+        this._bufferState[this._gl.UNIFORM_BUFFER] = new UniformBufferBindingState((()=>{
+            const bindings = new Array(this.MAX_UNIFORM_BUFFER_BINDINGS);
+            for(let i = 0; i < this.MAX_UNIFORM_BUFFER_BINDINGS; ++i){
+                bindings[i] = INVALID_ID;
+            }
+            return bindings;
+        })(),0);
+    }
+    //webgl 1 - uniform buffers not supported
+    else {
         this.createUniformBuffer =
-            this.deleteUniformBuffer =
-                this.setUniformBuffer =
-                    this.getUniformBuffer =
-                        this.setUniformBufferData =
-                            this.setUniformBufferSubData =
-                                this.updateUniformBufferData =
-                                    this.setUniformBufferUsage =
-                                        this.getUniformBufferUsage =
-                                            this.getUniformBufferDataLength =
-                                                this.getUniformBufferDataByteLength =
-                                                    this.getUniformBufferInfo =
-                                                        this.setProgramUniformBlock = ()=>{
-                                                            throw new Error('Uniform buffers not supported in WebGL 1.');
-                                                        };
+        this.deleteUniformBuffer =
+        this.setUniformBuffer =
+        this.getUniformBuffer =
+        this.setUniformBufferData =
+        this.setUniformBufferSubData =
+        this.updateUniformBufferData =
+        this.getUniformBufferDataLength =
+        this.getUniformBufferDataByteLength =
+        this.getUniformBufferInfo =
+        this.setProgramUniformBlock = ()=>{
+            throw new Error('Uniform buffers not supported in WebGL 1.');
+        }
     }
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -3879,74 +3888,147 @@ ContextGL.prototype.getIndexBufferInfo = function(id){
 };
 
 /*--------------------------------------------------------------------------------------------------------------------*/
-// UNIFROM BUFFER
+// UNIFORM BUFFER
 /*--------------------------------------------------------------------------------------------------------------------*/
 
+/**
+ * Creates a new uniform buffer.
+ * @category Buffer
+ * @param size_or_data
+ * @param usage
+ * @param preserveData
+ */
 ContextGL.prototype.createUniformBuffer = function(size_or_data,usage,preserveData){
     return this._createBuffer(this._gl.UNIFORM_BUFFER,size_or_data,usage,preserveData);
 };
 
+/**
+ * Deletes a uniform buffer.
+ * @param id
+ */
 ContextGL.prototype.deleteUniformBuffer = function(id){
     this._deleteBuffer(this._gl.UNIFORM_BUFFER,id);
 };
 
+/**
+ * Sets the active uniform buffer.
+ * @param id
+ * @param bindingPoint
+ */
 ContextGL.prototype.setUniformBuffer = function(id,bindingPoint){
-    this._setBuffer(this._gl.UNIFORM_BUFFER,id);
     bindingPoint = bindingPoint || 0;
-    if(this._uniformBufferBindingActive[bindingPoint] === undefined){
+
+    if(bindingPoint < 0 || bindingPoint >= this.MAX_UNIFORM_BUFFER_BINDINGS){
         throw new Error(`Invalid binding point ${bindingPoint}. Max bindings ${this.MAX_UNIFORM_BUFFER_BINDINGS}.`);
     }
-    //TODO: separate
-    const buffer = this._buffers[this._gl.UNIFORM_BUFFER][id];
-    if(this._uniformBufferBindingActive[bindingPoint] !== buffer){
-        this._gl.bindBufferBase(this._gl.UNIFORM_BUFFER,bindingPoint,buffer.handle);
-        this._uniformBufferBindingActive[bindingPoint] = id;
+
+    const target = this._gl.UNIFORM_BUFFER;
+    const state = this._bufferState[target];
+
+    if(id == state.bindings[bindingPoint]){
+        return;
     }
+    if(id == null){
+        this._gl.bindBufferBase(this._gl.UNIFORM_BUFFER,bindingPoint,null);
+        state.bindings[bindingPoint] = INVALID_ID;
+        state.unitActive = bindingPoint;
+        return;
+    }
+    const buffer = this._buffers[target][id];
+    if(!buffer){
+        throw new BufferError(strBufferErrorInvalidId(id));
+    }
+    this._gl.bindBufferBase(this._gl.UNIFORM_BUFFER,bindingPoint,buffer.handle);
+    state.bindings[bindingPoint] = id;
+    state.unitActive = bindingPoint;
 };
 
+/**
+ * Returns the active uniform buffer.
+ * @param bindingPoint
+ * @return {*|null}
+ */
 ContextGL.prototype.getUniformBuffer = function(bindingPoint){
-    bindingPoint = bindingPoint || 0;
-    return this._uniformBufferBindingActive[bindingPoint] || null;
+    const state = this._bufferState[this._gl.UNIFORM_BUFFER];
+    return state.bindings[bindingPoint || state.unitActive] || null;
 };
 
+/**
+ * Allocates a size or copies uniform data into the data store.
+ * @param {Number|Uint8Array|Uint16Array|Uint32Array|Float32Array} [size_or_data]
+ */
 ContextGL.prototype.setUniformBufferData = function(size_or_data){
     const target = this._gl.UNIFORM_BUFFER;
-    const id = this._bufferState[target].binding;
-    if(id === INVALID_ID){
+    const state = this._bufferState[target];
+    const id = state.bindings[state.unitActive];
+    if(id == INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
     this._setBufferData(target,id,size_or_data);
 };
 
+/**
+ * Updates the uniform buffer internal preserved data.
+ */
 ContextGL.prototype.updateUniformBufferData = function(){
     this.setUniformBufferData();
 };
 
+/**
+ * Redefines some or all of the data store.
+ * @param offset
+ * @param data
+ */
 ContextGL.prototype.setUniformBufferSubData = function(offset,data){
     const target = this._gl.UNIFORM_BUFFER;
-    const id = this._bufferState[target].binding;
-    if(id === INVALID_ID){
+    const state = this._bufferState[target];
+    const id = state.bindings[state.unitActive];
+    if(id == INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
     this._setBufferSubData(target,id,offset,data);
 };
 
+/**
+ * Returns the data send to the uniform buffer. (Returns null if preserveData is set to false on creation)
+ * @param id
+ * @return {*}
+ */
 ContextGL.prototype.getUniformBufferData = function(id){
     return this.getUniformBufferInfo(id).data;
 };
 
+/**
+ * Returns the usage pattern of the uniform data store set.
+ * @param id
+ * @return {*}
+ */
 ContextGL.prototype.getUniformBufferUsage = function(id){
     return this.getUniformBufferInfo(id).usage;
 };
 
+/**
+ * Returns uniform buffer´s data length.
+ * @param id
+ * @return {*}
+ */
 ContextGL.prototype.getUniformBufferDataLength = function(id){
     return this.getUniformBufferInfo(id).length;
 };
 
+/**
+ * Returns uniform buffer´s data byte length.
+ * @param id
+ * @return {*}
+ */
 ContextGL.prototype.getUniformBufferDataByteLength = function(id){
     return this.getUniformBufferInfo(id).byteLength;
 };
 
+/**
+ * Returns the current uniform buffer state.
+ * @param id
+ */
 ContextGL.prototype.getUniformBufferInfo = function(id){
     return this._getBufferInfo(this._gl.UNIFORM_BUFFER,id);
 };
