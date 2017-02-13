@@ -1,4 +1,4 @@
-import validateOption from 'validate-option';
+import validateConfig from 'validate-option';
 
 import * as Mat33 from 'foam-math/Mat33';
 import * as Mat44 from 'foam-math/Mat44';
@@ -25,9 +25,12 @@ import {
     VertexArrayBindingState
 } from './State';
 
+import * as WebGLStaticConstants from './Constants';
+
 import {
     glObjToArray,
     getWebGLRenderingContext,
+    glEnumToString,
     GLEnumStringMap
 } from './Util';
 
@@ -258,16 +261,6 @@ function strWrongNumArgs(has,expectedMust,expectedOpt){
     return `Wrong number of arguments. Expected ${expectedMust + expectedOpt === undefined ? ' or ' + expectedOpt : ''}, has ${has}.`;
 }
 
-
-/**
- * Returns a string representation of a gl constant / enum.
- * @param enum_
- * @returns {*}
- */
-export function glEnumToString(enum_){
-    return GLEnumStringMap[enum_] || enum_;
-}
-
 /**
  * Throws an error if the passed context`s active program does not match the program passed.
  * @param ctx
@@ -293,15 +286,15 @@ const TEMP_RECT_0 = [0,0,0,0];
 /**
  * A ContextGL representation.
  * @param canvas
- * @param options
+ * @param config
  * @constructor
  */
-function ContextGL(canvas,options){
-    options = validateOption(options,DefaultConfig);
+function ContextGL(canvas,config){
+    config = validateConfig(config,DefaultConfig);
 
-    if(options.version !== WEBGL_1_VERSION &&
-        options.version !== WEBGL_2_VERSION){
-        throw new Error(`Invalid context version ${options.version}.`);
+    if(config.version !== WEBGL_1_VERSION &&
+        config.version !== WEBGL_2_VERSION){
+        throw new Error(`Invalid context version ${config.version}.`);
     }
 
     /*----------------------------------------------------------------------------------------------------------------*/
@@ -312,43 +305,43 @@ function ContextGL(canvas,options){
     this._gl = null;
 
     //WebGLRenderingContext create
-    switch(options.version){
+    switch(config.version){
         case WEBGL_2_VERSION:
             this._glVersion = WEBGL_2_VERSION;
-            this._gl = getWebGLRenderingContext(canvas,this._glVersion,options);
-            if(!this._gl && options.fallback){
+            this._gl = getWebGLRenderingContext(canvas,this._glVersion,config);
+            if(!this._gl && config.fallback){
                 this._glVersion = WEBGL_1_VERSION;
-                this._gl = getWebGLRenderingContext(canvas,this._glVersion,options);
+                this._gl = getWebGLRenderingContext(canvas,this._glVersion,config);
             }
             break;
         case WEBGL_1_VERSION:
             this._glVersion = WEBGL_1_VERSION;
-            this._gl = getWebGLRenderingContext(canvas,this._glVersion,options);
+            this._gl = getWebGLRenderingContext(canvas,this._glVersion,config);
             break;
         default:
-            throw new Error(`Invalid webgl version ${options.version}.`);
+            throw new Error(`Invalid webgl version ${config.version}.`);
             break;
     }
 
     //WebGLRenderingContext creation failed
     if(!this._gl){
-        const msgFallback = options.version === WEBGL_2_VERSION ? !options.fallback ? ' No fallback set.' : ' Fallback version 1 not available.' : '';
-        const msgError = `ContextGL not available. Requested WebGL version ${options.version} not available.${msgFallback}`;
+        const msgFallback = config.version === WEBGL_2_VERSION ? !config.fallback ? ' No fallback set.' : ' Fallback version 1 not available.' : '';
+        const msgError = `ContextGL not available. Requested WebGL version ${config.version} not available.${msgFallback}`;
         throw new Error(msgError);
     }
 
-    if(options.warn && this._glVersion !== options.version){
+    if(config.warn && this._glVersion !== config.version){
         console.info('Requested WebGL version 2 not available. Using fallback version 1.');
     }
 
     // check config request
-    if(options.warn){
+    if(config.warn){
         const contextAttributes = this._gl.getContextAttributes();
-        for(let option in options){
+        for(let option in config){
             if(option === 'warn' || option === 'version' || option === 'fallback'){
                 continue;
             }
-            if(options[option] !== contextAttributes[option]){
+            if(config[option] !== contextAttributes[option]){
                 console.warn(`${option} requested but not available.`);
             }
         }
@@ -793,7 +786,7 @@ function ContextGL(canvas,options){
     this._textureStack = [];
 
     //bind empty texture
-    const textureNullConfig = validateOption({width : 1,height : 1},DefaultConfigTexture2d);
+    const textureNullConfig = validateConfig({width : 1,height : 1},DefaultConfigTexture2d);
     const textureNullDataConfig = {};
     for(const key in DefaultConfigTexture2dData){
         textureNullDataConfig[key] = textureNullConfig[key];
@@ -4607,7 +4600,7 @@ ContextGL.prototype.createTexture2d = function(data_or_config,config){
     }else{
         data = data_or_config;
     }
-    config = validateOption(config,DefaultConfigTexture2d);
+    config = validateConfig(config,DefaultConfigTexture2d);
 
     const id = this._createTexture(this._gl.TEXTURE_2D);
     this._textures[id].level = config.level;
@@ -4672,7 +4665,7 @@ ContextGL.prototype.setTexture2dData = function(data,config){
     if(!texture){
         throw new TextureError(strTextureErrorInvalidId(id))
     }
-    config = validateOption(config,DefaultConfigTexture2dData);
+    config = validateConfig(config,DefaultConfigTexture2dData);
 
     //wrap
     const wrap = config.wrap;
@@ -5231,7 +5224,7 @@ ContextGL.prototype.createFramebuffer = function(attachments_or_config){
     let height;
 
     if(!Array.isArray(attachments_or_config)){
-        const config = validateOption(attachments_or_config,DefaultConfigFramebuffer);
+        const config = validateConfig(attachments_or_config,DefaultConfigFramebuffer);
 
         config.depthAttachmentFormat = config.depthAttachmentFormat || this.UNSIGNED_INT_24_8;
 
