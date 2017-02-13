@@ -50,3 +50,13 @@ export const GLEnumStringMap = {};
 for(let key in WebGLStaticConstants){
     GLEnumStringMap[WebGLStaticConstants[key]] = key;
 }
+
+
+/**
+ * Returns a string representation of a gl constant / enum.
+ * @param enum_
+ * @returns {*}
+ */
+export function glEnumToString(enum_){
+    return GLEnumStringMap[enum_] || enum_;
+}
