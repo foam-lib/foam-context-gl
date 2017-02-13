@@ -24,6 +24,13 @@ const WEBGL_CONTEXT_IDS = [
     ['webgl2']
 ];
 
+/**
+ * Returns a WebGLRenderingContext from an HTMLCanvasElement.
+ * @param canvas
+ * @param version
+ * @param options
+ * @return {null|WebGLRenderingContext|WebGL2RenderingContext}
+ */
 export function getWebGLRenderingContext(canvas,version,options){
     const ids = WEBGL_CONTEXT_IDS[version-1];
     for(let i = 0; i < ids.length; ++i){
@@ -35,6 +42,10 @@ export function getWebGLRenderingContext(canvas,version,options){
     return null;
 }
 
+/**
+ * Dictionary of WebGLRenderingContext constant value keys by constant values.
+ * @type {{}}
+ */
 export const GLEnumStringMap = {};
 for(let key in WebGLStaticConstants){
     GLEnumStringMap[WebGLStaticConstants[key]] = key;
