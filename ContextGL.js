@@ -22,6 +22,7 @@ import {
     BlendState,
     DrawState,
     TextureState,
+    BufferBindingState,
     VertexArrayBindingState
 } from './State';
 
@@ -710,12 +711,12 @@ function ContextGL(canvas,config){
     this._buffers = {};
     this._buffers[this._gl.ARRAY_BUFFER] = {};
     this._buffers[this._gl.ELEMENT_ARRAY_BUFFER] = {};
-    this._bufferActive = {};
-    this._bufferActive[this._gl.ARRAY_BUFFER] = INVALID_ID;
-    this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER] = INVALID_ID;
     this._bufferStack = {};
     this._bufferStack[this._gl.ARRAY_BUFFER] = [];
     this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER] = [];
+    this._bufferState = {};
+    this._bufferState[this._gl.ARRAY_BUFFER] = new BufferBindingState(INVALID_ID);
+    this._bufferState[this._gl.ELEMENT_ARRAY_BUFFER] = new BufferBindingState(INVALID_ID);
 
     this.STATIC_DRAW = this._gl.STATIC_DRAW;
     this.DYNAMIC_DRAW = this._gl.DYNAMIC_DRAW;
@@ -735,7 +736,7 @@ function ContextGL(canvas,config){
     if(this._glVersion == WEBGL_2_VERSION){
         this.UNIFORM_BUFFER_BINDING_BIT = UNIFORM_BUFFER_BINDING_BIT;
         this._buffers[this._gl.UNIFORM_BUFFER] = {};
-        this._bufferActive[this._gl.UNIFORM_BUFFER] = INVALID_ID;
+        this._bufferState[this._gl.UNIFORM_BUFFER] = new BufferBindingState();
         this._bufferStack[this._gl.UNIFORM_BUFFER] = [];
         //TODO: move to state
         this._uniformBufferBindingActive = new Array(this.MAX_UNIFORM_BUFFER_BINDINGS);
@@ -3314,11 +3315,12 @@ function strBufferErrorNothingBound(target){
 }
 
 ContextGL.prototype._invalidateBuffer = function(target){
-    if(this._bufferActive[target] === null){
+    const state = this._bufferState[target];
+    if(state.binding === null){
         return;
     }
     this._gl.bindBuffer(target,null);
-    this._bufferActive[target] = null;
+    state.binding = null;
 };
 
 ContextGL.prototype._createBuffer = function(target,size_or_data,usage,preserveData){
@@ -3342,7 +3344,7 @@ ContextGL.prototype._createBuffer = function(target,size_or_data,usage,preserveD
 
     //initial data upload
     if(size_or_data !== undefined && size_or_data !== 0){
-        let prevId = this._bufferActive[target];
+        const prevId = this._bufferState[target].binding;
         this._setBuffer(target,id);
         this._setBufferData(target,id,size_or_data);
         if(prevId === INVALID_ID){
@@ -3360,15 +3362,16 @@ ContextGL.prototype._deleteBuffer = function(target,id){
         throw new BufferError(id);
     }
     delete this._buffers[target][id];
-
-    if(this._bufferActive[target] === id){
-        this._bufferActive[target] = INVALID_ID;
+    const state = this._bufferState[target];
+    if(state.binding === id){
+        state.binding = INVALID_ID;
         this._gl.bindBuffer(target,null);
     }
 };
 
 ContextGL.prototype._setBuffer = function(target,id){
-    if(id === this._bufferActive[target]){
+    const state = this._bufferState[target];
+    if(id === state.binding){
         return;
     }
     if(id === null){
@@ -3380,7 +3383,7 @@ ContextGL.prototype._setBuffer = function(target,id){
         throw new BufferError(strBufferErrorInvalidId(id));
     }
     this._gl.bindBuffer(target,buffer.handle);
-    this._bufferActive[target] = id;
+    state.binding = id;
 };
 
 ContextGL.prototype._setBufferData = function(target,id,size_or_data){
@@ -3482,7 +3485,7 @@ ContextGL.prototype._setBufferSubData = function(target,id,offset,data){
 };
 
 ContextGL.prototype._setBufferUsage = function(target,usage){
-    const id = this._bufferActive[target];
+    const id = this._bufferState[target].binding;
     if(id === INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
@@ -3493,7 +3496,7 @@ ContextGL.prototype._getBufferInfo = function(target,id){
     let buffer;
     //active buffer
     if(id === undefined){
-        buffer = this._buffers[target][this._bufferActive[target]];
+        buffer = this._buffers[target][this._bufferState[target].binding];
         if(!buffer){
             throw new BufferError(strBufferErrorNothingBound(target));
         }
@@ -3512,8 +3515,10 @@ ContextGL.prototype._getBufferInfo = function(target,id){
  * @category Buffer
  */
 ContextGL.prototype.pushBufferBinding = function(newState){
-    this._bufferStack[this._gl.ARRAY_BUFFER].push(this._bufferActive[this._gl.ARRAY_BUFFER]);
-    this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER].push(this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER]);
+    const arrayBufferId = this._bufferState[this._gl.ARRAY_BUFFER].binding;
+    const elementArrayBufferId = this._bufferState[this._gl.ELEMENT_ARRAY_BUFFER].binding;
+    this._bufferStack[this._gl.ARRAY_BUFFER].push(arrayBufferId);
+    this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER].push(elementArrayBufferId);
     if(newState === undefined){
         return;
     }
@@ -3541,6 +3546,30 @@ ContextGL.prototype.popBufferBinding = function(){
 /*--------------------------------------------------------------------------------------------------------------------*/
 // VERTEX BUFFER
 /*--------------------------------------------------------------------------------------------------------------------*/
+
+/**
+ * Saves the current vertex buffer binding.
+ * @param [newState]
+ */
+ContextGL.prototype.pushVertexBufferBinding = function(newState){
+    const target = this._gl.ARRAY_BUFFER;
+    this._bufferStack[target].push(this._bufferState[target].binding);
+    if(newState === undefined){
+        return;
+    }
+    this.setVertexBuffer(newState.binding);
+};
+
+/**
+ * Restores the previous vertex buffer binding.
+ */
+ContextGL.prototype.popVertexBufferBinding = function(){
+    const stack = this._bufferStack[this._gl.ARRAY_BUFFER];
+    if(stack.length == 0){
+        throw new Error(STR_ERROR_INVALID_STACK_POP);
+    }
+    this.setVertexBuffer(stack.pop());
+};
 
 /**
  * Creates a new vertex buffer.
@@ -3587,7 +3616,7 @@ ContextGL.prototype.setVertexBuffer = function(id){
  * @returns {Number}
  */
 ContextGL.prototype.getVertexBuffer = function(){
-    return this._bufferActive[this._gl.ARRAY_BUFFER];
+    return this._bufferState[this._gl.ARRAY_BUFFER].binding;
 };
 
 /**
@@ -3597,11 +3626,11 @@ ContextGL.prototype.getVertexBuffer = function(){
  */
 ContextGL.prototype.setVertexBufferData = function(size_or_data){
     const target = this._gl.ARRAY_BUFFER;
-    const id = this._bufferActive[target];
+    const id = this._bufferState[target].binding;
     if(id === INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
-    this._setBufferData(target,this._bufferActive[target],size_or_data);
+    this._setBufferData(target,id,size_or_data);
 };
 
 /**
@@ -3621,7 +3650,7 @@ ContextGL.prototype.updateVertexBufferData = function(){
  */
 ContextGL.prototype.setVertexBufferSubData = function(offset,data){
     const target = this._gl.ARRAY_BUFFER;
-    const id = this._bufferActive[target];
+    const id = this._bufferState[target].binding;
     if(id === INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
@@ -3683,6 +3712,30 @@ ContextGL.prototype.getVertexBufferInfo = function(id){
 /*--------------------------------------------------------------------------------------------------------------------*/
 
 /**
+ * Saves the current vertex buffer binding.
+ * @param [newState]
+ */
+ContextGL.prototype.pushIndexBufferBinding = function(newState){
+    const target = this._gl.ELEMENT_ARRAY_BUFFER;
+    this._bufferStack[target].push(this._bufferState[target].binding);
+    if(newState === undefined){
+        return;
+    }
+    this.setIndexBuffer(newState.binding);
+};
+
+/**
+ * Restores the previous vertex buffer binding.
+ */
+ContextGL.prototype.popIndexBufferBinding = function(){
+    const stack = this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER];
+    if(stack.length == 0){
+        throw new Error(STR_ERROR_INVALID_STACK_POP);
+    }
+    this.setIndexBuffer(stack.pop());
+};
+
+/**
  * Creates a new index buffer.
  * @category Buffer
  * @param size_or_data
@@ -3733,7 +3786,7 @@ ContextGL.prototype.setIndexBuffer = function(id){
  * @returns {Number}
  */
 ContextGL.prototype.getIndexBuffer = function(){
-    return this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER];
+    return this._bufferState[this._gl.ELEMENT_ARRAY_BUFFER].binding;
 };
 
 /**
@@ -3743,11 +3796,11 @@ ContextGL.prototype.getIndexBuffer = function(){
  */
 ContextGL.prototype.setIndexBufferData = function(size_or_data){
     const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    const id = this._bufferActive[target];
+    const id = this._bufferState[target].binding;
     if(id === INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
-    this._setBufferData(target,this._bufferActive[target],size_or_data);
+    this._setBufferData(target,id,size_or_data);
 };
 
 /**
@@ -3767,7 +3820,7 @@ ContextGL.prototype.updateIndexBufferData = function(){
  */
 ContextGL.prototype.setIndexBufferSubData = function(offset,data){
     const target = this._gl.ELEMENT_ARRAY_BUFFER;
-    const id = this._bufferActive[target];
+    const id = this._bufferState[target].binding;
     if(id === INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
@@ -3858,11 +3911,11 @@ ContextGL.prototype.getUniformBuffer = function(bindingPoint){
 
 ContextGL.prototype.setUniformBufferData = function(size_or_data){
     const target = this._gl.UNIFORM_BUFFER;
-    const id = this._bufferActive[target];
+    const id = this._bufferState[target].binding;
     if(id === INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
-    this._setBufferData(target,this._bufferActive[target],size_or_data);
+    this._setBufferData(target,id,size_or_data);
 };
 
 ContextGL.prototype.updateUniformBufferData = function(){
@@ -3871,7 +3924,7 @@ ContextGL.prototype.updateUniformBufferData = function(){
 
 ContextGL.prototype.setUniformBufferSubData = function(offset,data){
     const target = this._gl.UNIFORM_BUFFER;
-    const id = this._bufferActive[target];
+    const id = this._bufferState[target].binding;
     if(id === INVALID_ID){
         throw new BufferError(strBufferErrorNothingBound(target));
     }
@@ -4291,7 +4344,7 @@ ContextGL.prototype.setVertexArray = function(id){
         null;
     this._vertexArrayHasDivisor = vertexArray.hasDivisor;
     //sync internal vertex array representation
-    this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER] = vertexArray.indexBuffer || null;
+    this._bufferState[this._gl.ELEMENT_ARRAY_BUFFER].binding = vertexArray.indexBuffer || null;
 };
 
 /**
@@ -6443,11 +6496,13 @@ ContextGL.prototype.pushState = function(mask){
     }
     //vertex buffer binding
     if((mask & ARRAY_BUFFER_BINDING_BIT) == ARRAY_BUFFER_BINDING_BIT){
-        this._bufferStack[this._gl.ARRAY_BUFFER].push(this._bufferActive[this._gl.ARRAY_BUFFER]);
+        const target = this._gl.ARRAY_BUFFER;
+        this._bufferStack[target].push(this._bufferState[target].binding);
     }
     //index buffer binding
     if((mask & ELEMENT_ARRAY_BUFFER_BINDING_BIT) == ELEMENT_ARRAY_BUFFER_BINDING_BIT){
-        this._bufferStack[this._gl.ELEMENT_ARRAY_BUFFER].push(this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER]);
+        const target = this._gl.ELEMENT_ARRAY_BUFFER;
+        this._bufferStack[target].push(this._bufferState[target].binding);
     }
     //vertex array binding
     if((mask & VERTEX_ARRAY_BINDING_BIT) == VERTEX_ARRAY_BINDING_BIT){
@@ -6601,11 +6656,11 @@ ContextGL.prototype.getState = function(mask){
     }
     //vertex buffer binding
     if((mask & ARRAY_BUFFER_BINDING_BIT) == ARRAY_BUFFER_BINDING_BIT){
-        state.vertexBufferBinding = this._bufferActive[this._gl.ARRAY_BUFFER];
+        state.vertexBufferBinding = this._bufferState[this._gl.ARRAY_BUFFER].binding;
     }
     //index buffer binding
     if((mask & ELEMENT_ARRAY_BUFFER_BINDING_BIT) == ELEMENT_ARRAY_BUFFER_BINDING_BIT){
-        state.indexBufferBinding = this._bufferActive[this._gl.ELEMENT_ARRAY_BUFFER];
+        state.indexBufferBinding = this._bufferState[this._gl.ELEMENT_ARRAY_BUFFER].binding;
     }
     //vertex array binding
     if((mask & VERTEX_ARRAY_BINDING_BIT) == VERTEX_ARRAY_BINDING_BIT){
