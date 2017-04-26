@@ -41,6 +41,7 @@ const PROGRAM_DEFAULT_GLSL =
 
  uniform sampler2D uTexture;
  uniform float uUseTexture;
+ uniform float uFlipTexture;
  
  uniform vec2 uTexCoordOffset;
  uniform vec2 uTexCoordScale;
@@ -48,7 +49,7 @@ const PROGRAM_DEFAULT_GLSL =
  uniform float uInvert;
 
  void main(){
-     vec4 color = vColor * (1.0 - uUseTexture) + texture2D(uTexture,uTexCoordOffset + vTexCoord * uTexCoordScale) * uUseTexture;
+     vec4 color = vColor * (1.0 - uUseTexture) + texture2D(uTexture,uTexCoordOffset + mix(vTexCoord,vec2(vTexCoord.x,1.0 - vTexCoord.y),uFlipTexture) * uTexCoordScale) * uUseTexture;
      gl_FragColor = mix(color,vec4(1.0 - color.r,1.0 - color.g,1.0 - color.b,color.a),uInvert);
  }
  #endif`;
