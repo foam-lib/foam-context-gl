@@ -5767,7 +5767,7 @@ ContextGL.prototype.getFramebufferDepthStencilAttachment = function(framebuffer)
  */
 ContextGL.prototype.getFramebufferSize = function(id_or_out,out){
     if(id_or_out === undefined || Array.isArray(id_or_out)){
-        const framebuffer = this.getFramebufferInfo(id_or_out);
+        const framebuffer = this.getFramebufferInfo();
         return Vec2.set2(id_or_out || Vec2.create(),framebuffer.width,framebuffer.height);
     }
     const framebuffer = this.getFramebufferInfo(id_or_out);
@@ -5783,7 +5783,7 @@ ContextGL.prototype.getFramebufferSize = function(id_or_out,out){
  */
 ContextGL.prototype.getFramebufferBounds = function(id_or_out,out){
     if(id_or_out === undefined || Array.isArray(id_or_out)){
-        const framebuffer = this.getFramebufferInfo(id_or_out);
+        const framebuffer = this.getFramebufferInfo();
         return Rect.set4(id_or_out || Rect.create(),0,0,framebuffer.width,framebuffer.height);
     }
     const framebuffer = this.getFramebufferInfo(id_or_out);
