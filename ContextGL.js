@@ -1043,6 +1043,15 @@ ContextGL.prototype.getGLCapabilities = function(){
 };
 
 /**
+ * Returns the drawing buffer bounds.
+ * @param out
+ * @return {*}
+ */
+ContextGL.prototype.getDrawingBufferBounds = function(out){
+    return Vec4.set4(out || Vec4.create(),0,0,this._gl.drawingBufferWidth,this._gl.drawingBufferHeight);
+}
+
+/**
  * Returns the drawing buffer size.
  * @param out
  * @returns {*}
