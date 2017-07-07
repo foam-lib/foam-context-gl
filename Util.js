@@ -20,7 +20,7 @@ export function glObjToArray(obj){
 }
 
 const WEBGL_CONTEXT_IDS = [
-    ['webkit-3d','webgl','experimental-webgl'],
+    ['webgl','webkit-3d','experimental-webgl'],
     ['webgl2']
 ];
 
