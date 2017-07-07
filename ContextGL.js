@@ -3200,6 +3200,14 @@ ContextGL.prototype.getProgram = function(){
 };
 
 /**
+ * Returns a list of all program ids.
+ * @return {Array}
+ */
+ContextGL.prototype.getAllPrograms = function(){
+    return Object.keys(this._programs);
+};
+
+/**
  * Returns the program state.
  * @category Program
  * @returns {*}
@@ -3638,6 +3646,14 @@ ContextGL.prototype.getVertexBuffer = function(){
 };
 
 /**
+ * Returns a list of all vertex buffers.
+ * @return {Array}
+ */
+ContextGL.prototype.getAllVertexBuffers = function(){
+    return Object.keys(this._buffers[this._gl.ARRAY_BUFFER]);
+};
+
+/**
  * Allocates a size or copies vertex data into the data store.
  * @category Buffer
  * @param {Number|Uint8Array|Uint16Array|Uint32Array|Float32Array} [size_or_data]
@@ -3808,6 +3824,14 @@ ContextGL.prototype.getIndexBuffer = function(){
 };
 
 /**
+ * Returns a list of all index buffer ids.
+ * @return {Array}
+ */
+ContextGL.prototype.getAllIndexBuffers = function(){
+    return Object.keys(this._buffers[this._gl.ELEMENT_ARRAY_BUFFER]);
+};
+
+/**
  * Allocates a size or copies index data into the data store.
  * @category Buffer
  * @param {Number|Uint8Array|Uint16Array|Uint32Array} [size_or_data]
@@ -3960,6 +3984,14 @@ ContextGL.prototype.setUniformBuffer = function(id,bindingPoint){
 ContextGL.prototype.getUniformBuffer = function(bindingPoint){
     const state = this._bufferState[this._gl.UNIFORM_BUFFER];
     return state.bindings[bindingPoint || state.unitActive] || null;
+};
+
+/**
+ * Returns a list of all uniform buffer ids.
+ * @return {Array}
+ */
+ContextGL.prototype.getAllUniformBuffers = function(){
+    return Object.keys(this._buffers[this._gl.UNIFORM_BUFFER]);
 };
 
 /**
@@ -4460,6 +4492,14 @@ ContextGL.prototype.invalidateVertexArray = function(){
  */
 ContextGL.prototype.getVertexArray = function(){
     return this._vertexArrayState.binding;
+};
+
+/**
+ * Returns a list of all vertex array ids.
+ * @return {Array}
+ */
+ContextGL.prototype.getAllVertexArrays = function(){
+    return Object.keys(this._vertexArrays)
 };
 
 /**
@@ -5138,6 +5178,14 @@ ContextGL.prototype.getTexture2d = function(textureUnit){
 };
 
 /**
+ * Returns a list of all texture 2d ids.
+ * @return {Array}
+ */
+ContextGL.prototype.getAllTextures2d = function(){
+    return Object.keys(this._textures);
+};
+
+/**
  * Returns the current active texture unit.
  * @category Texture
  * @returns {*}
@@ -5566,6 +5614,14 @@ ContextGL.prototype.setFramebuffer = function(id){
  */
 ContextGL.prototype.getFramebuffer = function(){
     return this._framebufferActive;
+};
+
+/**
+ * Returns a list of all framebuffer ids.
+ * @return {Array}
+ */
+ContextGL.prototype.getAllFramebuffers = function(){
+    return Object.keys(this._framebuffers);
 };
 
 /**
