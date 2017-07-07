@@ -5075,6 +5075,10 @@ ContextGL.prototype.updateTexture2dData = function(data){
     }
 };
 
+ContextGL.prototype.generateTexture2dMipmap = function(){
+    this._gl.generateMipmap(this._gl.TEXTURE_2D);
+};
+
 /**
  * Deletes a texture.
  * @category Texture
