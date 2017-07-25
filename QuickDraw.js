@@ -2289,12 +2289,10 @@ QuickDraw.prototype.cylinder = function(radius,height){
 // PIVOT / GIZMO
 /*--------------------------------------------------------------------------------------------------------------------*/
 
-QuickDraw.prototype.pivotAxes = function(axesLength,headLength){
+QuickDraw.prototype.pivotAxes = function(axesLength = 1.0,headLength = 0.25,axesWidth = 0.025){
     if(!this._ctx._programHasAttribPosition){
         throw new QuickDrawError(STR_ERROR_QUICK_DRAW_NO_ATTRIB_POSITION);
     }
-    axesLength = axesLength === undefined ? 1.0 : axesLength;
-    headLength = headLength === undefined ? 0.25 : headLength;
 
     this._colorPrev = Vec4.set(this._colorPrev,this._drawState.color);
 
@@ -2306,25 +2304,24 @@ QuickDraw.prototype.pivotAxes = function(axesLength,headLength){
     this.line6(0,0,0,0,0,axesLength);
 
     const headSize = headLength * 0.35;
-    const tubeSize = 0.025;
     const offset = axesLength - headLength;
 
     //tubes
 
     this._ctx.pushModelMatrix();
     this._ctx.rotateXYZ3(0,0,-Math.PI * 0.5);
-    this._ctx.scale3(tubeSize,offset,tubeSize);
+    this._ctx.scale3(axesWidth,offset,axesWidth);
     this._drawTube(1,0,0,1);
     this._ctx.popModelMatrix();
 
     this._ctx.pushModelMatrix();
-    this._ctx.scale3(tubeSize,offset,tubeSize);
+    this._ctx.scale3(axesWidth,offset,axesWidth);
     this._drawTube(0,1,0,1);
     this._ctx.popModelMatrix();
 
     this._ctx.pushModelMatrix();
     this._ctx.rotateXYZ3(Math.PI * 0.5,0,0);
-    this._ctx.scale3(tubeSize,offset,tubeSize);
+    this._ctx.scale3(axesWidth,offset,axesWidth);
     this._drawTube(0,0,1,1);
     this._ctx.popModelMatrix();
 
@@ -2534,7 +2531,7 @@ QuickDraw.prototype.gridPoints = function(size, subdivs){
     this._gridInternal(size,subdivs,this._ctx.POINTS);
 };
 
-QuickDraw.prototype.gridTextured = function(size,subdivs){
+QuickDraw.prototype.gridTextured = function(size,subdivs,fade = 1.0){
     size    = (size === undefined || (size[0] < 0 || size[1] < 0)) ? VEC2_ONE : size;
     subdivs = (subdivs === undefined || subdivs < 0) ? 10 : subdivs;
 
@@ -2549,7 +2546,7 @@ QuickDraw.prototype.gridTextured = function(size,subdivs){
         this._ctx.scale3(size[0],size[1],1.0);
         this._ctx.translate3(-0.5,-0.5,0);
         this._ctx.setTexture2d(this._gridTexture);
-        this._ctx.setProgramUniform('uUseTexture',1.0);
+        this._ctx.setProgramUniform('uUseTexture',fade);
         this.setRectTexCoord2(0,0, subdivs,0, subdivs,subdivs, 0,subdivs);
         this.rect();
         this.resetRectTexCoord();
